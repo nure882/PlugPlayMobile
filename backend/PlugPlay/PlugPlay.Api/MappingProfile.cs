@@ -1,5 +1,7 @@
 using AutoMapper;
 
+namespace PlugPlay.Api;
+
 public class MappingProfile : Profile
 {
     public MappingProfile()

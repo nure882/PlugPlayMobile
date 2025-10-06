@@ -1,4 +1,10 @@
+using AutoMapper;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using PlugPlay.Api.Dto;
+using PlugPlay.Domain.Entities;
+using PlugPlay.Domain.Enums;
+using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers;
 
@@ -6,5 +12,61 @@ namespace PlugPlay.Api.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
+    private readonly IAuthService _authService;
 
+    private readonly IMapper _mapper;
+
+    private readonly IConfiguration _configuration;
+
+    public AuthController(IAuthService authService, IMapper mapper, IConfiguration configuration)
+    {
+        _authService = authService;
+        _mapper = mapper;
+        _configuration = configuration;
+    }
+
+    [HttpPost("register")]
+    public async Task<IActionResult> RegisterAsync(ReqisterRequest reqisterRequest)
+    {
+        if (reqisterRequest == null)
+        {
+            return BadRequest(new ProblemDetails() { Title = "Invalid register data" });
+        }
+
+        if (!ModelState.IsValid)
+        {
+            return BadRequest(ModelState);
+        }
+        var user = _mapper.Map<User>(reqisterRequest);
+        user.Role = Role.User;
+        var result = await _authService.RegisterAsync(user, reqisterRequest.Password,
+            reqisterRequest.PhoneNumber, reqisterRequest.FirstName, reqisterRequest.LastName);
+        if (result.Failure)
+        {
+            return StatusCode(500, result.Error);
+        }
+
+        return Ok();
+    }
+
+    [HttpPost("create_admin")]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> CreateAdminAsync(ReqisterRequest reqisterRequest)
+    {
+        if (reqisterRequest == null)
+        {
+            return BadRequest(new ProblemDetails() { Title = "Invalid register data" });
+        }
+
+        var user = _mapper.Map<User>(reqisterRequest);
+        user.Role = Role.Admin;
+        var result = await _authService.RegisterAsync(user, reqisterRequest.Password,
+            reqisterRequest.PhoneNumber, reqisterRequest.FirstName, reqisterRequest.LastName);
+        if (result.Failure)
+        {
+            return StatusCode(500, result.Error);
+        }
+
+        return Ok();
+    }
 }
