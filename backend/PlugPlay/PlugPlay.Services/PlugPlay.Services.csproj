@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net8.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>disable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="LiqPay" Version="2024.4.908.5254" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="8.0.0" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.0" />
+        <PackageReference Include="SHA3.Net" Version="2.0.0" />
+    </ItemGroup>
+    <ItemGroup>
+        <ProjectReference Include="..\PlugPlay.Domain\PlugPlay.Domain.csproj" />
+        <ProjectReference Include="..\PlugPlay.Infrastructure\PlugPlay.Infrastructure.csproj" />
+    </ItemGroup>
+</Project>
