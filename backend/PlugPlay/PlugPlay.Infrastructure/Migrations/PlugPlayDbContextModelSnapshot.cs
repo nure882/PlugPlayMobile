@@ -563,6 +563,12 @@ namespace PlugPlay.Infrastructure.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("first_name");
 
+                    b.Property<string>("GoogleId")
+                        .IsRequired()
+                        .HasMaxLength(255)
+                        .HasColumnType("character varying(255)")
+                        .HasColumnName("google_id");
+
                     b.Property<string>("LastName")
                         .IsRequired()
                         .HasMaxLength(120)
@@ -600,6 +606,11 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean")
                         .HasColumnName("phone_number_confirmed");
+
+                    b.Property<string>("PictureUrl")
+                        .HasMaxLength(400)
+                        .HasColumnType("character varying(400)")
+                        .HasColumnName("picture_url");
 
                     b.Property<int>("Role")
                         .HasColumnType("integer")

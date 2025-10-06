@@ -69,4 +69,41 @@ public class AuthController : ControllerBase
 
         return Ok();
     }
+
+    [HttpPost("google")]
+    public async Task<ActionResult<LoginResponse>> GoogleSignIn([FromBody] GoogleSignInRequest request)
+    {
+        var validationResult = await _authService.ValidateGoogleSignInRequestAsync(request.IdToken);
+        if (validationResult.Failure)
+        {
+            return Unauthorized(new { message = "Invalid Google token" });
+        }
+
+        var payload = validationResult.Value;
+
+        var userResult = await _authService.GetOrCreateUser(payload.Email, payload.Name, payload.Subject);
+        if (userResult.Failure)
+        {
+            return Unauthorized(new { message = userResult.Error });
+        }
+
+        (string, string) tokens = await _authService.GenerateTokens(userResult.Value);
+        var tokenExpiration = DateTime.UtcNow.AddMinutes(
+            Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
+        var response = new LoginResponse
+        {
+            Token = tokens.Item1,
+            RefreshToken = tokens.Item2,
+            Expiration = tokenExpiration,
+            User = new UserDto
+            {
+                Id = userResult.Value.Id,
+                Email = userResult.Value.Email,
+                FirstName = userResult.Value.FirstName,
+                LastName = userResult.Value.LastName
+            }
+        };
+
+        return Ok(response);
+    }
 }
