@@ -21,7 +21,6 @@ dist-ssr
 *.suo
 *.ntvs*
 *.njsproj
-*.sln
 *.sw?
 
 # -------------------------------------------------------------------
@@ -38,7 +37,6 @@ appsettings.json
 *.suo
 *.user
 *.userosscache
-*.sln.docstates
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
