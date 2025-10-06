@@ -28,7 +28,7 @@ public class Order
 
     public string PaymentFailureReason { get; set; }
 
-    public User? User { get; set; }
+    public User User { get; set; }
 
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }

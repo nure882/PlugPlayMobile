@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PlugPlay.Infrastructure;
@@ -11,9 +12,11 @@ using PlugPlay.Infrastructure;
 namespace PlugPlay.Infrastructure.Migrations
 {
     [DbContext(typeof(PlugPlayDbContext))]
-    partial class PlugPlayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251006151759_AddReviewTimeStampsMigration")]
+    partial class AddReviewTimeStampsMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

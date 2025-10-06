@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -74,16 +75,16 @@ if (app.Environment.IsDevelopment())
 }
 
 // app.UseMiddleware<ExceptionHandlerMiddleware>();
-//using var scope = app.Services.CreateScope();
-//var services = scope.ServiceProvider;
-//try
-//{
-//    DataSeed.Seed(services);
-//}
-//catch (Exception ex)
-//{
-//    Debug.WriteLine(ex.Message, ex.StackTrace);
-//}
+// using var scope = app.Services.CreateScope();
+// var services = scope.ServiceProvider;
+// try
+// {
+//     DataSeed.Seed(services);
+// }
+// catch (Exception ex)
+// {
+//     Debug.WriteLine(ex.Message, ex.StackTrace);
+// }
 
 app.UseCors("AllowAllOrigins");
 app.UseAuthentication();

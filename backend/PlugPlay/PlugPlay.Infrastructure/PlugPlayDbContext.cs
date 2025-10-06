@@ -40,6 +40,8 @@ public class PlugPlayDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 
     public DbSet<UserRefreshToken> UserRefreshTokens { get; set; }
 
+    public DbSet<WishList> WishLists { get; set; }
+
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
