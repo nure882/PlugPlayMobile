@@ -564,7 +564,6 @@ namespace PlugPlay.Infrastructure.Migrations
                         .HasColumnName("first_name");
 
                     b.Property<string>("GoogleId")
-                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("google_id");
