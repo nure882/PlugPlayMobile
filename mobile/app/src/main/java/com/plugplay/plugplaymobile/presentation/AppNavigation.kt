@@ -5,14 +5,16 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.plugplay.plugplaymobile.presentation.auth.LoginScreen
-import com.plugplay.plugplaymobile.presentation.auth.RegisterScreen // Импорт нового экрана
+import com.plugplay.plugplaymobile.presentation.auth.RegisterScreen
 import com.plugplay.plugplaymobile.presentation.product_list.ProductListScreen
+import com.plugplay.plugplaymobile.presentation.profile.ProfileScreen
 
 // 💡 Определяем маршруты (Routes)
 object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val PRODUCT_LIST = "product_list"
+    const val PROFILE = "profile" // 💡 НОВИЙ МАРШРУТ
 }
 
 @Composable
@@ -22,11 +24,11 @@ fun AppNavigation() {
     // Начальный экран - Login
     NavHost(navController = navController, startDestination = Routes.LOGIN) {
 
-        // 1. ЭКРАН ВХОДА
+        // 1. ЕКРАН ВХОДУ
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // При успешном входе переходим в каталог и удаляем стек (чтобы нельзя было вернуться)
+                    // При успішному вході переходимо в каталог і видаляємо стек (щоб не можна було повернутися)
                     navController.navigate(Routes.PRODUCT_LIST) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                     }
@@ -37,13 +39,13 @@ fun AppNavigation() {
             )
         }
 
-        // 2. ЭКРАН РЕГИСТРАЦИИ
+        // 2. ЕКРАН РЕЄСТРАЦІЇ
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // При успешной регистрации переходим в каталог
+                    // При успішній реєстрації переходимо в каталог
                     navController.navigate(Routes.PRODUCT_LIST) {
-                        popUpTo(Routes.LOGIN) { inclusive = true } // Очищаем весь стек до логина
+                        popUpTo(Routes.LOGIN) { inclusive = true } // Очищаємо весь стек до логіна
                     }
                 },
                 onNavigateBack = {
@@ -52,9 +54,19 @@ fun AppNavigation() {
             )
         }
 
-        // 3. ГЛАВНЫЙ ЭКРАН (Каталог товаров)
+        // 3. ГОЛОВНИЙ ЕКРАН (Каталог товарів)
         composable(Routes.PRODUCT_LIST) {
-            ProductListScreen()
+            ProductListScreen(
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) } // 💡 ПЕРЕХІД НА ПРОФІЛЬ
+            )
+        }
+
+        // 4. ЕКРАН ПРОФІЛЮ 💡 НОВИЙ COMPOSABLE
+        composable(Routes.PROFILE) {
+            ProfileScreen(
+                onNavigateToCatalog = { navController.navigate(Routes.PRODUCT_LIST) }, // 💡 ПЕРЕХІД У КАТАЛОГ
+                onNavigateToProfile = { /* Вже на профілі */ }
+            )
         }
     }
 }
