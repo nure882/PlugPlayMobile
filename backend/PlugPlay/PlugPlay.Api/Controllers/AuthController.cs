@@ -37,6 +37,7 @@ public class AuthController : ControllerBase
         {
             return BadRequest(ModelState);
         }
+
         var user = _mapper.Map<User>(reqisterRequest);
         user.Role = Role.User;
         var result = await _authService.RegisterAsync(user, reqisterRequest.Password,
