@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using PlugPlay.Api.Dto;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Enums;
+using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers;

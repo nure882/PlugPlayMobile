@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
@@ -8,9 +7,11 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PlugPlay.Api;
+using PlugPlay.Api.Middleware;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services;
+using ExceptionHandlerMiddleware = PlugPlay.Api.Middleware.ExceptionHandlerMiddleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -96,7 +97,10 @@ builder.Services.AddAuthentication(options =>
             }
         };
     });
-
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.AddServerHeader = false;
+});
 builder.Services.AddAuthorization();
 builder.Services.RegisterServices();
 builder.Services.RegisterAutomapper();
