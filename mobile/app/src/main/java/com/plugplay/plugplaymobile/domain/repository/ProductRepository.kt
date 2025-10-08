@@ -1,12 +1,12 @@
 package com.plugplay.plugplaymobile.domain.repository
 
 import com.plugplay.plugplaymobile.domain.model.Product
+import com.plugplay.plugplaymobile.domain.model.Item // Використовуємо Item для деталей
 
 interface ProductRepository {
-
-    // Возвращает Result, чтобы явно обрабатывать успех (Success) или ошибку (Failure)
+    // Функція для отримання списку товарів (використовує модель Product)
     suspend fun getProducts(): Result<List<Product>>
 
-    // suspend fun getProductDetails(id: Int): Result<Product>
-    // suspend fun searchProducts(query: String): Result<List<Product>>
+    // Функція для отримання одного товару за ID (використовує модель Item)
+    suspend fun getProductById(itemId: String): Result<Item>
 }

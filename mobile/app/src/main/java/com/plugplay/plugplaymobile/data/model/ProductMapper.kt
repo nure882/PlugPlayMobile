@@ -5,7 +5,7 @@ import com.plugplay.plugplaymobile.domain.model.Product
 // Функция расширения для преобразования DTO в чистую Domain Model
 fun ProductDto.toDomain(): Product {
     return Product(
-        id = this.id,
+        id = this.id.toString(),
         title = this.name,
         priceValue = String.format("%.2f ₴", this.price), // Форматирование цены
         image = this.imageUrl

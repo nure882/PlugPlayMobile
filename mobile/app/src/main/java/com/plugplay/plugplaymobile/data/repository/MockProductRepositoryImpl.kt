@@ -1,29 +1,51 @@
 package com.plugplay.plugplaymobile.data.repository
 
+import android.R.attr.thumbnail
 import com.plugplay.plugplaymobile.domain.model.Product
+import com.plugplay.plugplaymobile.domain.model.Item // НОВИЙ ІМПОРТ
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import kotlinx.coroutines.delay
 import javax.inject.Inject
 
-// 💡 Класс-заглушка для репозитория
+
 class MockProductRepositoryImpl @Inject constructor() : ProductRepository {
 
-    // Статические данные для имитации списка товаров
-    private val mockProducts = listOf(
-        Product(1, "Світшот 'Плагін'", "899 ₴", "url_1"),
-        Product(2, "Худі 'Плей'", "1250 ₴", "url_2"),
-        Product(3, "Футболка 'Лого'", "450 ₴", "url_3"),
-        Product(4, "Кросівки 'Флеш'", "2999 ₴", "url_4")
-    )
-
     override suspend fun getProducts(): Result<List<Product>> {
-        // Имитируем задержку сети
-        delay(1000L)
+        delay(500) // Імітація завантаження
+        // Повертаємо мок-дані для списку
+        return Result.success(
+            listOf(
+                Product(
+                    "1", "Контролер Alpha", "12000.00 грн",
+                    image = "res/mipmap-hdpi/ic_launcher.webp"
+                ),
+                Product(
+                    "2", "Мікшер Beta", "25000.00 грн",
+                    image = "res/mipmap-hdpi/ic_launcher.webp"
+                ),
+                Product(
+                    "3", "Навушники Gamma", "3500.00 грн",
+                    image = "res/mipmap-hdpi/ic_launcher.webp"
+                )
+            )
+        )
+    }
 
-        // Возвращаем успех с нашими статическими данными
-        return Result.success(mockProducts)
+    // [ДОДАНО] Реалізація нової функції getProductById для мок-репозиторію
+    override suspend fun getProductById(itemId: String): Result<Item> {
+        delay(500) // Імітація затримки
 
-        // 💡 Чтобы имитировать ошибку, можно вернуть:
-        // return Result.failure(Exception("Сервер недоступний (Mock Error)"))
+        // Повертаємо мок-об'єкт Item
+        return Result.success(
+            Item(
+                id = itemId,
+                name = "PlugPlay Pro Mixer $itemId (MOCK)",
+                description = "Це мок-дані з MockProductRepositoryImpl. Професійний DJ-мікшер із вбудованим звуковим інтерфейсом. Ідеально для тестування UI.",
+                price = 25999.00,
+                imageUrl = "https://plugplay.com/images/mock_mixer_$itemId.jpg",
+                brand = "PlugPlay Mock",
+                category = "DJ Mixer"
+            )
+        )
     }
 }
