@@ -9,28 +9,28 @@ import com.plugplay.plugplaymobile.presentation.auth.RegisterScreen
 import com.plugplay.plugplaymobile.presentation.product_list.ProductListScreen
 import com.plugplay.plugplaymobile.presentation.profile.ProfileScreen
 
-// 💡 Определяем маршруты (Routes)
+// 💡 Визначені маршрути
 object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val PRODUCT_LIST = "product_list"
-    const val PROFILE = "profile" // 💡 НОВИЙ МАРШРУТ
+    const val PROFILE = "profile"
 }
 
 @Composable
 fun AppNavigation() {
     val navController = rememberNavController()
 
-    // Начальный экран - Login
-    NavHost(navController = navController, startDestination = Routes.LOGIN) {
+    // 💡 ПОЧАТКОВИЙ ЕКРАН - КАТАЛОГ ТОВАРІВ
+    NavHost(navController = navController, startDestination = Routes.PRODUCT_LIST) {
 
         // 1. ЕКРАН ВХОДУ
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // При успішному вході переходимо в каталог і видаляємо стек (щоб не можна було повернутися)
-                    navController.navigate(Routes.PRODUCT_LIST) {
-                        popUpTo(Routes.LOGIN) { inclusive = true }
+                    // Після успішного входу повертаємося на екран профілю
+                    navController.navigate(Routes.PROFILE) {
+                        popUpTo(Routes.LOGIN) { inclusive = true } // Очищаємо стек від аутентифікації
                     }
                 },
                 onNavigateToRegister = {
@@ -43,9 +43,10 @@ fun AppNavigation() {
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // При успішній реєстрації переходимо в каталог
-                    navController.navigate(Routes.PRODUCT_LIST) {
-                        popUpTo(Routes.LOGIN) { inclusive = true } // Очищаємо весь стек до логіна
+                    // Після успішної реєстрації повертаємося на екран профілю
+                    navController.navigate(Routes.PROFILE) {
+                        popUpTo(Routes.LOGIN) { inclusive = true } // Очищаємо стек (якщо перейшли з логіну)
+                        popUpTo(Routes.REGISTER) { inclusive = true } // Видаляємо екран реєстрації
                     }
                 },
                 onNavigateBack = {
@@ -54,18 +55,18 @@ fun AppNavigation() {
             )
         }
 
-        // 3. ГОЛОВНИЙ ЕКРАН (Каталог товарів)
+        // 3. ЕКРАН КАТАЛОГУ
         composable(Routes.PRODUCT_LIST) {
             ProductListScreen(
-                onNavigateToProfile = { navController.navigate(Routes.PROFILE) } // 💡 ПЕРЕХІД НА ПРОФІЛЬ
+                onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
             )
         }
 
-        // 4. ЕКРАН ПРОФІЛЮ 💡 НОВИЙ COMPOSABLE
+        // 4. ЕКРАН ПРОФІЛЮ
         composable(Routes.PROFILE) {
             ProfileScreen(
-                onNavigateToCatalog = { navController.navigate(Routes.PRODUCT_LIST) }, // 💡 ПЕРЕХІД У КАТАЛОГ
-                onNavigateToProfile = { /* Вже на профілі */ }
+                onNavigateToCatalog = { navController.navigate(Routes.PRODUCT_LIST) },
+                onNavigateToLogin = { navController.navigate(Routes.LOGIN) } // Перехід на вхід
             )
         }
     }
