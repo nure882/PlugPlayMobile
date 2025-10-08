@@ -15,6 +15,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.Id)
             .HasColumnName("user_id");
 
+        builder.Property(e => e.GoogleId)
+            .HasMaxLength(255);
+
         builder.Property(u => u.FirstName)
             .HasColumnName("first_name")
             .IsRequired()
@@ -24,6 +27,9 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasColumnName("last_name")
             .IsRequired()
             .HasMaxLength(120);
+
+        builder.Property(u => u.PictureUrl)
+            .HasMaxLength(400);
 
         builder.Property(u => u.Email)
             .HasColumnName("email")

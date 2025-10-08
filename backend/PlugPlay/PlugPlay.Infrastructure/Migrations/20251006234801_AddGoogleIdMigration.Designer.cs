@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using PlugPlay.Infrastructure;
@@ -11,9 +12,11 @@ using PlugPlay.Infrastructure;
 namespace PlugPlay.Infrastructure.Migrations
 {
     [DbContext(typeof(PlugPlayDbContext))]
-    partial class PlugPlayDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251006234801_AddGoogleIdMigration")]
+    partial class AddGoogleIdMigration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -564,6 +567,7 @@ namespace PlugPlay.Infrastructure.Migrations
                         .HasColumnName("first_name");
 
                     b.Property<string>("GoogleId")
+                        .IsRequired()
                         .HasMaxLength(255)
                         .HasColumnType("character varying(255)")
                         .HasColumnName("google_id");
