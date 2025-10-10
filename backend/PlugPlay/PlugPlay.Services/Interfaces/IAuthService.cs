@@ -12,5 +12,9 @@ public interface IAuthService
 
     Task<Result<GoogleJsonWebSignature.Payload>> ValidateGoogleSignInRequestAsync(string idToken);
 
+    Task<Result<User>> ValidateUserCredentials(string email, string password);
+
     Task<Result<User>> GetOrCreateUser(string payloadEmail, string payloadName, string payloadSubject);
+
+    Task<Result> LogoutAsync(string token);
 }

@@ -1,10 +1,11 @@
+using System.Security.Claims;
 using AutoMapper;
+using Google.Apis.Auth.OAuth2.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PlugPlay.Api.Dto;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Enums;
-using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers;
@@ -107,5 +108,56 @@ public class AuthController : ControllerBase
         };
 
         return Ok(response);
+    }
+
+    [HttpPost("login")]
+    public async Task<ActionResult<LoginResponse>> Login([FromBody] LoginRequest request)
+    {
+        if (request == null)
+        {
+            return BadRequest(new ProblemDetails() { Title = $"Invalid user data" });
+        }
+
+        var validationResult = await _authService.ValidateUserCredentials(request.Email, request.Password);
+        if (validationResult.Failure)
+        {
+            return Unauthorized(new { Message = validationResult.Error });
+        }
+
+        (string, string) tokens = await _authService.GenerateTokens(validationResult.Value);
+        var tokenExpiration = DateTime.UtcNow.AddMinutes(
+            Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
+        var response = new LoginResponse
+        {
+            Token = tokens.Item1,
+            RefreshToken = tokens.Item2,
+            Expiration = tokenExpiration,
+            User = new UserDto
+            {
+                Id = validationResult.Value.Id,
+                Email = validationResult.Value.Email,
+                FirstName = validationResult.Value.FirstName,
+                LastName = validationResult.Value.LastName
+            }
+        };
+
+        return Ok(response);
+    }
+
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutDto request)
+    {
+        if (string.IsNullOrEmpty(request.RefreshToken))
+        {
+            return BadRequest(new { message = "Refresh token is required" });
+        }
+
+        var result = await _authService.LogoutAsync(request.RefreshToken);
+        if (result.Failure)
+        {
+            return BadRequest(new { message = result.Error });
+        }
+
+        return Ok(new { message = "Logged out successfully" });
     }
 }

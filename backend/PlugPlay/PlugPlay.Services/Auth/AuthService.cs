@@ -1,6 +1,7 @@
 using Google.Apis.Auth;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
@@ -86,7 +87,7 @@ public class AuthService : IAuthService
         return new ValueTuple<string, string>(token, refreshToken);
     }
 
-   public async Task<Result<GoogleJsonWebSignature.Payload>> ValidateGoogleSignInRequestAsync(string idToken)
+    public async Task<Result<GoogleJsonWebSignature.Payload>> ValidateGoogleSignInRequestAsync(string idToken)
     {
         GoogleJsonWebSignature.Payload payload;
         try
@@ -159,6 +160,40 @@ public class AuthService : IAuthService
         return Result.Success(userCreateResult.Value);
     }
 
+    public async Task<Result<User>> ValidateUserCredentials(string email, string password)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user == null || !(await VerifyPasswordAsync(user, password)))
+        {
+            return Result.Fail<User>("Invalid email or password");
+        }
+
+        return Result.Success(user);
+    }
+
+    public async Task<Result> LogoutAsync(string token)
+    {
+        var refreshToken = await _context.UserRefreshTokens
+            .FirstOrDefaultAsync(rt => rt.Token == token);
+
+        if (refreshToken != null)
+        {
+            refreshToken.Revoked = DateTime.UtcNow;
+            refreshToken.RevokedByIp = GetIpAddress();
+            await _context.SaveChangesAsync();
+        }
+        else
+        {
+            return Result.Fail("Refresh token wasn't found");
+        }
+
+        return Result.Success();
+    }
+
+    private async Task<bool> VerifyPasswordAsync(User user, string password)
+        => await _userManager.CheckPasswordAsync(user, password);
 
     private async Task<Result<User>> CreateNewUser(string payloadEmail, string payloadName, string payloadSubject)
     {
