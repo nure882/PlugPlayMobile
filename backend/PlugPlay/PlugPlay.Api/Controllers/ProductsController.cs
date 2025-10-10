@@ -1,9 +1,4 @@
-using AutoMapper;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using PlugPlay.Api.Dto;
-using PlugPlay.Domain.Entities;
-using PlugPlay.Domain.Enums;
 using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers;
@@ -12,18 +7,18 @@ namespace PlugPlay.Api.Controllers;
 [ApiController]
 public class ProductsController : ControllerBase
 {
-    private readonly IProductService _productService;
+    private readonly IProductsService _productsService;
 
-    public ProductsController(IProductService productService)
+    public ProductsController(IProductsService productsService)
     {
-        _productService = productService;
+        _productsService = productsService;
     }
 
     [HttpGet]
     public async Task<IActionResult> GetAllProducts()
     {
-        var products = await _productService.GetAllProductsAsync();
+        var products = await _productsService.GetAllProductsAsync();
+
         return Ok(products);
     }
-
 }

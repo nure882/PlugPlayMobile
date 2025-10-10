@@ -48,11 +48,6 @@ public class PlugPlayDbContext : IdentityDbContext<User, IdentityRole<int>, int>
 
         builder.UseSnakeCaseNamingConvention();
         builder.ApplyConfigurationsFromAssembly(Assembly.GetAssembly(typeof(PlugPlayDbContext)));
-
-        builder.Entity<Product>()
-            .HasMany(p => p.ProductAttributes)
-            .WithOne(pa => pa.Product)
-            .HasForeignKey(pa => pa.ProductId);
     }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
