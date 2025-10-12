@@ -1,8 +1,10 @@
 import { useState } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { Chrome } from 'lucide-react';
 import Header from '../components/Header';
 
 export default function SignUp() {
+  const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -57,8 +59,7 @@ export default function SignUp() {
     setConfirmPassword('');
 
     setTimeout(() => {
-      window.history.pushState({}, '', '/signin');
-      window.dispatchEvent(new PopStateEvent('popstate'));
+      navigate('/signin');
     }, 1500);
   };
 
@@ -200,9 +201,9 @@ export default function SignUp() {
 
           <p className="text-center text-sm text-gray-600 mt-6">
             Already have an account?{' '}
-            <a href="/signin" className="text-blue-600 hover:text-blue-700 font-medium">
+            <Link to="/signin" className="text-blue-600 hover:text-blue-700 font-medium">
               Sign In
-            </a>
+            </Link>
           </p>
         </div>
       </div>
