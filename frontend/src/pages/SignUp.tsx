@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Chrome } from 'lucide-react';
+import { Chrome, Loader2 } from 'lucide-react';
 import Header from '../components/Header';
+import { registerUser } from '../lib/api';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -13,54 +14,212 @@ export default function SignUp() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const [fieldErrors, setFieldErrors] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    password: '',
+    confirmPassword: ''
+  });
 
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+  const validateName = (name: string) => {
+    const nameRegex = /^[a-zA-Zа-яА-ЯёЁ0-9]{2,30}$/;
+    return nameRegex.test(name);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._+-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email) && !email.includes('..');
+  };
+
+  const validatePassword = (password: string) => {
+    if (password.length < 8) return false;
+    
+    const hasDigit = /\d/.test(password);
+    const hasLowercase = /[a-zа-яё]/.test(password);
+    const hasUppercase = /[A-ZА-ЯЁ]/.test(password);
+    const hasNonAlphanumeric = /[^a-zA-Zа-яА-ЯёЁ0-9]/.test(password);
+    const uniqueChars = new Set(password).size;
+    const hasUniqueChar = uniqueChars > 1;
+    
+    return hasDigit && hasLowercase && hasUppercase && hasNonAlphanumeric && hasUniqueChar;
+  };
+
+  const validatePhone = (phone: string) => {
+    const cleanPhone = phone.replace(/[^\d+]/g, '');
+    const phoneRegex = /^\+[1-9]\d{1,14}$/;
+    
+    return phoneRegex.test(cleanPhone) && cleanPhone.length >= 10 && cleanPhone.length <= 15;
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
+    setIsLoading(true);
 
     if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
       setError('All fields are required');
+      setIsLoading(false);
       return;
     }
 
-    const digitsOnlyPhone = phone.replace(/\D/g, '');
-    if (digitsOnlyPhone.length < 10) {
-      setError('Please enter a valid phone number');
+    if (!validateName(firstName)) {
+      setError('First name must contain only Latin/Cyrillic letters and numbers, 2-30 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!validateName(lastName)) {
+      setError('Last name must contain only Latin/Cyrillic letters and numbers, 2-30 characters');
+      setIsLoading(false);
+      return;
+    }
+
+    if (!validatePhone(phone)) {
+      setError('Please enter a valid international phone number (e.g., +380123456789)');
+      setIsLoading(false);
       return;
     }
 
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
+      setIsLoading(false);
       return;
     }
 
-    if (password.length < 6) {
-      setError('Password must be at least 6 characters');
+    if (!validatePassword(password)) {
+      setError('Password must contain at least 8 characters including: 1 digit, 1 lowercase letter, 1 uppercase letter, 1 special character, and at least 1 unique character');
+      setIsLoading(false);
       return;
     }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
+      setIsLoading(false);
       return;
     }
 
-    setSuccess(true);
-    setFirstName('');
-    setLastName('');
-    setPhone('');
-    setEmail('');
-    setPassword('');
-    setConfirmPassword('');
+    try {
+      const userData = {
+        firstName,
+        lastName,
+        email,
+        password,
+        phoneNumber: phone
+      };
 
-    setTimeout(() => {
-      navigate('/signin');
-    }, 1500);
+      const response = await registerUser(userData);
+      
+      if (response.success) {
+        setSuccess(true);
+        setFirstName('');
+        setLastName('');
+        setPhone('');
+        setEmail('');
+        setPassword('');
+        setConfirmPassword('');
+        setFieldErrors({
+          firstName: '',
+          lastName: '',
+          phone: '',
+          email: '',
+          password: '',
+          confirmPassword: ''
+        });
+
+        setTimeout(() => {
+          navigate('/signin');
+        }, 1500);
+      } else {
+        setError(response.message || 'Registration failed');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const validateField = (fieldName: string, value: string) => {
+    let error = '';
+    
+    switch (fieldName) {
+      case 'firstName':
+        if (value && !validateName(value)) {
+          error = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        }
+        break;
+      case 'lastName':
+        if (value && !validateName(value)) {
+          error = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        }
+        break;
+      case 'phone':
+        if (value && !validatePhone(value)) {
+          error = 'International format: +country code + number';
+        }
+        break;
+      case 'email':
+        if (value && !validateEmail(value)) {
+          error = 'Invalid email format';
+        }
+        break;
+      case 'password':
+        if (value && !validatePassword(value)) {
+          error = 'Min 8 chars: digit, lowercase, uppercase, special, unique';
+        }
+        break;
+      case 'confirmPassword':
+        if (value && value !== password) {
+          error = 'Passwords do not match';
+        }
+        break;
+    }
+    
+    setFieldErrors(prev => ({ ...prev, [fieldName]: error }));
+  };
+
+  const handleFirstNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setFirstName(value);
+    validateField('firstName', value);
+  };
+
+  const handleLastNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setLastName(value);
+    validateField('lastName', value);
+  };
+
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPhone(value);
+    validateField('phone', value);
+  };
+
+  const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setEmail(value);
+    validateField('email', value);
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setPassword(value);
+    validateField('password', value);
+    if (confirmPassword) {
+      validateField('confirmPassword', confirmPassword);
+    }
+  };
+
+  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setConfirmPassword(value);
+    validateField('confirmPassword', value);
   };
 
   const handleGoogleSignIn = () => {
@@ -99,10 +258,15 @@ export default function SignUp() {
                   id="firstName"
                   type="text"
                   value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={handleFirstNameChange}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    fieldErrors.firstName ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="John"
                 />
+                {fieldErrors.firstName && (
+                  <p className="text-red-500 text-xs mt-1">{fieldErrors.firstName}</p>
+                )}
               </div>
               <div>
                 <label htmlFor="lastName" className="block text-sm font-medium text-black mb-1">
@@ -112,10 +276,15 @@ export default function SignUp() {
                   id="lastName"
                   type="text"
                   value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={handleLastNameChange}
+                  className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                    fieldErrors.lastName ? 'border-red-300' : 'border-gray-300'
+                  }`}
                   placeholder="Doe"
                 />
+                {fieldErrors.lastName && (
+                  <p className="text-red-500 text-xs mt-1">{fieldErrors.lastName}</p>
+                )}
               </div>
             </div>
 
@@ -127,10 +296,15 @@ export default function SignUp() {
                 id="phone"
                 type="tel"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="+1 (555) 000-0000"
+                onChange={handlePhoneChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  fieldErrors.phone ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="+380123456789"
               />
+              {fieldErrors.phone && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>
+              )}
             </div>
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-black mb-1">
@@ -140,10 +314,15 @@ export default function SignUp() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="your@email.com"
+                onChange={handleEmailChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  fieldErrors.email ? 'border-red-300' : 'border-gray-300'
+                }`}
+                placeholder="john@example.com"
               />
+              {fieldErrors.email && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
+              )}
             </div>
 
             <div>
@@ -154,10 +333,15 @@ export default function SignUp() {
                 id="password"
                 type="password"
                 value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={handlePasswordChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  fieldErrors.password ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="••••••••"
               />
+              {fieldErrors.password && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
+              )}
             </div>
 
             <div>
@@ -168,17 +352,30 @@ export default function SignUp() {
                 id="confirmPassword"
                 type="password"
                 value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                onChange={handleConfirmPasswordChange}
+                className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                  fieldErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="••••••••"
               />
+              {fieldErrors.confirmPassword && (
+                <p className="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>
+              )}
             </div>
 
             <button
               type="submit"
-              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              disabled={isLoading}
+              className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >
-              Sign Up
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Registering...
+                </>
+              ) : (
+                'Sign Up'
+              )}
             </button>
           </form>
 
