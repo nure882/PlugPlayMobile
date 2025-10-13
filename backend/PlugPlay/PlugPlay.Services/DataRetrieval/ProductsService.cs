@@ -25,5 +25,18 @@ namespace PlugPlay.Services.DataRetrieval
 
             return await query.ToListAsync();
         }
+
+        public async Task<Product> GetProductByIdAsync(int id)
+        {
+            var product = await _context.Products
+                .Include(p => p.ProductAttributes)
+                    .ThenInclude(pa => pa.Attribute)
+                .Include(p => p.ProductImages)
+                .Include(p => p.Category)
+                .Include(p => p.Reviews)
+                .FirstOrDefaultAsync(p => p.Id == id);
+
+            return product;
+        }
     }
 }

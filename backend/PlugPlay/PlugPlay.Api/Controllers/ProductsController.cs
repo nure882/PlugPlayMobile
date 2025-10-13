@@ -21,4 +21,12 @@ public class ProductsController : ControllerBase
 
         return Ok(products);
     }
+
+    [HttpGet]
+    public async Task<IActionResult> GetProductById(int id)
+    {
+        var product = await _productsService.GetProductByIdAsync(id);
+
+        return Ok(product);
+    }
 }
