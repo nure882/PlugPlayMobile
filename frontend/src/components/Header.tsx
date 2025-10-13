@@ -18,8 +18,8 @@ export default function Header() {
             <Link to="/" className="text-gray-700 hover:text-black transition-colors">
               Home
             </Link>
-            <Link to="/products" className="text-gray-700 hover:text-black transition-colors">
-              Products
+            <Link to="/catalog" className="text-gray-700 hover:text-black transition-colors">
+              Каталог
             </Link>
             <Link to="/about" className="text-gray-700 hover:text-black transition-colors">
               About
