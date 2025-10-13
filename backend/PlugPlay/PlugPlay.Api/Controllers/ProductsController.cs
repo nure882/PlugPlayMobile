@@ -27,6 +27,9 @@ public class ProductsController : ControllerBase
     {
         var product = await _productsService.GetProductByIdAsync(id);
 
+        if (product == null)
+            throw new KeyNotFoundException($"Product with ID {id} not found.");
+
         return Ok(product);
     }
 }
