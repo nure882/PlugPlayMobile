@@ -26,7 +26,7 @@ const API_BASE_URL = '';
 
 export const registerUser = async (userData: RegisterRequest): Promise<RegisterResponse> => {
   try {
-    const response = await fetch(`${API_BASE_URL}/api/register`, {
+    const response = await fetch(`${API_BASE_URL}/api/Auth/register`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
