@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Filter } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import Header from '../components/Header';
@@ -54,7 +54,7 @@ const Catalog = () => {
     if (filters.badges.new || filters.badges.sale) {
       filtered = filtered.filter(p => {
         if (filters.badges.new && p.badge === 'new') return true;
-        if (filters.badges.sale && p.badge === 'hit') return true;
+        if (filters.badges.sale && p.badge === 'sale') return true;
         return false;
       });
     }

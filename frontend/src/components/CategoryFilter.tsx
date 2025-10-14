@@ -29,7 +29,7 @@ const CategoryFilter = () => {
 
   const handleCategoryClick = (categoryName: string) => {
     if (selectedCategory === categoryName) {
-      setSelectedCategory(null); // Deselect if clicked again
+      setSelectedCategory(null); 
     } else {
       setSelectedCategory(categoryName);
     }

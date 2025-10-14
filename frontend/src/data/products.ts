@@ -5,7 +5,7 @@ export interface Product {
   originalPrice?: number;
   imageUrl: string;
   isFavorite: boolean;
-  badge?: 'new' | 'hit';
+  badge?: 'new' | 'sale';
   rating: number;
   condition: 'new' | 'used';
 }
@@ -18,7 +18,7 @@ export const mockProducts: Product[] = [
     originalPrice: 54999,
     imageUrl: 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=400&h=400&fit=crop&crop=center',
     isFavorite: true,
-    badge: 'hit',
+    badge: 'sale',
     rating: 4.6,
     condition: 'new',
   },
@@ -39,7 +39,7 @@ export const mockProducts: Product[] = [
     originalPrice: 99999,
     imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&h=400&fit=crop&crop=center',
     isFavorite: true,
-    badge: 'hit',
+    badge: 'sale',
     rating: 4.7,
     condition: 'new',
   },
