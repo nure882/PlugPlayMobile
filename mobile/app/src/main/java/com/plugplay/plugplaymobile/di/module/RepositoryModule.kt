@@ -27,6 +27,6 @@ abstract class RepositoryModule {
     @Singleton
     abstract fun bindAuthRepository(
         // Используем класс-заглушку
-        mockAuthRepositoryImpl: MockAuthRepositoryImpl
+        mockAuthRepositoryImpl: AuthRepository
     ): AuthRepository
 }
