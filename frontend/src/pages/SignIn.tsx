@@ -2,7 +2,7 @@ import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import Header from '../components/Header';
 import {GoogleLogin} from "@react-oauth/google";
-import {API_BASE_URL} from "../lib/api.ts";
+import {API_BASE_URL} from "../lib/authApi.ts";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -12,8 +12,8 @@ export default function SignIn() {
   const [success, setSuccess] = useState(false);
 
   const validateEmail = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    return emailRegex.test(email);
+    const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._+-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
+    return emailRegex.test(email) && !email.includes('..');
   };
 
   const handleSubmit = (e: React.FormEvent) => {

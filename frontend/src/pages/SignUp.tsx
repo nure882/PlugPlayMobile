@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import Header from '../components/Header';
-import {API_BASE_URL, registerUser} from '../lib/api';
+import {API_BASE_URL} from '../lib/authApi.ts';
 import {GoogleLogin} from "@react-oauth/google";
 
 export default function SignUp() {
@@ -27,7 +27,7 @@ export default function SignUp() {
   });
 
   const validateName = (name: string) => {
-    const nameRegex = /^[a-zA-Zа-яА-ЯёЁ0-9]{2,30}$/;
+    const nameRegex = /^[a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]{2,30}$/;
     return nameRegex.test(name);
   };
 
@@ -40,9 +40,9 @@ export default function SignUp() {
     if (password.length < 8) return false;
     
     const hasDigit = /\d/.test(password);
-    const hasLowercase = /[a-zа-яё]/.test(password);
-    const hasUppercase = /[A-ZА-ЯЁ]/.test(password);
-    const hasNonAlphanumeric = /[^a-zA-Zа-яА-ЯёЁ0-9]/.test(password);
+    const hasLowercase = /[a-zа-яёіїєґ]/.test(password);
+    const hasUppercase = /[A-ZА-ЯЁІЇЄҐ]/.test(password);
+    const hasNonAlphanumeric = /[^a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]/.test(password);
     const uniqueChars = new Set(password).size;
     const hasUniqueChar = uniqueChars > 1;
     
@@ -104,45 +104,45 @@ export default function SignUp() {
       return;
     }
 
-    try {
-      const userData = {
-        firstName,
-        lastName,
-        email,
-        password,
-        phoneNumber: phone
-      };
-
-      const response = await registerUser(userData);
-      
-      if (response.success) {
-        setSuccess(true);
-        setFirstName('');
-        setLastName('');
-        setPhone('');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-        setFieldErrors({
-          firstName: '',
-          lastName: '',
-          phone: '',
-          email: '',
-          password: '',
-          confirmPassword: ''
-        });
-
-        setTimeout(() => {
-          navigate('/signin');
-        }, 1500);
-      } else {
-        setError(response.message || 'Registration failed');
-      }
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    // try {
+    //   const userData = {
+    //     firstName,
+    //     lastName,
+    //     email,
+    //     password,
+    //     phoneNumber: phone
+    //   };
+    //
+    //   const response = await registerUser(userData);
+    //
+    //   if (response.success) {
+    //     setSuccess(true);
+    //     setFirstName('');
+    //     setLastName('');
+    //     setPhone('');
+    //     setEmail('');
+    //     setPassword('');
+    //     setConfirmPassword('');
+    //     setFieldErrors({
+    //       firstName: '',
+    //       lastName: '',
+    //       phone: '',
+    //       email: '',
+    //       password: '',
+    //       confirmPassword: ''
+    //     });
+    //
+    //     setTimeout(() => {
+    //       navigate('/signin');
+    //     }, 1500);
+    //   } else {
+    //     setError(response.message || 'Registration failed');
+    //   }
+    // } catch (error) {
+    //   setError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
+    // } finally {
+    //   setIsLoading(false);
+    // }
   };
 
   const validateField = (fieldName: string, value: string) => {
