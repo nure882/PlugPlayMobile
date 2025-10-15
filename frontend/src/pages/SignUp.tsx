@@ -1,8 +1,9 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { Chrome, Loader2 } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import Header from '../components/Header';
-import { registerUser } from '../lib/api';
+import {API_BASE_URL, registerUser} from '../lib/api';
+import {GoogleLogin} from "@react-oauth/google";
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -222,8 +223,31 @@ export default function SignUp() {
     validateField('confirmPassword', value);
   };
 
-  const handleGoogleSignIn = () => {
-    alert('Google sign-in would be integrated here');
+  const handleGoogleSuccess = async (credentialResponse : any) => {
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/api/auth/google`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            idToken: credentialResponse.credential
+          })
+        });
+
+      const data = await response.json();
+
+      localStorage.setItem('authToken', data.token);
+
+      console.log('Login successful:', data.user);
+    } catch (error) {
+      console.error('Login failed:', error);
+    }
+  };
+
+  const handleGoogleError = () => {
+    console.error('Google Sign-In failed');
   };
 
   return (
@@ -388,14 +412,13 @@ export default function SignUp() {
             </div>
           </div>
 
-          <button
-            onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center gap-3 border border-gray-300 bg-white text-black py-2 rounded-lg hover:bg-gray-50 transition-colors font-medium"
-          >
-            <Chrome className="w-5 h-5" />
-            Continue with Google
-          </button>
-
+          <div>
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              text={"signup_with"}
+            />
+          </div>
           <p className="text-center text-sm text-gray-600 mt-6">
             Already have an account?{' '}
             <Link to="/signin" className="text-blue-600 hover:text-blue-700 font-medium">

@@ -22,7 +22,7 @@ interface ApiError {
   status?: number;
 }
 
-const API_BASE_URL = '';
+export const API_BASE_URL = 'http://localhost:5298'; // port may be different
 
 export const registerUser = async (userData: RegisterRequest): Promise<RegisterResponse> => {
   try {
