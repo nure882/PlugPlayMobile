@@ -62,10 +62,33 @@ public class AuthService : IAuthService
         return Result.Success();
     }
 
+    public async Task<Result<User>> ValidateUserCredentials(string email, string password)
+    {
+        var user = await _context.Users
+            .FirstOrDefaultAsync(u => u.Email == email);
+
+        if (user == null || !(await VerifyPasswordAsync(user, password)))
+        {
+            return Result.Fail<User>("Invalid email or password");
+        }
+
+        return Result.Success(user);
+    }
+
     public async Task<(string token, string refreshToken)> GenerateTokens(User user)
     {
         var token = _jwtService.GenerateToken(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
+
+        var activeTokens = await _context.UserRefreshTokens
+            .Where(rt => rt.UserId == user.Id && rt.Expires > DateTime.UtcNow && rt.Revoked == null)
+            .OrderBy(rt => rt.CreatedAt)
+            .ToListAsync();
+        if (activeTokens.Count >= 5)
+        {
+            var oldestToken = activeTokens.First();
+            _context.UserRefreshTokens.Remove(oldestToken);
+        }
 
         var userRefreshToken = new UserRefreshToken
         {
@@ -75,7 +98,6 @@ public class AuthService : IAuthService
             CreatedAt = DateTime.UtcNow,
             CreatedByIp = GetIpAddress()
         };
-
         _context.UserRefreshTokens.Add(userRefreshToken);
 
         var oldTokens = _context.UserRefreshTokens
@@ -84,7 +106,7 @@ public class AuthService : IAuthService
 
         await _context.SaveChangesAsync();
 
-        return new ValueTuple<string, string>(token, refreshToken);
+        return (token, refreshToken);
     }
 
     public async Task<Result<GoogleJsonWebSignature.Payload>> ValidateGoogleSignInRequestAsync(string idToken)
@@ -139,38 +161,121 @@ public class AuthService : IAuthService
         if (user != null)
         {
             var fixResult = await FixLoginInUserManager(payloadSubject, user);
-
             return fixResult.Failure ? Result.Fail<User>(fixResult.Error) : Result.Success(user);
         }
 
-        var userCreateResult = await CreateNewUser(payloadEmail, payloadName, payloadSubject);
-        if (userCreateResult.Failure)
+        try
         {
-            return Result.Fail<User>(userCreateResult.Error);
-        }
+            var userCreateResult = await CreateNewUser(payloadEmail, payloadName, payloadSubject);
+            if (userCreateResult.Failure)
+            {
+                return Result.Fail<User>(userCreateResult.Error);
+            }
 
-        var login = new UserLoginInfo("Google", payloadSubject, "Google");
-        var addLogin = await _userManager.AddLoginAsync(userCreateResult.Value, login);
-        if (!addLogin.Succeeded)
+            var login = new UserLoginInfo("Google", payloadSubject, "Google");
+            var addLogin = await _userManager.AddLoginAsync(userCreateResult.Value, login);
+            if (!addLogin.Succeeded)
+            {
+                return Result.Fail<User>(
+                    string.Join(", ", addLogin.Errors.Select(e => e.Description)));
+            }
+
+            return Result.Success(userCreateResult.Value);
+        }
+        catch (DbUpdateException ex)
         {
-            return Result.Fail<User>(
-                string.Join(", ", addLogin.Errors.Select(e => e.Description)));
-        }
+            user = await _userManager.FindByEmailAsync(payloadEmail);
+            if (user != null)
+            {
+                var fixResult = await FixLoginInUserManager(payloadSubject, user);
+                return fixResult.Failure ? Result.Fail<User>(fixResult.Error) : Result.Success(user);
+            }
 
-        return Result.Success(userCreateResult.Value);
+            return Result.Fail<User>("Failed to create user: " + ex.Message);
+        }
     }
 
-    public async Task<Result<User>> ValidateUserCredentials(string email, string password)
+    public async Task<Result<RefreshTokenResponse>> RefreshTokenAsync(string token)
     {
-        var user = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email);
+        await using var tx = await _context.Database.BeginTransactionAsync();
 
-        if (user == null || !(await VerifyPasswordAsync(user, password)))
+        var storedRefreshToken = await _context.UserRefreshTokens
+            .Include(rt => rt.User)
+            .FirstOrDefaultAsync(rt => rt.Token == token && rt.Expires > DateTime.UtcNow);
+
+        if (storedRefreshToken == null)
         {
-            return Result.Fail<User>("Invalid email or password");
+            return Result.Fail<RefreshTokenResponse>("Invalid refresh token");
         }
 
-        return Result.Success(user);
+        if (storedRefreshToken.Revoked != null)
+        {
+            await RevokeTokenChainAsync(storedRefreshToken);
+            await tx.CommitAsync();
+            return Result.Fail<RefreshTokenResponse>("Token theft detected");
+        }
+
+        var requestIp = GetIpAddress();
+        var newToken = _jwtService.GenerateToken(storedRefreshToken.User);
+        var newRefreshToken = _jwtService.GenerateRefreshToken();
+
+        storedRefreshToken.Revoked = DateTime.UtcNow;
+        storedRefreshToken.RevokedByIp = requestIp;
+        storedRefreshToken.ReplacedByToken = newRefreshToken;
+
+        var userRefreshToken = new UserRefreshToken
+        {
+            UserId = storedRefreshToken.UserId,
+            Token = newRefreshToken,
+            Expires = DateTime.UtcNow.AddDays(Convert.ToDouble(_configuration["Jwt:RefreshTokenExpirationDays"])),
+            CreatedAt = DateTime.UtcNow,
+            CreatedByIp = requestIp
+        };
+        _context.UserRefreshTokens.Add(userRefreshToken);
+
+        await _context.SaveChangesAsync();
+        await tx.CommitAsync();
+
+        return Result.Success(new RefreshTokenResponse
+        {
+            Token = newToken,
+            RefreshToken = newRefreshToken,
+            Id = storedRefreshToken.User.Id,
+            Email = storedRefreshToken.User.Email,
+            FirstName = storedRefreshToken.User.FirstName,
+            LastName = storedRefreshToken.User.LastName
+        });
+    }
+
+    private async Task RevokeTokenChainAsync(UserRefreshToken startToken)
+    {
+        if (startToken.Revoked == null)
+        {
+            startToken.Revoked = DateTime.UtcNow;
+            startToken.RevokedByIp = GetIpAddress();
+        }
+
+        var nextTokenValue = startToken.ReplacedByToken;
+        while (!string.IsNullOrEmpty(nextTokenValue))
+        {
+            var next = await _context.UserRefreshTokens
+                .FirstOrDefaultAsync(rt => rt.Token == nextTokenValue);
+
+            if (next == null)
+            {
+                break;
+            }
+
+            if (next.Revoked == null)
+            {
+                next.Revoked = DateTime.UtcNow;
+                next.RevokedByIp = GetIpAddress();
+            }
+
+            nextTokenValue = next.ReplacedByToken;
+        }
+
+        await _context.SaveChangesAsync();
     }
 
     public async Task<Result> LogoutAsync(string token)
@@ -192,8 +297,37 @@ public class AuthService : IAuthService
         return Result.Success();
     }
 
+    public async Task<Result<User>> GetUserAsync(int userId)
+    {
+        var user = await _context.Users
+            .Where(u => u.Id == userId)
+            .FirstOrDefaultAsync();
+        if (user == null)
+        {
+            return Result.Fail<User>("User is not found");
+        }
+
+        return Result.Success(user);
+    }
+
     private async Task<bool> VerifyPasswordAsync(User user, string password)
         => await _userManager.CheckPasswordAsync(user, password);
+
+    private string GetIpAddress()
+    {
+        var context = _httpContextAccessor.HttpContext;
+        if (context == null)
+        {
+            return null;
+        }
+
+        if (context.Request.Headers.ContainsKey("X-Forwarded-For"))
+        {
+            return context.Request.Headers["X-Forwarded-For"].ToString();
+        }
+
+        return context.Connection.RemoteIpAddress?.MapToIPv4().ToString();
+    }
 
     private async Task<Result<User>> CreateNewUser(string payloadEmail, string payloadName, string payloadSubject)
     {
@@ -252,21 +386,5 @@ public class AuthService : IAuthService
         await _userManager.UpdateAsync(user);
 
         return Result.Success();
-    }
-
-    private string GetIpAddress()
-    {
-        var context = _httpContextAccessor.HttpContext;
-        if (context == null)
-        {
-            return null;
-        }
-
-        if (context.Request.Headers.ContainsKey("X-Forwarded-For"))
-        {
-            return context.Request.Headers["X-Forwarded-For"].ToString();
-        }
-
-        return context.Connection.RemoteIpAddress?.MapToIPv4().ToString() ?? "0";
     }
 }
