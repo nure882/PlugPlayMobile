@@ -331,13 +331,34 @@ public class AuthService : IAuthService
 
     private async Task<Result<User>> CreateNewUser(string payloadEmail, string payloadName, string payloadSubject)
     {
+        string firstName = "", lastName;
+        int i = 0;
+        for (;i < payloadName.Length; i++)
+        {
+            if (payloadName[i] == ' ')
+            {
+                firstName = payloadName.Substring(0, i + 1);
+                break;
+            }
+        }
+
+        if (i == payloadName.Length)
+        {
+            firstName = payloadName;
+            lastName = "";
+        }
+        else
+        {
+            lastName = payloadName.Substring(i + 1);
+        }
+
         var newUser1 = new User
         {
             GoogleId = payloadSubject,
             Email = payloadEmail,
             UserName = payloadEmail,
-            FirstName = payloadName,
-            LastName = "",
+            FirstName = firstName,
+            LastName = lastName,
             PhoneNumber = "",
             EmailConfirmed = true,
             CreatedAt = DateTime.UtcNow,
