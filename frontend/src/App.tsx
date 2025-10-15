@@ -1,37 +1,20 @@
-import { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
+import Home from './pages/Home';
+import NotFound from './pages/NotFound';
 
 function App() {
-  const [currentPath, setCurrentPath] = useState(window.location.pathname);
-
-  useEffect(() => {
-    const handleLocationChange = () => {
-      setCurrentPath(window.location.pathname);
-    };
-
-    window.addEventListener('popstate', handleLocationChange);
-
-    const originalPushState = window.history.pushState;
-    window.history.pushState = function(...args) {
-      originalPushState.apply(window.history, args);
-      handleLocationChange();
-    };
-
-    return () => {
-      window.removeEventListener('popstate', handleLocationChange);
-      window.history.pushState = originalPushState;
-    };
-  }, []);
-
-  switch (currentPath) {
-    case '/signin':
-      return <SignIn />;
-    case '/signup':
-      return <SignUp />;
-    default:
-      return <SignIn />;
-  }
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/signin" element={<SignIn />} />
+        <Route path="/signup" element={<SignUp />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;
