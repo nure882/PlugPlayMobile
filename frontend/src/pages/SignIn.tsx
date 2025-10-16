@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import Header from '../components/Header';
 import {GoogleLogin} from "@react-oauth/google";
-import {API_BASE_URL} from "../lib/authApi.ts";
+import {API_BASE_URL, useLoginMutation} from "../lib/redux/authApi.ts";
+import {storage} from "../lib/utils/StorageService.ts";
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -11,12 +12,14 @@ export default function SignIn() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
+  const [login, {isLoading: isLoggingIn}] = useLoginMutation();
+
   const validateEmail = (email: string) => {
     const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._+-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
     return emailRegex.test(email) && !email.includes('..');
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
@@ -36,13 +39,26 @@ export default function SignIn() {
       return;
     }
 
-    setSuccess(true);
-    setEmail('');
-    setPassword('');
+    try {
+      const data = await login({ email, password }).unwrap();
 
-    setTimeout(() => {
-      navigate('/');
-    }, 1500);
+      storage.setTokens(data.token, data.refreshToken);
+
+      setSuccess(true);
+      setEmail('');
+      setPassword('');
+
+      setTimeout(() => {
+        navigate('/');
+      }, 1200);
+    } catch (err: any) {
+      const msg =
+        err?.data?.message ||
+        err?.error ||
+        err?.message ||
+        'Sign in failed. Please try again.';
+      setError(msg);
+    }
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
@@ -59,8 +75,9 @@ export default function SignIn() {
         });
 
       const data = await response.json();
+      console.log(data);
 
-      localStorage.setItem('authToken', data.token);
+      storage.setTokens(data.token, data.refreshToken);
 
       console.log('Login successful:', data.user);
     } catch (error) {
