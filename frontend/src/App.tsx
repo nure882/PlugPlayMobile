@@ -1,19 +1,21 @@
-import {BrowserRouter, Routes, Route} from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
-import Home from './pages/Home';
+import Catalog from './pages/Catalog';
+import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
-import {GoogleOAuthProvider} from "@react-oauth/google";
 
 function App() {
   return (
-    <GoogleOAuthProvider clientId="103104858818-t81fh5qs9t74135p630o4kkd7nbkiaj4.apps.googleusercontent.com">
+    <GoogleOAuthProvider clientId="103184058818-t81fh5qs97t4135p630d4kkd7nb1kaj4.apps.googleusercontent.com">
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Home/>}/>
-          <Route path="/signin" element={<SignIn/>}/>
-          <Route path="/signup" element={<SignUp/>}/>
-          <Route path="*" element={<NotFound/>}/>
+          <Route path="/" element={<Catalog />} />
+          <Route path="/signin" element={<SignIn />} />
+          <Route path="/signup" element={<SignUp />} />
+          <Route path="/profile" element={<Profile />} />
+          <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>
     </GoogleOAuthProvider>
