@@ -8,7 +8,6 @@ export default function Header() {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // Здесь будет логика поиска
     console.log('Search query:', searchQuery);
   };
 
@@ -41,9 +40,9 @@ export default function Header() {
               <ShoppingCart className="w-6 h-6" />
             </button>
 
-            <button className="p-2 text-gray-700 hover:text-black transition-colors">
+            <Link to="/profile" className="p-2 text-gray-700 hover:text-black transition-colors">
               <User className="w-6 h-6" />
-            </button>
+            </Link>
 
             <Link
               to="/signin"

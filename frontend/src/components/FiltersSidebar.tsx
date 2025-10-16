@@ -76,7 +76,7 @@ const FiltersSidebar = ({
         </button>
       </div>
 
-      {/* Sort */}
+      
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Sort by
@@ -97,7 +97,7 @@ const FiltersSidebar = ({
         </select>
       </div>
 
-      {/* Price Filter */}
+      
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Price Range
@@ -116,7 +116,7 @@ const FiltersSidebar = ({
         </div>
       </div>
 
-      {/* Rating Filter */}
+      
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Minimum Rating
@@ -137,7 +137,7 @@ const FiltersSidebar = ({
         </div>
       </div>
 
-      {/* Condition Filter */}
+      
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Condition
@@ -172,7 +172,7 @@ const FiltersSidebar = ({
         </div>
       </div>
 
-      {/* Badges Filter */}
+      
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Badges

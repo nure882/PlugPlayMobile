@@ -17,11 +17,6 @@ interface RegisterResponse {
   };
 }
 
-interface ApiError {
-  message: string;
-  status?: number;
-}
-
 const API_BASE_URL = '';
 
 export const registerUser = async (userData: RegisterRequest): Promise<RegisterResponse> => {
@@ -47,4 +42,22 @@ export const registerUser = async (userData: RegisterRequest): Promise<RegisterR
     }
     throw new Error('Network error occurred');
   }
+};
+
+interface UpdateProfileRequest {
+  firstName?: string;
+  lastName?: string;
+  phone?: string;
+  email?: string;
+}
+
+interface UpdateProfileResponse {
+  success: boolean;
+  message?: string;
+}
+
+export const updateUserProfile = async (payload: UpdateProfileRequest): Promise<UpdateProfileResponse> => {
+  await new Promise(resolve => setTimeout(resolve, 300));
+  console.log('updateUserProfile placeholder called with', payload);
+  return { success: true };
 };

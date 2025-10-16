@@ -66,7 +66,6 @@ const ProductCard = ({
       className="bg-white rounded-lg shadow-lg border-2 border-gray-200 overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer group"
       onClick={handleCardClick}
     >
-      {/* Product Image */}
       <div className="relative aspect-square">
         <img
           src={image}
@@ -74,14 +73,12 @@ const ProductCard = ({
           className="w-full h-full object-cover"
         />
         
-        {/* Badge */}
         {badge && (
           <div className={`absolute top-2 left-2 px-3 py-1 rounded-md text-white text-xs font-bold shadow-md ${getBadgeColor(badge)}`}>
             {badge}
           </div>
         )}
         
-        {/* Favorite Button */}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -97,13 +94,11 @@ const ProductCard = ({
         </button>
       </div>
       
-      {/* Product Info */}
       <div className="p-4">
         <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
           {name}
         </h3>
         
-        {/* Rating */}
         <div className="flex items-center gap-1 mb-2">
           <div className="flex items-center">
             {renderStars(rating)}
@@ -113,7 +108,6 @@ const ProductCard = ({
           </span>
         </div>
         
-        {/* Price */}
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-gray-900">
             {formatPrice(price)} ₴
