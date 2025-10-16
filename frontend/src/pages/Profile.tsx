@@ -3,97 +3,109 @@ import Header from '../components/Header';
 import AccordionSection from '../components/AccordionSection';
 import { updateUserProfile } from '../lib/api';
 import { PlusCircle, Trash2 } from 'lucide-react';
+import { Address } from '../lib/types';
+import { validateName, validateEmail, validatePhone, validatePassword } from '../lib/validation';
 
-const validateName = (name: string) => {
-  const nameRegex = /^[a-zA-Zа-яА-ЯёЁ0-9]{2,30}$/;
-  return nameRegex.test(name);
+type Errors = {
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+  address: {
+    city: string;
+    street: string;
+    house: string;
+  };
 };
 
-const validateEmail = (email: string) => {
-  const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._+-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-  return emailRegex.test(email) && !email.includes('..');
+const initialErrors: Errors = {
+  firstName: '', lastName: '', phone: '', email: '',
+  currentPassword: '', newPassword: '', confirmPassword: '',
+  address: { city: '', street: '', house: '' }
 };
-
-const validatePhone = (phone: string) => {
-  const cleanPhone = phone.replace(/[^\d+]/g, '');
-  const phoneRegex = /^\+[1-9]\d{1,14}$/;
-  return phoneRegex.test(cleanPhone) && cleanPhone.length >= 10 && cleanPhone.length <= 15;
-};
-const validatePassword = (password: string) => {
-  if (password.length < 8) return false;
-  const hasDigit = /\d/.test(password);
-  const hasLowercase = /[a-zа-яё]/.test(password);
-  const hasUppercase = /[A-ZА-ЯЁ]/.test(password);
-  const hasNonAlphanumeric = /[^a-zA-Zа-яА-ЯёЁ0-9]/.test(password);
-  const uniqueChars = new Set(password).size;
-  const hasUniqueChar = uniqueChars > 1;
-  return hasDigit && hasLowercase && hasUppercase && hasNonAlphanumeric && hasUniqueChar;
-};
-
-interface Address {
-  city: string;
-  street: string;
-  house: string;
-  apartments: string;
-}
 
 export default function Profile() {
+  
   const [firstName, setFirstName] = useState('John');
   const [lastName, setLastName] = useState('Doe');
   const [phone, setPhone] = useState('+380123456789');
   const [email, setEmail] = useState('john@example.com');
+  
+  
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  
+  
   const [addresses, setAddresses] = useState<Address[]>([
     { city: 'Kyiv', street: 'Main St', house: '42', apartments: '1' }
   ]);
   const [newAddress, setNewAddress] = useState<Address>({
     city: '', street: '', house: '', apartments: ''
   });
-  const [isSaving, setIsSaving] = useState(false);
-  const [isEditing, setIsEditing] = useState(false);
-  const [errors, setErrors] = useState({
-    firstName: '', lastName: '', phone: '', email: '',
-    currentPassword: '', newPassword: '', confirmPassword: '',
-    address: { city: '', street: '', house: '', apartments: '' }
-  });
   
-  const [initialData, setInitialData] = useState({
-    firstName, lastName, phone, email
-  });
-
-  const validateAll = () => {
-    const newErrors = {
-      firstName: '', lastName: '', phone: '', email: '',
-      currentPassword: '', newPassword: '', confirmPassword: '',
-      address: { city: '', street: '', house: '', apartments: '' }
-    } as typeof errors;
-    if (!firstName || !validateName(firstName)) newErrors.firstName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
-    if (!lastName || !validateName(lastName)) newErrors.lastName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
-    if (!phone || !validatePhone(phone)) newErrors.phone = 'International format: +country code + number';
-    if (!email || !validateEmail(email)) newErrors.email = 'Invalid email format';
-    if (currentPassword || newPassword || confirmPassword) {
-      if (!validatePassword(newPassword)) {
-        newErrors.newPassword = 'Password must contain at least 8 characters including: digit, lowercase, uppercase, special character';
-      }
-      if (newPassword !== confirmPassword) {
-        newErrors.confirmPassword = 'Passwords do not match';
-      }
+ 
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [errors, setErrors] = useState<Errors>(initialErrors);
+  
+  
+  const [initialData, setInitialData] = useState({ firstName, lastName, phone, email });
+  
+  const validateField = (fieldName: keyof Omit<Errors, 'address'>, value: string) => {
+    let errorMessage = '';
+    switch (fieldName) {
+      case 'firstName':
+        if (!validateName(value)) errorMessage = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        break;
+      case 'lastName':
+        if (!validateName(value)) errorMessage = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        break;
+      case 'phone':
+        if (!validatePhone(value)) errorMessage = 'International format: +country code + number';
+        break;
+      case 'email':
+        if (!validateEmail(value)) errorMessage = 'Invalid email format';
+        break;
+      case 'newPassword':
+        if (value && !validatePassword(value)) errorMessage = 'Password must contain at least 8 characters...';
+        break;
+      case 'confirmPassword':
+        if (value && value !== newPassword) errorMessage = 'Passwords do not match';
+        break;
     }
+    setErrors(prev => ({ ...prev, [fieldName]: errorMessage }));
+  };
+  
+  const handleChange = (setter: React.Dispatch<React.SetStateAction<string>>, fieldName: keyof Omit<Errors, 'address'>) => (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { value } = e.target;
+    setter(value);
+    validateField(fieldName, value);
+    if (fieldName === 'newPassword' && confirmPassword) {
+      validateField('confirmPassword', confirmPassword);
+    }
+  };
+
+  const validateForm = (): boolean => {
+    const newErrors: Errors = { ...initialErrors, address: errors.address };
+    
+    if (!validateName(firstName)) newErrors.firstName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+    if (!validateName(lastName)) newErrors.lastName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+    if (!validatePhone(phone)) newErrors.phone = 'International format: +country code + number';
+    if (!validateEmail(email)) newErrors.email = 'Invalid email format';
+    
+    if (currentPassword || newPassword || confirmPassword) {
+      if (!validatePassword(newPassword)) newErrors.newPassword = 'Password must contain at least 8 characters...';
+      if (newPassword !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
+    }
+    
     setErrors(newErrors);
-    return ![
-      newErrors.firstName,
-      newErrors.lastName,
-      newErrors.phone,
-      newErrors.email,
-      newErrors.currentPassword,
-      newErrors.newPassword,
-      newErrors.confirmPassword,
-      newErrors.address.city,
-      newErrors.address.street,
-      newErrors.address.house
-    ].some(Boolean);
+    
+    
+    return !Object.values(newErrors).some(error => typeof error === 'string' && error.length > 0);
   };
 
   const handleStartEdit = () => {
@@ -102,63 +114,50 @@ export default function Profile() {
   };
 
   const handleSave = async () => {
+    if (!validateForm()) return;
+
+    setIsSaving(true);
     try {
-      if (!validateAll()) return;
-      setIsSaving(true);
-      const payload = { firstName, lastName, phone, email };
-      try {
-        await updateUserProfile(payload);
-        setIsEditing(false);
-        setCurrentPassword('');
-        setNewPassword('');
-        setConfirmPassword('');
-      } catch (err) {
-        console.error('Failed to save profile (placeholder):', err);
-      } finally {
-        setIsSaving(false);
-      }
+      await updateUserProfile({ firstName, lastName, phone, email });
+      setIsEditing(false);
+      setErrors(initialErrors);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
     } catch (err) {
-      console.error('Unexpected error during save:', err);
+      console.error('Failed to save profile:', err);
+    } finally {
       setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
-    const { firstName, lastName, phone, email } = initialData;
-    setFirstName(firstName);
-    setLastName(lastName);
-    setPhone(phone);
-    setEmail(email);
+    setFirstName(initialData.firstName);
+    setLastName(initialData.lastName);
+    setPhone(initialData.phone);
+    setEmail(initialData.email);
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
     setIsEditing(false);
-    setErrors({
-      firstName: '', lastName: '', phone: '', email: '',
-      currentPassword: '', newPassword: '', confirmPassword: '',
-      address: { city: '', street: '', house: '', apartments: '' }
-    });
+    setErrors(initialErrors);
   };
 
   const handleAddAddress = () => {
-    if (!newAddress.city || !newAddress.street || !newAddress.house) {
-      setErrors(prev => ({
-        ...prev,
-        address: {
-          city: !newAddress.city ? 'City is required' : '',
-          street: !newAddress.street ? 'Street is required' : '',
-          house: !newAddress.house ? 'House number is required' : '',
-          apartments: ''
-        }
-      }));
+    const addressErrors = { city: '', street: '', house: '' };
+    let isValid = true;
+    if (!newAddress.city) { addressErrors.city = 'City is required'; isValid = false; }
+    if (!newAddress.street) { addressErrors.street = 'Street is required'; isValid = false; }
+    if (!newAddress.house) { addressErrors.house = 'House number is required'; isValid = false; }
+
+    if (!isValid) {
+      setErrors(prev => ({ ...prev, address: addressErrors }));
       return;
     }
-    setAddresses(prev => [...prev, { ...newAddress }]);
+
+    setAddresses(prev => [...prev, newAddress]);
     setNewAddress({ city: '', street: '', house: '', apartments: '' });
-    setErrors(prev => ({
-      ...prev,
-      address: { city: '', street: '', house: '', apartments: '' }
-    }));
+    setErrors(prev => ({ ...prev, address: initialErrors.address }));
   };
 
   const handleDeleteAddress = (index: number) => {
@@ -168,7 +167,6 @@ export default function Profile() {
   return (
     <div className="min-h-screen bg-gray-50">
       <Header />
-
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
           <h1 className="text-xl font-semibold text-black">Personal Information</h1>
@@ -176,79 +174,27 @@ export default function Profile() {
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
-          <AccordionSection title="My Account" subtitle="Account information and login credentials">
+          <AccordionSection title="My Account" subtitle="Account information and login credentials" defaultOpen>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-black mb-1">First Name</label>
                 {isEditing ? (
                   <>
-                    <input value={firstName} onChange={e => setFirstName(e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={firstName} onChange={handleChange(setFirstName, 'firstName')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                   </>
-                ) : (
-                  <div className="text-sm text-gray-700">{firstName}</div>
-                )}
+                ) : <div className="text-sm text-gray-700">{firstName}</div>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Last Name</label>
                 {isEditing ? (
                   <>
-                    <input value={lastName} onChange={e => setLastName(e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={lastName} onChange={handleChange(setLastName, 'lastName')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                   </>
-                ) : (
-                  <div className="text-sm text-gray-700">{lastName}</div>
-                )}
+                ) : <div className="text-sm text-gray-700">{lastName}</div>}
               </div>
             </div>
-
-            
-          </AccordionSection>
-
-          <AccordionSection title="Change Password" subtitle="Update your password">
-            {isEditing ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">Current Password</label>
-                  <input
-                    type="password"
-                    value={currentPassword}
-                    onChange={e => setCurrentPassword(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                    placeholder="Enter current password"
-                  />
-                  {errors.currentPassword && <p className="text-red-500 text-xs mt-1">{errors.currentPassword}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">New Password</label>
-                  <input
-                    type="password"
-                    value={newPassword}
-                    onChange={e => setNewPassword(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                    placeholder="Enter new password"
-                  />
-                  {errors.newPassword && <p className="text-red-500 text-xs mt-1">{errors.newPassword}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">Confirm New Password</label>
-                  <input
-                    type="password"
-                    value={confirmPassword}
-                    onChange={e => setConfirmPassword(e.target.value)}
-                    className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                    placeholder="Confirm new password"
-                  />
-                  {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
-                </div>
-              </div>
-            ) : (
-              <p className="text-sm text-gray-500">Enter the "Edit" button to change the password</p>
-            )}
-          </AccordionSection>
-
-          <AccordionSection title="My Orders" subtitle="Your order history">
-            <p className="text-sm text-gray-500">Your orders will appear here</p>
           </AccordionSection>
 
           <AccordionSection title="Contacts" subtitle="Email addresses and phone numbers">
@@ -257,27 +203,45 @@ export default function Profile() {
                 <label className="block text-sm font-medium text-black mb-1">Phone</label>
                 {isEditing ? (
                   <>
-                    <input value={phone} onChange={e => setPhone(e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={phone} onChange={handleChange(setPhone, 'phone')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                   </>
-                ) : (
-                  <div className="text-sm text-gray-700">{phone}</div>
-                )}
+                ) : <div className="text-sm text-gray-700">{phone}</div>}
               </div>
               <div>
                 <label className="block text-sm font-medium text-black mb-1">Email</label>
                 {isEditing ? (
                   <>
-                    <input value={email} onChange={e => setEmail(e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={email} onChange={handleChange(setEmail, 'email')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   </>
-                ) : (
-                  <div className="text-sm text-gray-700">{email}</div>
-                )}
+                ) : <div className="text-sm text-gray-700">{email}</div>}
               </div>
             </div>
           </AccordionSection>
 
+          <AccordionSection title="Change Password" subtitle="Change the password">
+            {isEditing ? (
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Current Password</label>
+                  <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-300" placeholder="Enter current password"/>
+                  {errors.currentPassword && <p className="text-red-500 text-xs mt-1">{errors.currentPassword}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">New Password</label>
+                  <input type="password" value={newPassword} onChange={handleChange(setNewPassword, 'newPassword')} className="w-full px-3 py-2 border rounded-lg border-gray-300" placeholder="Enter new password" />
+                  {errors.newPassword && <p className="text-red-500 text-xs mt-1">{errors.newPassword}</p>}
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-black mb-1">Confirm New Password</label>
+                  <input type="password" value={confirmPassword} onChange={handleChange(setConfirmPassword, 'confirmPassword')} className="w-full px-3 py-2 border rounded-lg border-gray-300" placeholder="Confirm new password" />
+                  {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
+                </div>
+              </div>
+            ) : <p className="text-sm text-gray-500">Press the 'Edit' button to change the password</p>}
+          </AccordionSection>
+          
           <AccordionSection title="Delivery Addresses" subtitle="Saved delivery addresses">
             <div className="space-y-6">
               {addresses.map((address, index) => (
@@ -292,6 +256,7 @@ export default function Profile() {
                     <button
                       onClick={() => handleDeleteAddress(index)}
                       className="text-red-600 hover:text-red-700"
+                      aria-label="Delete address"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>
@@ -345,7 +310,7 @@ export default function Profile() {
                   </div>
                   <button
                     onClick={handleAddAddress}
-                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
                   >
                     <PlusCircle className="w-4 h-4" />
                     <span>Add Address</span>
@@ -354,12 +319,16 @@ export default function Profile() {
               )}
             </div>
           </AccordionSection>
+
+          <AccordionSection title="My Orders" subtitle="Your order history">
+            <p className="text-sm text-gray-500">Your orders will appear here</p>
+          </AccordionSection>
         </div>
 
         <div className="flex justify-end gap-3 mt-6">
-          {isEditing ? (
+            {isEditing ? (
             <>
-              <button onClick={handleCancel} className="px-4 py-2 bg-white border border-gray-300 rounded-lg">Cancel</button>
+              <button onClick={handleCancel} className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
               <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
@@ -372,3 +341,4 @@ export default function Profile() {
     </div>
   );
 }
+
