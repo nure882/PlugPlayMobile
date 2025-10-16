@@ -5,7 +5,7 @@ import Header from '../components/Header';
 import {API_BASE_URL, useRegisterMutation} from '../lib/redux/authApi.ts';
 import {GoogleLogin} from "@react-oauth/google";
 import {storage} from "../lib/utils/StorageService.ts";
-import { validateName, validateEmail, validatePhone, validatePassword } from '../lib/validation';
+import {validateName, validateEmail, validatePhone, validatePassword} from '../lib/validation';
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -30,48 +30,30 @@ export default function SignUp() {
 
   const [register, {isLoading: isRegistering}] = useRegisterMutation();
 
-  const validateName = (name: string) => {
-    const nameRegex = /^[a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]{2,30}$/;
-    return nameRegex.test(name);
-  };
-
-  const validateEmail = (email: string) => {
-    const emailRegex = /^[a-zA-Z0-9]([a-zA-Z0-9._+-]*[a-zA-Z0-9])?@[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
-    return emailRegex.test(email) && !email.includes('..');
-  };
-
-  const validatePassword = (password: string) => {
-    if (password.length < 8) return false;
-
-    const hasDigit = /\d/.test(password);
-    const hasLowercase = /[a-zа-яёіїєґ]/.test(password);
-    const hasUppercase = /[A-ZА-ЯЁІЇЄҐ]/.test(password);
-    const hasNonAlphanumeric = /[^a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]/.test(password);
-    const uniqueChars = new Set(password).size;
-    const hasUniqueChar = uniqueChars > 1;
-
-    return hasDigit && hasLowercase && hasUppercase && hasNonAlphanumeric && hasUniqueChar;
-  };
-
-  const validatePhone = (phone: string) => {
-    const cleanPhone = phone.replace(/[^\d+]/g, '');
-    const phoneRegex = /^\+[1-9]\d{1,14}$/;
-
-    return phoneRegex.test(cleanPhone) && cleanPhone.length >= 10 && cleanPhone.length <= 15;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setSuccess(false);
     setIsLoading(true);
 
+    const newFieldErrors = {
+      firstName: validateName(firstName) ? '' : 'Only Latin/Cyrillic letters and numbers, 2-30 characters',
+      lastName: validateName(lastName) ? '' : 'Only Latin/Cyrillic letters and numbers, 2-30 characters',
+      phone: validatePhone(phone) ? '' : 'International format: +country code + number',
+      email: validateEmail(email) ? '' : 'Invalid email format',
+      password: validatePassword(password) ? '' : 'Min 8 chars: digit, lowercase, uppercase, special',
+      confirmPassword: password === confirmPassword ? '' : 'Passwords do not match',
+    };
+    setFieldErrors(newFieldErrors);
+
+    // required fields
     if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
       setError('All fields are required');
       setIsLoading(false);
       return;
     }
 
+    // per-field validations (keep existing messages)
     if (!validateName(firstName)) {
       setError('First name must contain only Latin/Cyrillic letters and numbers, 2-30 characters');
       setIsLoading(false);
@@ -107,10 +89,13 @@ export default function SignUp() {
       setIsLoading(false);
       return;
     }
-    const isValid = Object.values(newFieldErrors).every(err => err === '');
-    if (!isValid) return;
 
-    setIsLoading(true);
+    const isValid = Object.values(newFieldErrors).every(err => err === '');
+    if (!isValid) {
+      setError('Please fix validation errors');
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const userData = {
@@ -142,8 +127,14 @@ export default function SignUp() {
       setTimeout(() => {
         navigate('/signin');
       }, 1500);
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'Registration failed. Please try again.');
+    } catch (err: any) {
+      const msg =
+        err?.data?.message ||
+        err?.data?.error ||
+        err?.error ||
+        (err instanceof Error ? err.message : null) ||
+        'Registration failed. Please try again.';
+      setError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -171,24 +162,18 @@ export default function SignUp() {
         if (value && value !== password) errorMessage = 'Passwords do not match';
         break;
     }
-    setFieldErrors(prev => ({ ...prev, [fieldName]: errorMessage }));
+    setFieldErrors(prev => ({...prev, [fieldName]: errorMessage}));
   };
 
 
   const handleChange = (setter: React.Dispatch<React.SetStateAction<string>>, fieldName: keyof typeof fieldErrors) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+    const {value} = e.target;
     setter(value);
     validateField(fieldName, value);
 
     if (fieldName === 'password' && confirmPassword) {
-        validateField('confirmPassword', confirmPassword);
+      validateField('confirmPassword', confirmPassword);
     }
-  };
-
-  const handleConfirmPasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    setConfirmPassword(value);
-    validateField('confirmPassword', value);
   };
 
   const handleGoogleSuccess = async (credentialResponse: any) => {
@@ -221,7 +206,7 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+      <Header/>
       <div className="flex items-center justify-center px-4">
         <div className="w-full max-w-md py-10">
           <div className="text-center mb-8">
@@ -241,81 +226,58 @@ export default function SignUp() {
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label htmlFor="firstName" className="block text-sm font-medium text-black mb-1">
-                    First Name
-                  </label>
-                  <input
-                    id="firstName"
-                    type="text"
-                    value={firstName}
-                    onChange={handleFirstNameChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      fieldErrors.firstName ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="John"
-                  />
-                  {fieldErrors.firstName && (
-                    <p className="text-red-500 text-xs mt-1">{fieldErrors.firstName}</p>
-                  )}
-                </div>
-                <div>
-                  <label htmlFor="lastName" className="block text-sm font-medium text-black mb-1">
-                    Last Name
-                  </label>
-                  <input
-                    id="lastName"
-                    type="text"
-                    value={lastName}
-                    onChange={handleLastNameChange}
-                    className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                      fieldErrors.lastName ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                    placeholder="Doe"
-                  />
-                  {fieldErrors.lastName && (
-                    <p className="text-red-500 text-xs mt-1">{fieldErrors.lastName}</p>
-                  )}
-                </div>
-              </div>
             <form onSubmit={handleSubmit} className="space-y-4" noValidate>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label htmlFor="firstName" className="block text-sm font-medium text-black mb-1">First Name</label>
-                  <input id="firstName" type="text" value={firstName} onChange={handleChange(setFirstName, 'firstName')} className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.firstName ? 'border-red-300' : 'border-gray-300'}`} placeholder="John" />
+                  <input id="firstName" type="text" value={firstName} onChange={handleChange(setFirstName, 'firstName')}
+                         className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.firstName ? 'border-red-300' : 'border-gray-300'}`}
+                         placeholder="John"/>
                   {fieldErrors.firstName && <p className="text-red-500 text-xs mt-1">{fieldErrors.firstName}</p>}
                 </div>
                 <div>
                   <label htmlFor="lastName" className="block text-sm font-medium text-black mb-1">Last Name</label>
-                  <input id="lastName" type="text" value={lastName} onChange={handleChange(setLastName, 'lastName')} className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.lastName ? 'border-red-300' : 'border-gray-300'}`} placeholder="Doe" />
+                  <input id="lastName" type="text" value={lastName} onChange={handleChange(setLastName, 'lastName')}
+                         className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.lastName ? 'border-red-300' : 'border-gray-300'}`}
+                         placeholder="Doe"/>
                   {fieldErrors.lastName && <p className="text-red-500 text-xs mt-1">{fieldErrors.lastName}</p>}
                 </div>
               </div>
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-black mb-1">Phone</label>
-                <input id="phone" type="tel" value={phone} onChange={handleChange(setPhone, 'phone')} className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.phone ? 'border-red-300' : 'border-gray-300'}`} placeholder="+380123456789" />
+                <input id="phone" type="tel" value={phone} onChange={handleChange(setPhone, 'phone')}
+                       className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.phone ? 'border-red-300' : 'border-gray-300'}`}
+                       placeholder="+380123456789"/>
                 {fieldErrors.phone && <p className="text-red-500 text-xs mt-1">{fieldErrors.phone}</p>}
               </div>
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-black mb-1">Email</label>
-                <input id="email" type="email" value={email} onChange={handleChange(setEmail, 'email')} className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.email ? 'border-red-300' : 'border-gray-300'}`} placeholder="john@example.com" />
+                <input id="email" type="email" value={email} onChange={handleChange(setEmail, 'email')}
+                       className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.email ? 'border-red-300' : 'border-gray-300'}`}
+                       placeholder="john@example.com"/>
                 {fieldErrors.email && <p className="text-red-500 text-xs mt-1">{fieldErrors.email}</p>}
               </div>
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-black mb-1">Password</label>
-                <input id="password" type="password" value={password} onChange={handleChange(setPassword, 'password')} className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.password ? 'border-red-300' : 'border-gray-300'}`} placeholder="••••••••" />
+                <input id="password" type="password" value={password} onChange={handleChange(setPassword, 'password')}
+                       className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.password ? 'border-red-300' : 'border-gray-300'}`}
+                       placeholder="••••••••"/>
                 {fieldErrors.password && <p className="text-red-500 text-xs mt-1">{fieldErrors.password}</p>}
               </div>
               <div>
-                <label htmlFor="confirmPassword" className="block text-sm font-medium text-black mb-1">Confirm Password</label>
-                <input id="confirmPassword" type="password" value={confirmPassword} onChange={handleChange(setConfirmPassword, 'confirmPassword')} className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'}`} placeholder="••••••••" />
-                {fieldErrors.confirmPassword && <p className="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>}
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-black mb-1">Confirm
+                  Password</label>
+                <input id="confirmPassword" type="password" value={confirmPassword}
+                       onChange={handleChange(setConfirmPassword, 'confirmPassword')}
+                       className={`w-full px-4 py-2 border rounded-lg ${fieldErrors.confirmPassword ? 'border-red-300' : 'border-gray-300'}`}
+                       placeholder="••••••••"/>
+                {fieldErrors.confirmPassword &&
+                  <p className="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>}
               </div>
-              <button type="submit" disabled={isLoading} className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2">
-                {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin" />Registering...</>) : 'Sign Up'}
+              <button type="submit" disabled={isLoading}
+                      className="w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50 flex items-center justify-center gap-2">
+                {isLoading ? (<><Loader2 className="w-4 h-4 animate-spin"/>Registering...</>) : 'Sign Up'}
               </button>
             </form>
 

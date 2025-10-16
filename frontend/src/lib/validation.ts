@@ -3,7 +3,7 @@
  * Allows Latin/Cyrillic letters and numbers, 2-30 characters.
  */
 export const validateName = (name: string): boolean => {
-  const nameRegex = /^[a-zA-Zа-яА-ЯёЁ0-9]{2,30}$/;
+  const nameRegex = /^[a-zA-Zа-яА-ЯёЁіІїЇєЄґҐ0-9]{2,30}$/;
   return nameRegex.test(name);
 };
 
