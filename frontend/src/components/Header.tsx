@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { ShoppingCart, User, Search } from 'lucide-react';
-import logoUrl from '..assets/logo.svg';
+import logoUrl from '../assets/logo.svg';
 import { useState } from 'react';
 
 export default function Header() {
