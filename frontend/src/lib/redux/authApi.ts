@@ -30,7 +30,7 @@ export interface LoginResponse {
 
 export const authApi = createApi({
   reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({ baseUrl: `${API_BASE_URL}/api` }),
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
@@ -75,7 +75,6 @@ export const authApi = createApi({
     }),
   }),
 });
-
 export const {
   useLoginMutation,
   useRegisterMutation,
