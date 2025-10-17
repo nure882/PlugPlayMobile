@@ -4,6 +4,7 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Catalog from './pages/Catalog';
 import Profile from './pages/Profile';
+import ProductDetail from './pages/ProductDetail';
 import NotFound from './pages/NotFound';
 
 function App() {
@@ -15,6 +16,7 @@ function App() {
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
           <Route path="/profile" element={<Profile />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

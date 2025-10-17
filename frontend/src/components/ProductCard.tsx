@@ -55,7 +55,11 @@ const ProductCard = ({
     }
   };
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Если клик был на кнопке избранного, не переходим на страницу товара
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
     if (onClick) {
       onClick(id);
     }
