@@ -1,8 +1,9 @@
 import axios from 'axios';
 import {storage} from "./StorageService.ts";
+import {API_BASE_URL} from '../redux/authApi.ts';
 
 const api = axios.create({
-  baseURL: 'https://your-api.com/api',
+  baseURL: `${API_BASE_URL}/api`,
 });
 
 let isRefreshing = false;
@@ -54,9 +55,12 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = storage.getRefreshToken();
-        const { token } = await authAPI.refreshToken(refreshToken);
+        
+        const response = await api.post('/auth/refresh', { refreshToken });
+        
+        const { token, refreshToken: newRefreshToken } = response.data;
 
-        storage.setTokens(token, refreshToken);
+        storage.setTokens(token, newRefreshToken || refreshToken);
         api.defaults.headers.Authorization = `Bearer ${token}`;
         processQueue(null, token);
 
@@ -64,7 +68,7 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
         storage.clearTokens();
-        window.location.href = '/login';
+        window.location.href = '/signin';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

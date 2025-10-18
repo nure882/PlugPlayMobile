@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import {User} from "../models/User.ts";
+import { storage } from '../utils/StorageService.ts';
 
 export const API_BASE_URL = 'http://localhost:5298'; // port may be different
 
@@ -30,7 +31,14 @@ export interface LoginResponse {
 
 export const authApi = createApi({
   reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({ baseUrl: '/api' }),
+  baseQuery: fetchBaseQuery({
+    baseUrl: `${API_BASE_URL}/api`,
+    prepareHeaders: (headers) => {
+      const token = storage.getAccessToken();
+      if (token) headers.set('Authorization', `Bearer ${token}`);
+      return headers;
+    }
+  }),
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
@@ -56,7 +64,7 @@ export const authApi = createApi({
     verify: builder.query<User, void>({
       query: () => ({
         url: 'auth/verify',
-        method: 'GET',
+        method: 'POST',
       }),
     }),
     refreshToken: builder.mutation<LoginResponse, { refreshToken: string }>({
@@ -75,7 +83,6 @@ export const authApi = createApi({
     }),
   }),
 });
-
 export const {
   useLoginMutation,
   useRegisterMutation,

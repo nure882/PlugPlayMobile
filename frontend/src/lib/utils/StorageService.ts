@@ -29,15 +29,27 @@ class StorageService {
         localStorage.removeItem(this.refreshTokenKey);
     }
 
-    hasValidToken() {
+hasValidToken() {
+    try {
         const token = this.getAccessToken();
         if (!token) {
             return false;
         }
-        const payload = JSON.parse(atob(token.split('.')[1]));
-
+        
+        const parts = token.split('.');
+        if (parts.length !== 3) {
+            return false;
+        }
+        
+        const payload = JSON.parse(atob(parts[1]));
+        
         return payload.exp * 1000 > Date.now();
+    } catch (error) {
+        console.error('Error validating token:', error);
+        
+        return false;
     }
+}
 }
 
 export const storage = new StorageService();
