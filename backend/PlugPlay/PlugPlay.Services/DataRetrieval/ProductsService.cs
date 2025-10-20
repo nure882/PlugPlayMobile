@@ -9,7 +9,7 @@ namespace PlugPlay.Services.DataRetrieval
     {
         private readonly PlugPlayDbContext _context;
 
-        public ProductsService(PlugPlayDbContext context) 
+        public ProductsService(PlugPlayDbContext context)
         {
             _context = context;
         }
@@ -36,7 +36,7 @@ namespace PlugPlay.Services.DataRetrieval
                 .Include(p => p.Reviews)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
-            if(product == null)
+            if (product == null)
             {
                 throw new KeyNotFoundException($"Product with ID {id} not found.");
             }

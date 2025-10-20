@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
-using PlugPlay.Services.Interfaces;
 using PlugPlay.Services.Dto;
+using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers;
 
@@ -42,7 +42,7 @@ public class UserInfoController : ControllerBase
 
             return Ok(userInfo);
         }
-        catch (KeyNotFoundException ex) 
+        catch (KeyNotFoundException ex)
         {
             return NotFound(new { message = ex.Message });
         }
@@ -57,7 +57,7 @@ public class UserInfoController : ControllerBase
 
             return Ok("User updated successfully.");
         }
-        catch(Exception ex)
+        catch (Exception ex)
         {
             return BadRequest(new { message = ex.Message });
         }

@@ -1,13 +1,13 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using PlugPlay.Services.Interfaces;
-using PlugPlay.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using PlugPlay.Services.Dto;
+using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
+using PlugPlay.Services.Dto;
+using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Services.DataRetrieval
 {
-    public class UserInfoService :IUserInfoService
+    public class UserInfoService : IUserInfoService
     {
         private readonly UserManager<User> _userManager;
 
@@ -25,7 +25,7 @@ namespace PlugPlay.Services.DataRetrieval
                 .Include(u => u.UserAddresses)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
-            if(userInfo == null) 
+            if (userInfo == null)
             {
                 throw new KeyNotFoundException($"User with ID {id} not found.");
             }
@@ -74,7 +74,7 @@ namespace PlugPlay.Services.DataRetrieval
                         existing.Apartments = addrDto.Apartments;
                         existing.Street = addrDto.Street;
                         existing.City = addrDto.City;
-                    } 
+                    }
                 }
                 else
                 {
