@@ -2,7 +2,7 @@
 using PlugPlay.Services.Interfaces;
 using PlugPlay.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
-using PlugPlay.Shared.Dto;
+using PlugPlay.Services.Dto;
 using PlugPlay.Infrastructure;
 
 namespace PlugPlay.Services.DataRetrieval

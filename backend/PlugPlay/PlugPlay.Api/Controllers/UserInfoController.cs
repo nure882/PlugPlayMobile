@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Mvc;
 using PlugPlay.Services.Interfaces;
-using PlugPlay.Shared.Dto;
+using PlugPlay.Services.Dto;
 
 namespace PlugPlay.Api.Controllers;
 

@@ -1,5 +1,5 @@
 ﻿using PlugPlay.Domain.Entities;
-using PlugPlay.Shared.Dto;
+using PlugPlay.Services.Dto;
 
 namespace PlugPlay.Services.Interfaces
 {

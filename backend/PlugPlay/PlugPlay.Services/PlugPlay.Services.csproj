@@ -18,6 +18,5 @@
     <ItemGroup>
         <ProjectReference Include="..\PlugPlay.Domain\PlugPlay.Domain.csproj" />
         <ProjectReference Include="..\PlugPlay.Infrastructure\PlugPlay.Infrastructure.csproj" />
-        <ProjectReference Include="..\Shared\PlugPlay.Shared.csproj" />
     </ItemGroup>
 </Project>
