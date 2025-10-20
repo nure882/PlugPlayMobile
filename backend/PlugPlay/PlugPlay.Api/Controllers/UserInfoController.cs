@@ -15,43 +15,51 @@ public class UserInfoController : ControllerBase
         _userInfoService = userInfoService;
     }
 
-    [HttpGet]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetUserInfoById(int id)
     {
-        var user = await _userInfoService.GetUserInfoByIdAsync(id);
-
-        if (user == null)
-            throw new KeyNotFoundException($"User with ID {id} not found.");
-
-        UserInfoDto userInfo = new UserInfoDto
+        try
         {
-            Id = user.Id,
-            Email = user.Email,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-            Addresses = user.UserAddresses
-            .Select(a => new UserAddressDto 
-                { 
+            var user = await _userInfoService.GetUserInfoByIdAsync(id);
+
+            UserInfoDto userInfo = new UserInfoDto
+            {
+                Id = user.Id,
+                Email = user.Email,
+                FirstName = user.FirstName,
+                LastName = user.LastName,
+                Addresses = user.UserAddresses
+                .Select(a => new UserAddressDto
+                {
                     Id = a.Id,
                     House = a.House,
                     Apartments = a.Apartments,
                     Street = a.Street,
                     City = a.City
                 })
-            .ToList()
-        };
+                .ToList()
+            };
 
-        return Ok(userInfo);
+            return Ok(userInfo);
+        }
+        catch (KeyNotFoundException ex) 
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UserInfoDto dto)
     {
-        var result = await _userInfoService.UpdateUserAsync(id, dto);
+        try
+        {
+            var result = await _userInfoService.UpdateUserAsync(id, dto);
 
-        if (!result)
-            throw new KeyNotFoundException($"User with ID {id} not found.");
-
-        return Ok("User updated successfully.");
+            return Ok("User updated successfully.");
+        }
+        catch(Exception ex)
+        {
+            return BadRequest(new { message = ex.Message });
+        }
     }
 }

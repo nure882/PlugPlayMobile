@@ -14,7 +14,7 @@ public class ProductsController : ControllerBase
         _productsService = productsService;
     }
 
-    [HttpGet]
+    [HttpGet("all")]
     public async Task<IActionResult> GetAllProducts()
     {
         var products = await _productsService.GetAllProductsAsync();
@@ -22,14 +22,18 @@ public class ProductsController : ControllerBase
         return Ok(products);
     }
 
-    [HttpGet]
+    [HttpGet("{id:int}")]
     public async Task<IActionResult> GetProductById(int id)
     {
-        var product = await _productsService.GetProductByIdAsync(id);
+        try
+        {
+            var product = await _productsService.GetProductByIdAsync(id);
 
-        if (product == null)
-            throw new KeyNotFoundException($"Product with ID {id} not found.");
-
-        return Ok(product);
+            return Ok(product);
+        }
+        catch (KeyNotFoundException ex)
+        {
+            return NotFound(new { message = ex.Message });
+        }
     }
 }

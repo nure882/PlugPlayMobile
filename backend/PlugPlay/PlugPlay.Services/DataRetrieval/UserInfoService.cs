@@ -25,6 +25,11 @@ namespace PlugPlay.Services.DataRetrieval
                 .Include(u => u.UserAddresses)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
+            if(userInfo == null) 
+            {
+                throw new KeyNotFoundException($"User with ID {id} not found.");
+            }
+
             return userInfo;
         }
 
@@ -34,14 +39,23 @@ namespace PlugPlay.Services.DataRetrieval
                 .Include(u => u.UserAddresses)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
-            if (user == null)
+            if (user == null || dto == null)
                 return false;
+
+            if (!string.IsNullOrEmpty(dto.Email) && dto.Email != user.Email)
+            {
+                var setEmailResult = await _userManager.SetEmailAsync(user, dto.Email);
+
+                if (!setEmailResult.Succeeded)
+                {
+                    throw new Exception("Failed to update user email.");
+                }
+            }
 
             user.FirstName = dto.FirstName ?? user.FirstName;
             user.LastName = dto.LastName ?? user.LastName;
-            user.Email = dto.Email ?? user.Email;
 
-            var dtoAddressIds = dto.Addresses.Where(a => a.Id.HasValue).Select(a => a.Id!.Value).ToList();
+            var dtoAddressIds = dto.Addresses.Where(a => a.Id.HasValue).Select(a => a.Id.Value).ToList();
             var addressesToRemove = user.UserAddresses.Where(a => !dtoAddressIds.Contains(a.Id)).ToList();
             foreach (var addr in addressesToRemove)
             {
@@ -52,12 +66,15 @@ namespace PlugPlay.Services.DataRetrieval
             {
                 if (addrDto.Id.HasValue)
                 {
-                    var existing = user.UserAddresses.First(a => a.Id == addrDto.Id);
+                    var existing = user.UserAddresses.FirstOrDefault(a => a.Id == addrDto.Id);
 
-                    existing.House = addrDto.House;
-                    existing.Apartments = addrDto.Apartments;
-                    existing.Street = addrDto.Street;
-                    existing.City = addrDto.City;
+                    if (existing != null)
+                    {
+                        existing.House = addrDto.House;
+                        existing.Apartments = addrDto.Apartments;
+                        existing.Street = addrDto.Street;
+                        existing.City = addrDto.City;
+                    } 
                 }
                 else
                 {

@@ -36,6 +36,11 @@ namespace PlugPlay.Services.DataRetrieval
                 .Include(p => p.Reviews)
                 .FirstOrDefaultAsync(p => p.Id == id);
 
+            if(product == null)
+            {
+                throw new KeyNotFoundException($"Product with ID {id} not found.");
+            }
+
             return product;
         }
     }
