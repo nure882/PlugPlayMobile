@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using PlugPlay.Services.Auth;
 using PlugPlay.Services.Interfaces;
+using PlugPlay.Services.DataRetrieval;
 
 namespace PlugPlay.Services;
 
@@ -11,5 +12,7 @@ public static class ContainerConfigExtensions
         services.AddScoped<IAuthService, AuthService>();
         // services.AddScoped<IPaymentService, PaymentService>();
         services.AddScoped<IJwtService, JwtService>();
+        services.AddScoped<IProductsService, ProductsService>();
+        services.AddScoped<IUserInfoService, UserInfoService>();
     }
 }
