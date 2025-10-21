@@ -1,0 +1,127 @@
+package com.plugplay.plugplaymobile.data.repository
+
+import com.plugplay.plugplaymobile.data.local.AuthLocalDataSource
+import com.plugplay.plugplaymobile.data.model.* import com.plugplay.plugplaymobile.data.remote.ShopApiService
+import com.plugplay.plugplaymobile.domain.model.AuthData
+import com.plugplay.plugplaymobile.domain.model.UserProfile
+import com.plugplay.plugplaymobile.domain.repository.AuthRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
+import java.lang.Exception
+
+class AuthRepositoryImpl @Inject constructor(
+    private val apiService: ShopApiService,
+    private val localDataSource: AuthLocalDataSource
+) : AuthRepository {
+
+    // ... (login залишається без змін)
+    override suspend fun login(email: String, password: String): Result<AuthData> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val request = LoginRequest(email, password)
+                val response = apiService.login(request)
+                if (response.isSuccessful && response.body() != null) {
+                    response.body()!!.toAuthData()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    throw Exception(errorBody ?: "Login failed (Check API): ${response.message()}")
+                }
+            }
+        }
+    }
+
+    // [ВИПРАВЛЕНО] Реалізація для Response<Void>
+    override suspend fun register(firstName: String, lastName: String, phoneNumber: String, email: String, password: String): Result<Unit> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val request = RegisterRequest(
+                    firstName = firstName,
+                    lastName = lastName,
+                    phoneNumber = phoneNumber,
+                    email = email,
+                    password = password
+                )
+                // [ВИПРАВЛЕНО] Викликаємо API, що повертає <Void>
+                val response = apiService.register(request)
+
+                if (response.isSuccessful) {
+                    // Успіх (HTTP 200-299), тіло пусте, як і очікувалось
+                    Unit // Повертаємо Unit
+                } else {
+                    // Помилка (HTTP 4xx, 5xx), спробуємо прочитати тіло помилки
+                    val errorBody = response.errorBody()?.string()
+                    throw Exception(errorBody ?: "Registration failed: ${response.message()}")
+                }
+            }
+        }
+    }
+
+    override suspend fun saveAuthData(authData: AuthData) {
+        localDataSource.saveAuthData(authData.token, authData.userId)
+    }
+
+    // ... (logout, getAuthStatus, getProfile, updateProfile залишаються без змін)
+    override suspend fun logout() {
+        localDataSource.clearToken()
+    }
+
+    override fun getAuthStatus(): Flow<Boolean> {
+        return localDataSource.isLoggedIn
+    }
+
+    override suspend fun getProfile(): Result<UserProfile> {
+        val userId = localDataSource.userId.first()
+        if (userId == null) {
+            return Result.failure(Exception("User not logged in or ID not found."))
+        }
+
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val response = apiService.getProfile(userId.toString())
+                if (response.isSuccessful && response.body() != null) {
+                    response.body()!!.toDomain()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    throw Exception(errorBody ?: "Failed to fetch profile: ${response.message()}")
+                }
+            }
+        }
+    }
+
+    override suspend fun updateProfile(
+        firstName: String,
+        lastName: String,
+        phoneNumber: String,
+        email: String,
+        currentPassword: String?,
+        newPassword: String?
+    ): Result<UserProfile> {
+        val userId = localDataSource.userId.first()
+        if (userId == null) {
+            return Result.failure(Exception("User not logged in or ID not found."))
+        }
+
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val request = UpdateProfileRequest(
+                    firstName = firstName,
+                    lastName = lastName,
+                    phoneNumber = phoneNumber,
+                    email = email,
+                    currentPassword = currentPassword,
+                    newPassword = newPassword
+                )
+                val response = apiService.updateProfile(userId.toString(), request)
+                if (response.isSuccessful && response.body() != null) {
+                    response.body()!!.toDomain()
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    throw Exception(errorBody ?: "Failed to update profile: ${response.message()}")
+                }
+            }
+        }
+    }
+}

@@ -17,16 +17,13 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val registerUseCase: RegisterUseCase,
-    // 💡 Для перевірки статусу логіну
+    private val registerUseCase: RegisterUseCase, // Тип use case оновився
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
-    // Стан результатів (для Login/Register)
     private val _state = MutableStateFlow<AuthResultState>(AuthResultState.Idle)
     val state: StateFlow<AuthResultState> = _state.asStateFlow()
 
-    // 💡 Стан логіну для UI (ProfileScreen)
     val isLoggedIn: StateFlow<Boolean> = authRepository.getAuthStatus()
         .stateIn(
             scope = viewModelScope,
@@ -53,18 +50,21 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    fun register(name: String, email: String, password: String) {
+    // [ВИПРАВЛЕНО] Оновлено для роботи з Result<Unit>
+    fun register(firstName: String, lastName: String, phoneNumber: String, email: String, password: String) {
         viewModelScope.launch {
             _state.value = AuthResultState.Loading
-            registerUseCase(name, email, password)
-                .onSuccess { _state.value = AuthResultState.Success }
+            registerUseCase(firstName, lastName, phoneNumber, email, password)
+                .onSuccess {
+                    // Успіх! Просто встановлюємо стан Success.
+                    _state.value = AuthResultState.Success
+                }
                 .onFailure { error ->
                     _state.value = AuthResultState.Error(error.message ?: "Помилка реєстрації.")
                 }
         }
     }
 
-    // 💡 Нова функція виходу
     fun logout() {
         viewModelScope.launch {
             authRepository.logout()

@@ -1,7 +1,9 @@
 package com.plugplay.plugplaymobile.di.module
 
-import com.plugplay.plugplaymobile.data.repository.MockAuthRepositoryImpl // 💡 Импорт заглушки
-import com.plugplay.plugplaymobile.data.repository.MockProductRepositoryImpl // 💡 Импорт заглушки
+// [НОВИЙ ІМПОРТ] Імпортуємо мокову реалізацію
+import com.plugplay.plugplaymobile.data.repository.MockAuthRepositoryImpl
+import com.plugplay.plugplaymobile.data.repository.AuthRepositoryImpl
+import com.plugplay.plugplaymobile.data.repository.ProductRepositoryImpl
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import dagger.Binds
@@ -14,19 +16,26 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 abstract class RepositoryModule {
 
-    // 💡 БИНДИНГ НА ЗАГЛУШКУ ТОВАРОВ
     @Binds
     @Singleton
     abstract fun bindProductRepository(
-        // Используем класс-заглушку
-        mockProductRepositoryImpl: MockProductRepositoryImpl
+        // Тут залишаємо реальний репозиторій, бо список товарів працює
+        productRepositoryImpl: ProductRepositoryImpl
     ): ProductRepository
 
-    // 💡 БИНДИНГ НА ЗАГЛУШКУ АУТЕНТИФИКАЦИИ
     @Binds
     @Singleton
     abstract fun bindAuthRepository(
-        // Используем класс-заглушку
-        mockAuthRepositoryImpl: AuthRepository
+        // [ВИПРАВЛЕНО] Вказуємо мокову реалізацію
+        mockAuthRepositoryImpl: MockAuthRepositoryImpl
     ): AuthRepository
+
+    /*
+    // [ВИМКНЕНО] Поки що вимикаємо реальну реалізацію
+    @Binds
+    @Singleton
+    abstract fun bindAuthRepository(
+        authRepositoryImpl: AuthRepositoryImpl
+    ): AuthRepository
+    */
 }

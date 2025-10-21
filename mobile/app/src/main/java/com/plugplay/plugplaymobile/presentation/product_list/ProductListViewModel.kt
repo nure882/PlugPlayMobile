@@ -2,7 +2,7 @@ package com.plugplay.plugplaymobile.presentation.product_list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.plugplay.plugplaymobile.domain.usecase.GetProductsUseCase
+import com.plugplay.plugplaymobile.domain.usecase.GetProductsUseCase // ВИПРАВЛЕНО: правильний імпорт
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,7 +12,7 @@ import javax.inject.Inject
 
 @HiltViewModel
 class ProductListViewModel @Inject constructor(
-    private val getProductsUseCase: GetProductsUseCase
+    private val getProductsUseCase: GetProductsUseCase // ВИПРАВЛЕНО: правильна назва класу
 ) : ViewModel() {
 
     private val _state = MutableStateFlow<ProductListState>(ProductListState.Idle)
@@ -26,7 +26,8 @@ class ProductListViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = ProductListState.Loading
 
-            getProductsUseCase()
+            // ВИПРАВЛЕНО: правильний виклик Use Case
+            getProductsUseCase.invoke()
                 .onSuccess { products ->
                     _state.value = ProductListState.Success(products)
                 }

@@ -1,70 +1,35 @@
 package com.plugplay.plugplaymobile.presentation.auth
 
+import androidx.compose.foundation.BorderStroke // [НОВИЙ ІМПОРТ]
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.ClickableText // [НОВИЙ ІМПОРТ]
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.text.SpanStyle // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.text.buildAnnotatedString // [НОВИЙ ІМПОРТ]
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.PasswordVisualTransformation // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.text.input.VisualTransformation // [НОВИЙ ІМПОРТ]
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle
+import androidx.compose.ui.text.withStyle // [НОВИЙ ІМПОРТ]
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.hilt.navigation.compose.hiltViewModel // 👈 Нужный импорт!
-import com.plugplay.plugplaymobile.presentation.auth.AuthViewModel
-
-/**
- * Заглушка для иконки (имитация вилки)
- */
-@Composable
-private fun PlugIcon(color: Color) {
-    // Используем простой текст в качестве заглушки для SVG-иконки
-    Text(
-        text = "🔌",
-        fontSize = 32.sp,
-        color = color,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
-}
-
-/**
- * Компонент логотипа Plug&Play
- */
-@Composable
-private fun PlugPlayLogo() {
-    val primaryColor = MaterialTheme.colorScheme.primary
-
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center,
-        modifier = Modifier.padding(bottom = 32.dp)
-    ) {
-        PlugIcon(color = primaryColor)
-        Spacer(Modifier.width(8.dp))
-        Text(
-            text = buildAnnotatedString {
-                withStyle(style = SpanStyle(color = primaryColor, fontWeight = FontWeight.Bold)) {
-                    append("Plug&")
-                }
-                withStyle(style = SpanStyle(color = Color.Black, fontWeight = FontWeight.Bold)) {
-                    append("Play")
-                }
-            },
-            fontSize = 32.sp,
-        )
-    }
-}
-
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.plugplay.plugplaymobile.R // 💡 Потрібен для R.drawable...
 
 @Composable
 fun LoginScreen(
@@ -74,141 +39,174 @@ fun LoginScreen(
 ) {
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
-    val loginEnabled = remember { derivedStateOf { email.value.isNotBlank() && password.value.isNotBlank() } }
+    val passwordVisible = remember { mutableStateOf(false) }
+
+    val state by viewModel.state.collectAsState()
+
+    LaunchedEffect(state) {
+        if (state is AuthResultState.Success) {
+            onLoginSuccess()
+            viewModel.resetState()
+        }
+    }
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
+        containerColor = Color(0xFFF4F7F8) // Світло-сірий фон
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .background(MaterialTheme.colorScheme.background)
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
-            // 💡 ЛОГОТИП СВЕРХУ
-            PlugPlayLogo()
+
+            Text(
+                text = "Welcome back",
+                style = MaterialTheme.typography.headlineLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 32.dp)
+            )
 
             Card(
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.surface
-                ),
-                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
                 modifier = Modifier
                     .fillMaxWidth()
-                    .wrapContentHeight()
-                    .padding(horizontal = 16.dp)
             ) {
                 Column(
-                    modifier = Modifier.padding(32.dp),
+                    modifier = Modifier.padding(24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Text(
-                        text = "Welcome back",
-                        style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
-                        color = MaterialTheme.colorScheme.onSurface,
-                        modifier = Modifier.padding(bottom = 32.dp)
-                    )
 
-                    // Email Field
                     OutlinedTextField(
                         value = email.value,
                         onValueChange = { email.value = it },
                         label = { Text("Email") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(12.dp)
                     )
 
-                    // Password Field (без логики видимости из-за конфликтов зависимостей)
+                    Spacer(Modifier.height(16.dp))
+
                     OutlinedTextField(
                         value = password.value,
                         onValueChange = { password.value = it },
                         label = { Text("Password") },
                         singleLine = true,
-                        modifier = Modifier.fillMaxWidth().padding(bottom = 24.dp),
-                        shape = RoundedCornerShape(12.dp)
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
+                        trailingIcon = {
+                            val image = if (passwordVisible.value) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                            IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
+                                Icon(imageVector = image, contentDescription = "Toggle password visibility")
+                            }
+                        }
                     )
 
-                    // Login Button
+                    Spacer(Modifier.height(24.dp))
+
+                    if (state is AuthResultState.Error) {
+                        Text(
+                            text = (state as AuthResultState.Error).message,
+                            color = MaterialTheme.colorScheme.error,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                    }
+
                     Button(
                         onClick = {
-                            // Имитация успешного входа
-                            if (loginEnabled.value) {
-                                viewModel.login(email.value, password.value)
-                                onLoginSuccess()
-                            }
+                            viewModel.login(email.value, password.value)
                         },
-                        enabled = loginEnabled.value,
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
+                        enabled = state !is AuthResultState.Loading,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(56.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = MaterialTheme.colorScheme.primary
                         )
                     ) {
-                        Text("Sign In", fontSize = 16.sp)
+                        if (state is AuthResultState.Loading) {
+                            CircularProgressIndicator(
+                                color = MaterialTheme.colorScheme.onPrimary,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        } else {
+                            Text("Sign In", fontSize = 16.sp)
+                        }
                     }
 
-                    Spacer(modifier = Modifier.height(24.dp))
+                    OrDivider()
 
-                    // Разделитель или текст "или"
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Divider(
-                            modifier = Modifier.weight(1f).height(1.dp),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                        )
-                        Text(
-                            text = " OR ",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            modifier = Modifier.padding(horizontal = 8.dp)
-                        )
-                        Divider(
-                            modifier = Modifier.weight(1f).height(1.dp),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-                        )
+                    GoogleSignInButton {
+                        // TODO: Google Sign In logic
                     }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    // Google Login Placeholder
-                    OutlinedButton(
-                        onClick = { /* TODO: Google Sign In logic */ },
-                        modifier = Modifier.fillMaxWidth().height(56.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(
-                            contentColor = MaterialTheme.colorScheme.onSurface
-                        ),
-                        border = ButtonDefaults.outlinedButtonBorder.copy(
-                            width = 1.dp,
-                            brush = SolidColor(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
-                        )
-                    ) {
-                        // Заглушка иконки Google
-                        Text("G", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(end = 8.dp))
-                        Text("Continue with Google", fontSize = 16.sp)
-                    }
-
-                    Spacer(modifier = Modifier.height(32.dp))
-
-                    // Link to Register
-                    Text(
-                        text = "Don't have an account? Sign up",
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable(onClick = onNavigateToRegister)
-                    )
                 }
             }
+
+            Spacer(Modifier.height(24.dp))
+
+            // [ВИПРАВЛЕНО] Тепер ця функція визначена нижче
+            ClickableRegisterText(onNavigateToRegister)
         }
     }
+}
+
+
+
+
+@Composable
+private fun ClickableRegisterText(onClick: () -> Unit) {
+    val annotatedText = buildAnnotatedString {
+        withStyle(style = SpanStyle(color = Color.Gray)) {
+            append("Don't have an account? ")
+        }
+        pushStringAnnotation(tag = "SignUp", annotation = "SignUp")
+        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
+            append("Sign Up")
+        }
+        pop()
+    }
+
+    ClickableText(
+        text = annotatedText,
+        onClick = { offset ->
+            annotatedText.getStringAnnotations(tag = "SignUp", start = offset, end = offset)
+                .firstOrNull()?.let {
+                    onClick()
+                }
+        }
+    )
+}
+
+@Composable
+private fun ClickableLoginText(onClick: () -> Unit) {
+    val annotatedText = buildAnnotatedString {
+        withStyle(style = SpanStyle(color = Color.Gray)) {
+            append("Already have an account? ")
+        }
+        pushStringAnnotation(tag = "SignIn", annotation = "SignIn")
+        withStyle(style = SpanStyle(color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)) {
+            append("Sign In")
+        }
+        pop()
+    }
+
+    ClickableText(
+        text = annotatedText,
+        onClick = { offset ->
+            annotatedText.getStringAnnotations(tag = "SignIn", start = offset, end = offset)
+                .firstOrNull()?.let {
+                    onClick()
+                }
+        }
+    )
 }

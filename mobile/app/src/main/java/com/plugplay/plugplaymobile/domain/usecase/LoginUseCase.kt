@@ -11,7 +11,8 @@ class LoginUseCase @Inject constructor(
         return repository.login(email, password)
             // 💡 Важная логика: если вход успешен, сохраняем токен
             .onSuccess { authData ->
-                repository.saveAuthToken(authData.token)
+                // [ВИПРАВЛЕНО] Зберігаємо повні AuthData (токен + ID)
+                repository.saveAuthData(authData)
             }
     }
 }
