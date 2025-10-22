@@ -1,5 +1,4 @@
 import { useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Filter } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import Header from '../components/Header';
@@ -11,9 +10,10 @@ import FiltersSidebar, {
 } from '../components/FiltersSidebar';
 
 const Catalog = () => {
-  const navigate = useNavigate();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+
 
   const maxPrice = useMemo(
     () => Math.max(...mockProducts.map(p => p.price)),
@@ -35,9 +35,11 @@ const Catalog = () => {
   const filteredAndSortedProducts = useMemo(() => {
     let filtered = [...mockProducts];
 
+   
     filtered = filtered.filter(p => p.price <= filters.priceRange[1]);
     filtered = filtered.filter(p => p.rating >= filters.rating);
     
+   
     if (!filters.condition.new || !filters.condition.used) {
       if (filters.condition.new) {
         filtered = filtered.filter(p => p.condition === 'new');
@@ -48,6 +50,7 @@ const Catalog = () => {
       }
     }
 
+    
     if (filters.badges.new || filters.badges.sale) {
       filtered = filtered.filter(p => {
         if (filters.badges.new && p.badge === 'new') return true;
@@ -56,6 +59,7 @@ const Catalog = () => {
       });
     }
 
+    
     switch (sortOption.value) {
       case 'rating-desc':
         filtered.sort((a, b) => b.rating - a.rating);
@@ -87,7 +91,7 @@ const Catalog = () => {
   };
 
   const handleProductClick = (productId: string) => {
-    navigate(`/product/${productId}`);
+    console.log('Clicked product:', productId);
   };
 
   return (
@@ -95,6 +99,7 @@ const Catalog = () => {
       <Header />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
         <div className="flex justify-between items-center mb-8">
           <CategoryFilter />
           <div className="relative">
@@ -122,6 +127,7 @@ const Catalog = () => {
           </div>
         </div>
 
+        
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredAndSortedProducts.map(product => (
             <ProductCard
@@ -141,6 +147,7 @@ const Catalog = () => {
           ))}
         </div>
 
+        
         <div className="flex justify-center mt-12">
           <button className="px-8 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium">
             Show more

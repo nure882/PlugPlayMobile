@@ -3,9 +3,11 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 import { persistStore, persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
 import { authApi } from './authApi'
+import { productsApi } from './productsApi'
 
 const rootReducer = combineReducers({
   [authApi.reducerPath]: authApi.reducer,
+  [productsApi.reducerPath]: productsApi.reducer,
 });
 
 const persistConfig = {
@@ -23,7 +25,7 @@ export const store = configureStore({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
-    }).concat(authApi.middleware),
+    }).concat(authApi.middleware, productsApi.middleware),
 });
 
 export const persistor = persistStore(store);
