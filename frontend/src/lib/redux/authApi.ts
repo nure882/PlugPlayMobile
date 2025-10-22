@@ -1,5 +1,10 @@
 import { baseApi } from './baseApi';
-import { User } from "../models/User.ts";
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+// import { baseApi } from './baseApi';
+import {User} from "../models/User.ts";
+import { storage } from '../utils/StorageService.ts';
+
+export const API_BASE_URL = 'http://localhost:5298'; // port may be different
 
 // interface ApiError {
 //   message: string;
@@ -27,6 +32,12 @@ export interface LoginResponse {
   user: User;
 }
 
+export const baseApi = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({ baseUrl: `${API_BASE_URL}/api` }),
+  endpoints: () => ({}),
+});
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
@@ -53,7 +64,7 @@ export const authApi = baseApi.injectEndpoints({
     verify: builder.query<User, void>({
       query: () => ({
         url: 'auth/verify',
-        method: 'GET',
+        method: 'POST',
       }),
     }),
     refreshToken: builder.mutation<LoginResponse, { refreshToken: string }>({
@@ -81,3 +92,4 @@ export const {
   useRefreshTokenMutation,
   useCreateAdminMutation,
 } = authApi;
+

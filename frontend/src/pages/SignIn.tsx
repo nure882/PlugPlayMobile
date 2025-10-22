@@ -5,6 +5,7 @@ import {GoogleLogin} from "@react-oauth/google";
 import { useLoginMutation} from "../lib/redux/authApi.ts";
 import { API_BASE_URL } from '../lib/redux/baseApi.ts';
 import {storage} from "../lib/utils/StorageService.ts";
+import { useAuth } from '../lib/context/AuthContext.tsx';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -12,6 +13,7 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const { setUser } = useAuth();
 
   const [login, {isLoading: isLoggingIn}] = useLoginMutation();
 
@@ -44,6 +46,7 @@ export default function SignIn() {
       const data = await login({ email, password }).unwrap();
 
       storage.setTokens(data.token, data.refreshToken);
+      setUser(data.user);
 
       setSuccess(true);
       setEmail('');
@@ -79,6 +82,8 @@ export default function SignIn() {
       console.log(data);
 
       storage.setTokens(data.token, data.refreshToken);
+      setUser(data.user);
+
 
       console.log('Login successful:', data.user);
     } catch (error) {

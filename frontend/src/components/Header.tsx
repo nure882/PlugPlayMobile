@@ -1,10 +1,18 @@
-import { Link } from 'react-router-dom';
-import { ShoppingCart, User, Search } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, User, Search, LogOut } from 'lucide-react';
 import logoUrl from '../assets/logo.svg';
 import { useState } from 'react';
+import { useAuth } from '../lib/context/AuthContext';
 
 export default function Header() {
+  const navigate = useNavigate();
+  const { user, logout, isLoggingOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSignOut = async () => {
+    await logout();
+    navigate('/signin');
+  };
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -40,16 +48,28 @@ export default function Header() {
               <ShoppingCart className="w-6 h-6" />
             </button>
 
-            <Link to="/profile" className="p-2 text-gray-700 hover:text-black transition-colors">
-              <User className="w-6 h-6" />
-            </Link>
-
-            <Link
-              to="/signin"
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-            >
-              Sign In
-            </Link>
+            {user ? (
+              <>
+                <Link to="/profile" className="p-2 text-gray-700 hover:text-black transition-colors">
+                  <User className="w-6 h-6" />
+                </Link>
+                <button
+                  onClick={handleSignOut}
+                  disabled={isLoggingOut}
+                  className="flex items-center gap-2 bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+                >
+                  {isLoggingOut ? 'Signing out...' : 'Sign Out'}
+                  <LogOut className="w-4 h-4" />
+                </button>
+              </>
+            ) : (
+              <Link
+                to="/signin"
+                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
         </div>
       </div>

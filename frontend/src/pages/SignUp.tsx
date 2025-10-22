@@ -7,6 +7,8 @@ import { API_BASE_URL } from '../lib/redux/baseApi.ts';
 import {GoogleLogin} from "@react-oauth/google";
 import {storage} from "../lib/utils/StorageService.ts";
 import {validateName, validateEmail, validatePhone, validatePassword} from '../lib/validation';
+import { useAuth } from '../lib/context/AuthContext.tsx';
+
 
 export default function SignUp() {
   const navigate = useNavigate();
@@ -19,6 +21,8 @@ export default function SignUp() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { setUser } = useAuth();
+
 
   const [fieldErrors, setFieldErrors] = useState({
     firstName: '',
@@ -194,6 +198,8 @@ export default function SignUp() {
       console.log(data);
 
       storage.setTokens(data.token, data.refreshToken);
+      setUser(data.user);
+
 
       console.log('Login successful:', data.user);
     } catch (error) {
