@@ -3,6 +3,7 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Catalog from './pages/Catalog';
 import Profile from './pages/Profile';
+import ProductDetail from './pages/ProductDetail';
 import NotFound from './pages/NotFound';
 import {GoogleOAuthProvider} from "@react-oauth/google";
 import ProtectedRoute from './components/ProtectedRoute';
@@ -15,6 +16,7 @@ function App() {
           <Route path="/" element={<Catalog />} />
           <Route path="/signin" element={<SignIn />} />
           <Route path="/signup" element={<SignUp />} />
+          <Route path="/product/:id" element={<ProductDetail />} />
           <Route path="/profile" element={
             <ProtectedRoute>
               <Profile />

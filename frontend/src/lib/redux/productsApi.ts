@@ -1,0 +1,40 @@
+import { baseApi } from './baseApi';
+
+export interface BackendProductDto {
+  id: number;
+  name: string;
+  description: string;
+  price: number;
+  stockQuantity: number;
+  createdAt: string;
+  category: {
+    id: number;
+    name: string;
+    parentCategory?: {
+      id: number;
+      name: string;
+    };
+  } | null;
+}
+
+export const productsApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getAllProducts: builder.query<BackendProductDto[], void>({
+      query: () => ({
+        url: 'products/all',
+        method: 'GET',
+      }),
+    }),
+    getProductById: builder.query<BackendProductDto, number>({
+      query: (id) => ({
+        url: `products/${id}`,
+        method: 'GET',
+      }),
+    }),
+  }),
+});
+
+export const {
+  useGetAllProductsQuery,
+  useGetProductByIdQuery,
+} = productsApi;

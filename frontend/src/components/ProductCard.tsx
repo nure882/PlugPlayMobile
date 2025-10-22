@@ -19,8 +19,6 @@ const ProductCard = ({
   name,
   price,
   originalPrice,
-  rating,
-  reviewCount,
   image,
   badge,
   isFavorite,
@@ -31,18 +29,18 @@ const ProductCard = ({
     return new Intl.NumberFormat('uk-UA').format(price);
   };
 
-  const renderStars = (rating: number) => {
-    return Array.from({ length: 5 }, (_, i) => (
-      <span
-        key={i}
-        className={`text-sm ${
-          i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'
-        }`}
-      >
-        ★
-      </span>
-    ));
-  };
+  // const renderStars = (rating: number) => {
+  //   return Array.from({ length: 5 }, (_, i) => (
+  //     <span
+  //       key={i}
+  //       className={`text-sm ${
+  //         i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'
+  //       }`}
+  //     >
+  //       ★
+  //     </span>
+  //   ));
+  // };
 
   const getBadgeColor = (badge: string) => {
     switch (badge) {
@@ -55,7 +53,10 @@ const ProductCard = ({
     }
   };
 
-  const handleCardClick = () => {
+  const handleCardClick = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
     if (onClick) {
       onClick(id);
     }
@@ -100,12 +101,7 @@ const ProductCard = ({
         </h3>
         
         <div className="flex items-center gap-1 mb-2">
-          <div className="flex items-center">
-            {renderStars(rating)}
-          </div>
-          <span className="text-sm text-gray-600 ml-1">
-            {rating} ({reviewCount})
-          </span>
+
         </div>
         
         <div className="flex items-center gap-2">

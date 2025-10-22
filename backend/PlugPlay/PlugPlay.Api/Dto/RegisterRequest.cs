@@ -2,7 +2,7 @@ using System.ComponentModel.DataAnnotations;
 
 namespace PlugPlay.Api.Dto;
 
-public class ReqisterRequest
+public class RegisterRequest
 {
     [Required]
     public string Email { get; set; }
