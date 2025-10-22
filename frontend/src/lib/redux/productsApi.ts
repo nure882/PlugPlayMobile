@@ -1,8 +1,5 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import { baseApi } from './baseApi';
 
-export const API_BASE_URL = 'http://localhost:5298'; // port may be different
-
-// Backend Product DTO interface
 export interface BackendProductDto {
   id: number;
   name: string;
@@ -20,9 +17,7 @@ export interface BackendProductDto {
   } | null;
 }
 
-export const productsApi = createApi({
-  reducerPath: 'productsApi',
-  baseQuery: fetchBaseQuery({ baseUrl: `${API_BASE_URL}/api` }),
+export const productsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     getAllProducts: builder.query<BackendProductDto[], void>({
       query: () => ({

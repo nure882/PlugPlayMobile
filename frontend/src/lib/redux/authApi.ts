@@ -1,12 +1,11 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import {User} from "../models/User.ts";
-
-export const API_BASE_URL = 'http://localhost:5298'; // port may be different
+import { baseApi } from './baseApi';
+import { User } from "../models/User.ts";
 
 // interface ApiError {
 //   message: string;
 //   status?: number;
 // }
+
 
 export interface LoginRequest {
   email: string;
@@ -28,9 +27,7 @@ export interface LoginResponse {
   user: User;
 }
 
-export const authApi = createApi({
-  reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({ baseUrl: `${API_BASE_URL}/api` }),
+export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
@@ -75,6 +72,7 @@ export const authApi = createApi({
     }),
   }),
 });
+
 export const {
   useLoginMutation,
   useRegisterMutation,
