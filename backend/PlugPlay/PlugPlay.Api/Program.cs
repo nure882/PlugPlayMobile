@@ -1,15 +1,17 @@
-using System.Diagnostics;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PlugPlay.Api;
+using PlugPlay.Api.Middleware;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services;
+using ExceptionHandlerMiddleware = PlugPlay.Api.Middleware.ExceptionHandlerMiddleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -95,11 +97,17 @@ builder.Services.AddAuthentication(options =>
             }
         };
     });
-
+builder.WebHost.ConfigureKestrel(options =>
+{
+    options.AddServerHeader = false;
+});
 builder.Services.AddAuthorization();
 builder.Services.RegisterServices();
 builder.Services.RegisterAutomapper();
 // builder.Services.Configure<LiqPaySettings>(builder.Configuration.GetSection("LiqPay"));
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
 
 var app = builder.Build();
 
@@ -109,7 +117,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-// app.UseMiddleware<ExceptionHandlerMiddleware>();
+app.UseMiddleware<ExceptionHandlerMiddleware>();
 // using var scope = app.Services.CreateScope();
 // var services = scope.ServiceProvider;
 // try
