@@ -1,4 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+// import { baseApi } from './baseApi';
 import {User} from "../models/User.ts";
 import { storage } from '../utils/StorageService.ts';
 
@@ -29,16 +30,13 @@ export interface LoginResponse {
   user: User;
 }
 
-export const authApi = createApi({
-  reducerPath: 'authApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: `${API_BASE_URL}/api`,
-    prepareHeaders: (headers) => {
-      const token = storage.getAccessToken();
-      if (token) headers.set('Authorization', `Bearer ${token}`);
-      return headers;
-    }
-  }),
+export const baseApi = createApi({
+  reducerPath: 'api',
+  baseQuery: fetchBaseQuery({ baseUrl: `${API_BASE_URL}/api` }),
+  endpoints: () => ({}),
+});
+
+export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
       query: (credentials) => ({
@@ -83,6 +81,7 @@ export const authApi = createApi({
     }),
   }),
 });
+
 export const {
   useLoginMutation,
   useRegisterMutation,
@@ -91,3 +90,4 @@ export const {
   useRefreshTokenMutation,
   useCreateAdminMutation,
 } = authApi;
+
