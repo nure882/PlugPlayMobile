@@ -13,9 +13,9 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // ВИПРАВЛЕНО: Встановлено IP-адресу, отриману з логів (192.168.0.111)
+    // ВИПРАВЛЕНО: Встановлено IP-адресу, отриману з логів (10.0.2.2)
     // Використовуємо HTTP/5298. Переконайтеся, що ви дозволили Cleartext Traffic в Android Manifest!
-    private const val BASE_URL = "http://192.168.0.111:5298/"
+    private const val BASE_URL = "http://10.0.2.2:5298/"
 
     @Provides
     @Singleton
