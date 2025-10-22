@@ -2,7 +2,8 @@ import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import Header from '../components/Header';
 import {GoogleLogin} from "@react-oauth/google";
-import {API_BASE_URL, useLoginMutation} from "../lib/redux/authApi.ts";
+import { useLoginMutation} from "../lib/redux/authApi.ts";
+import { API_BASE_URL } from '../lib/redux/baseApi.ts';
 import {storage} from "../lib/utils/StorageService.ts";
 
 export default function SignIn() {
