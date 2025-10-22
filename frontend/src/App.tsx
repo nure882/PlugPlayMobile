@@ -1,10 +1,10 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { GoogleOAuthProvider } from '@react-oauth/google';
+import {BrowserRouter, Routes, Route} from 'react-router-dom';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Catalog from './pages/Catalog';
 import Profile from './pages/Profile';
 import NotFound from './pages/NotFound';
+import {GoogleOAuthProvider} from "@react-oauth/google";
 import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {

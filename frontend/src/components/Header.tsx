@@ -6,9 +6,8 @@ import { useAuth } from '../lib/context/AuthContext';
 
 export default function Header() {
   const navigate = useNavigate();
-  const [searchQuery, setSearchQuery] = useState('');
-
   const { user, logout, isLoggingOut } = useAuth();
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleSignOut = async () => {
     await logout();
@@ -54,7 +53,7 @@ export default function Header() {
                 <Link to="/profile" className="p-2 text-gray-700 hover:text-black transition-colors">
                   <User className="w-6 h-6" />
                 </Link>
-                <button 
+                <button
                   onClick={handleSignOut}
                   disabled={isLoggingOut}
                   className="flex items-center gap-2 bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"

@@ -8,6 +8,7 @@ import {storage} from "../lib/utils/StorageService.ts";
 import {validateName, validateEmail, validatePhone, validatePassword} from '../lib/validation';
 import { useAuth } from '../lib/context/AuthContext.tsx';
 
+
 export default function SignUp() {
   const navigate = useNavigate();
   const [firstName, setFirstName] = useState('');
@@ -20,7 +21,7 @@ export default function SignUp() {
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const { setUser } = useAuth();
-  
+
 
   const [fieldErrors, setFieldErrors] = useState({
     firstName: '',
