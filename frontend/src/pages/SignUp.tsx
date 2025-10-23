@@ -2,12 +2,13 @@ import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import {Loader2} from 'lucide-react';
 import Header from '../components/Header';
-import { useRegisterMutation} from '../lib/redux/authApi.ts';
-import { API_BASE_URL } from '../lib/redux/baseApi.ts';
+import {useRegisterMutation} from '../lib/redux/authApi.ts';
+import {API_BASE_URL} from '../lib/redux/baseApi.ts';
 import {GoogleLogin} from "@react-oauth/google";
 import {storage} from "../lib/utils/StorageService.ts";
 import {validateName, validateEmail, validatePhone, validatePassword} from '../lib/validation';
-import { useAuth } from '../lib/context/AuthContext.tsx';
+import {useAuth} from '../lib/context/AuthContext.tsx';
+import {s} from "../lib/utils/useful.ts";
 
 
 export default function SignUp() {
@@ -21,7 +22,7 @@ export default function SignUp() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const { setUser } = useAuth();
+  const {setUser} = useAuth();
 
 
   const [fieldErrors, setFieldErrors] = useState({
@@ -133,12 +134,33 @@ export default function SignUp() {
         navigate('/signin');
       }, 1500);
     } catch (err: any) {
-      const msg =
-        err?.data?.message ||
-        err?.data?.error ||
-        err?.error ||
-        (err instanceof Error ? err.message : null) ||
-        'Registration failed. Please try again.';
+      const extractMessage = (e: any) => {
+        if (!e) {
+          return 'Registration failed. Please try again.';
+        }
+        if (typeof e === 'string') {
+          return e;
+        }
+        if (e instanceof Error) {
+          return e.message;
+        }
+        const payload = e?.data ?? e?.response ?? e;
+        if (typeof payload === 'string') {
+          try {
+            const parsed = JSON.parse(payload);
+            return parsed?.message || parsed?.error || payload;
+          } catch {
+            return payload;
+          }
+        }
+        if (typeof payload === 'object') {
+          return payload?.message || payload?.error || JSON.stringify(payload);
+        }
+        return String(e);
+      };
+
+      const msg = extractMessage(err);
+      s(msg);
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -149,22 +171,34 @@ export default function SignUp() {
     let errorMessage = '';
     switch (fieldName) {
       case 'firstName':
-        if (value && !validateName(value)) errorMessage = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        if (value && !validateName(value)) {
+          errorMessage = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        }
         break;
       case 'lastName':
-        if (value && !validateName(value)) errorMessage = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        if (value && !validateName(value)) {
+          errorMessage = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
+        }
         break;
       case 'phone':
-        if (value && !validatePhone(value)) errorMessage = 'International format: +country code + number';
+        if (value && !validatePhone(value)) {
+          errorMessage = 'International format: +country code + number';
+        }
         break;
       case 'email':
-        if (value && !validateEmail(value)) errorMessage = 'Invalid email format';
+        if (value && !validateEmail(value)) {
+          errorMessage = 'Invalid email format';
+        }
         break;
       case 'password':
-        if (value && !validatePassword(value)) errorMessage = 'Min 8 chars: digit, lowercase, uppercase, special';
+        if (value && !validatePassword(value)) {
+          errorMessage = 'Min 8 chars: digit, lowercase, uppercase, special';
+        }
         break;
       case 'confirmPassword':
-        if (value && value !== password) errorMessage = 'Passwords do not match';
+        if (value && value !== password) {
+          errorMessage = 'Passwords do not match';
+        }
         break;
     }
     setFieldErrors(prev => ({...prev, [fieldName]: errorMessage}));
