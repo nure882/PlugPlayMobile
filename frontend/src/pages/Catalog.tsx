@@ -1,24 +1,19 @@
 import { useState, useMemo } from 'react';
-import { Filter } from 'lucide-react';
+import { Filter, Loader2 } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import Header from '../components/Header';
 import CategoryFilter from '../components/CategoryFilter';
-import { mockProducts } from '../data/products';
+//import { mockProducts } from '../data/products';
 import FiltersSidebar, {
   Filters,
   SortOption,
 } from '../components/FiltersSidebar';
+import { mapBackendProductToDetail } from '../lib/utils/productMapper';
+import { useGetAllProductsQuery } from '../lib/redux/productsApi';
 
 const Catalog = () => {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-
-
-
-  // const maxPrice = useMemo(
-  //   () => Math.max(...mockProducts.map(p => p.price)),
-  //   []
-  // );
 
    const [filters, setFilters] = useState<Filters>({
      priceRange: [0, 10000],
@@ -32,8 +27,80 @@ const Catalog = () => {
      label: 'Rating (High to Low)',
    });
 
+  // const maxPrice = useMemo(
+  //   () => Math.max(...mockProducts.map(p => p.price)),
+  //   []
+  // );
+
   // const filteredAndSortedProducts = useMemo(() => {
   //   let filtered = [...mockProducts];
+
+
+  const { data: backendProducts = [], isLoading, isError } = useGetAllProductsQuery();
+  
+  const products = backendProducts?.map(mapBackendProductToDetail) ?? [];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="flex flex-col items-center gap-4">
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <p className="text-gray-600">Loading catalog...</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Products not found</h2>
+              <p className="text-gray-600 mb-4">
+                Error loading product catalog
+              </p>
+              <button
+                onClick={() => window.history.back()}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (products.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Header />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="flex items-center justify-center min-h-[400px]">
+            <div className="text-center">
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">The catalog is empty</h2>
+              <button
+                onClick={() => window.history.back()}
+                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Go Back
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
 
    
   //   filtered = filtered.filter(p => p.price <= filters.priceRange[1]);
@@ -131,7 +198,7 @@ const Catalog = () => {
 
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {mockProducts.map(product => (
+          {products.map(product => (
             <ProductCard
               key={product.id}
               id={product.id}
