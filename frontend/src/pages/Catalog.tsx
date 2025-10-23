@@ -17,7 +17,7 @@ const Catalog = () => {
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-  const [visibleCount, setVisibleCount] = useState(20);
+  const [visibleCount, setVisibleCount] = useState(4);
 
   const { data: backendProducts = [], isLoading, isError } = useGetAllProductsQuery();
   
