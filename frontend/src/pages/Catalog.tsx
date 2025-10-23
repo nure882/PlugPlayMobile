@@ -15,68 +15,68 @@ const Catalog = () => {
 
 
 
-  const maxPrice = useMemo(
-    () => Math.max(...mockProducts.map(p => p.price)),
-    []
-  );
+  // const maxPrice = useMemo(
+  //   () => Math.max(...mockProducts.map(p => p.price)),
+  //   []
+  // );
 
-  const [filters, setFilters] = useState<Filters>({
-    priceRange: [0, maxPrice],
-    rating: 0,
-    condition: { new: true, used: true },
-    badges: { new: false, sale: false },
-  });
+   const [filters, setFilters] = useState<Filters>({
+     priceRange: [0, 10000],
+     rating: 0,
+     condition: { new: true, used: true },
+     badges: { new: false, sale: false },
+   });
 
-  const [sortOption, setSortOption] = useState<SortOption>({
-    value: 'rating-desc',
-    label: 'Rating (High to Low)',
-  });
+   const [sortOption, setSortOption] = useState<SortOption>({
+     value: 'rating-desc',
+     label: 'Rating (High to Low)',
+   });
 
-  const filteredAndSortedProducts = useMemo(() => {
-    let filtered = [...mockProducts];
+  // const filteredAndSortedProducts = useMemo(() => {
+  //   let filtered = [...mockProducts];
 
    
-    filtered = filtered.filter(p => p.price <= filters.priceRange[1]);
-    filtered = filtered.filter(p => p.rating >= filters.rating);
+  //   filtered = filtered.filter(p => p.price <= filters.priceRange[1]);
+  //   filtered = filtered.filter(p => p.rating >= filters.rating);
     
    
-    if (!filters.condition.new || !filters.condition.used) {
-      if (filters.condition.new) {
-        filtered = filtered.filter(p => p.condition === 'new');
-      } else if (filters.condition.used) {
-        filtered = filtered.filter(p => p.condition === 'used');
-      } else {
-        return []; 
-      }
-    }
+  //   if (!filters.condition.new || !filters.condition.used) {
+  //     if (filters.condition.new) {
+  //       filtered = filtered.filter(p => p.condition === 'new');
+  //     } else if (filters.condition.used) {
+  //       filtered = filtered.filter(p => p.condition === 'used');
+  //     } else {
+  //       return []; 
+  //     }
+  //   }
 
     
-    if (filters.badges.new || filters.badges.sale) {
-      filtered = filtered.filter(p => {
-        if (filters.badges.new && p.badge === 'new') return true;
-        if (filters.badges.sale && p.badge === 'sale') return true;
-        return false;
-      });
-    }
+  //   if (filters.badges.new || filters.badges.sale) {
+  //     filtered = filtered.filter(p => {
+  //       if (filters.badges.new && p.badge === 'new') return true;
+  //       if (filters.badges.sale && p.badge === 'sale') return true;
+  //       return false;
+  //     });
+  //   }
 
     
-    switch (sortOption.value) {
-      case 'rating-desc':
-        filtered.sort((a, b) => b.rating - a.rating);
-        break;
-      case 'rating-asc':
-        filtered.sort((a, b) => a.rating - b.rating);
-        break;
-      case 'price-desc':
-        filtered.sort((a, b) => b.price - a.price);
-        break;
-      case 'price-asc':
-        filtered.sort((a, b) => a.price - b.price);
-        break;
-    }
+  //   switch (sortOption.value) {
+  //     case 'rating-desc':
+  //       filtered.sort((a, b) => b.rating - a.rating);
+  //       break;
+  //     case 'rating-asc':
+  //       filtered.sort((a, b) => a.rating - b.rating);
+  //       break;
+  //     case 'price-desc':
+  //       filtered.sort((a, b) => b.price - a.price);
+  //       break;
+  //     case 'price-asc':
+  //       filtered.sort((a, b) => a.price - b.price);
+  //       break;
+  //   }
 
-    return filtered;
-  }, [filters, sortOption]);
+  //   return filtered;
+  // }, [filters, sortOption]);
 
   const handleToggleFavorite = (productId: string) => {
     setFavoriteIds(prev => {
@@ -95,6 +95,7 @@ const Catalog = () => {
   };
 
   return (
+    
     <div className="min-h-screen bg-gray-50">
       <Header />
 
@@ -112,6 +113,7 @@ const Catalog = () => {
               <span>Filters</span>
             </button>
             {isSidebarOpen && (
+
               <div id="filter-sidebar">
                 <FiltersSidebar
                   isOpen={isSidebarOpen}
@@ -120,7 +122,7 @@ const Catalog = () => {
                   setFilters={setFilters}
                   sortOption={sortOption}
                   setSortOption={setSortOption}
-                  maxPrice={maxPrice}
+                  maxPrice={10000}
                 />
               </div>
             )}
@@ -129,17 +131,15 @@ const Catalog = () => {
 
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredAndSortedProducts.map(product => (
+          {mockProducts.map(product => (
             <ProductCard
               key={product.id}
               id={product.id}
               name={product.name}
               price={product.price}
-              originalPrice={product.originalPrice}
-              rating={product.rating}
+              rating={0}
               reviewCount={10} 
-              image={product.imageUrl}
-              badge={product.badge?.toUpperCase() as 'NEW' | 'SALE' | undefined}
+              image=""
               isFavorite={favoriteIds.has(product.id)}
               onToggleFavorite={handleToggleFavorite}
               onClick={handleProductClick}
