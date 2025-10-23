@@ -14,7 +14,7 @@ import java.lang.Void // [ВИПРАВЛЕНО] Правильний імпор�
 interface ShopApiService {
 
     @GET("api/Products/all")
-    suspend fun getProducts(): ProductListResponse
+    suspend fun getProducts(): List<ProductDto>
 
     @POST("api/auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>

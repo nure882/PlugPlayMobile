@@ -1,5 +1,6 @@
 package com.plugplay.plugplaymobile.data.repository
 
+import android.util.Log
 import com.plugplay.plugplaymobile.data.model.toDomainItem // [ДОДАНО]
 import com.plugplay.plugplaymobile.data.model.toDomainList
 import com.plugplay.plugplaymobile.data.remote.ShopApiService
@@ -15,9 +16,9 @@ class ProductRepositoryImpl @Inject constructor(
 
     override suspend fun getProducts(): Result<List<Product>> {
         return runCatching {
-            // [ВИПРАВЛЕНО] Отримуємо об'єкт -> беремо поле .products -> мапимо
-            val response = apiService.getProducts()
-            response.products.toDomainList()
+            val productsDtoList = apiService.getProducts()
+            Log.d("ProductRepositoryImpl", "Fetched products: $productsDtoList")
+            productsDtoList.toDomainList()
         }
     }
 
