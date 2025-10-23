@@ -4,16 +4,13 @@ import AccordionSection from '../components/AccordionSection';
 import { updateUserProfile } from '../lib/api';
 import { PlusCircle, Trash2 } from 'lucide-react';
 import { Address } from '../lib/types';
-import { validateName, validateEmail, validatePhone, validatePassword } from '../lib/validation';
+import { validateName, validateEmail, validatePhone } from '../lib/validation';
 
 type Errors = {
   firstName: string;
   lastName: string;
   phone: string;
   email: string;
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
   address: {
     city: string;
     street: string;
@@ -23,7 +20,6 @@ type Errors = {
 
 const initialErrors: Errors = {
   firstName: '', lastName: '', phone: '', email: '',
-  currentPassword: '', newPassword: '', confirmPassword: '',
   address: { city: '', street: '', house: '' }
 };
 
@@ -33,11 +29,6 @@ export default function Profile() {
   const [lastName, setLastName] = useState('Doe');
   const [phone, setPhone] = useState('+380123456789');
   const [email, setEmail] = useState('john@example.com');
-  
-  
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   
   
   const [addresses, setAddresses] = useState<Address[]>([
@@ -70,12 +61,6 @@ export default function Profile() {
       case 'email':
         if (!validateEmail(value)) errorMessage = 'Invalid email format';
         break;
-      case 'newPassword':
-        if (value && !validatePassword(value)) errorMessage = 'Password must contain at least 8 characters...';
-        break;
-      case 'confirmPassword':
-        if (value && value !== newPassword) errorMessage = 'Passwords do not match';
-        break;
     }
     setErrors(prev => ({ ...prev, [fieldName]: errorMessage }));
   };
@@ -84,9 +69,6 @@ export default function Profile() {
     const { value } = e.target;
     setter(value);
     validateField(fieldName, value);
-    if (fieldName === 'newPassword' && confirmPassword) {
-      validateField('confirmPassword', confirmPassword);
-    }
   };
 
   const validateForm = (): boolean => {
@@ -96,11 +78,6 @@ export default function Profile() {
     if (!validateName(lastName)) newErrors.lastName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
     if (!validatePhone(phone)) newErrors.phone = 'International format: +country code + number';
     if (!validateEmail(email)) newErrors.email = 'Invalid email format';
-    
-    if (currentPassword || newPassword || confirmPassword) {
-      if (!validatePassword(newPassword)) newErrors.newPassword = 'Password must contain at least 8 characters...';
-      if (newPassword !== confirmPassword) newErrors.confirmPassword = 'Passwords do not match';
-    }
     
     setErrors(newErrors);
     
@@ -121,9 +98,6 @@ export default function Profile() {
       await updateUserProfile({ firstName, lastName, phone, email });
       setIsEditing(false);
       setErrors(initialErrors);
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
     } catch (err) {
       console.error('Failed to save profile:', err);
     } finally {
@@ -136,9 +110,6 @@ export default function Profile() {
     setLastName(initialData.lastName);
     setPhone(initialData.phone);
     setEmail(initialData.email);
-    setCurrentPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
     setIsEditing(false);
     setErrors(initialErrors);
   };
@@ -218,28 +189,6 @@ export default function Profile() {
                 ) : <div className="text-sm text-gray-700">{email}</div>}
               </div>
             </div>
-          </AccordionSection>
-
-          <AccordionSection title="Change Password" subtitle="Change the password">
-            {isEditing ? (
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">Current Password</label>
-                  <input type="password" value={currentPassword} onChange={e => setCurrentPassword(e.target.value)} className="w-full px-3 py-2 border rounded-lg border-gray-300" placeholder="Enter current password"/>
-                  {errors.currentPassword && <p className="text-red-500 text-xs mt-1">{errors.currentPassword}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">New Password</label>
-                  <input type="password" value={newPassword} onChange={handleChange(setNewPassword, 'newPassword')} className="w-full px-3 py-2 border rounded-lg border-gray-300" placeholder="Enter new password" />
-                  {errors.newPassword && <p className="text-red-500 text-xs mt-1">{errors.newPassword}</p>}
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-black mb-1">Confirm New Password</label>
-                  <input type="password" value={confirmPassword} onChange={handleChange(setConfirmPassword, 'confirmPassword')} className="w-full px-3 py-2 border rounded-lg border-gray-300" placeholder="Confirm new password" />
-                  {errors.confirmPassword && <p className="text-red-500 text-xs mt-1">{errors.confirmPassword}</p>}
-                </div>
-              </div>
-            ) : <p className="text-sm text-gray-500">Press the 'Edit' button to change the password</p>}
           </AccordionSection>
           
           <AccordionSection title="Delivery Addresses" subtitle="Saved delivery addresses">
@@ -341,4 +290,3 @@ export default function Profile() {
     </div>
   );
 }
-
