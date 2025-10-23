@@ -13,8 +13,11 @@ import { useNavigate } from 'react-router-dom';
 
 const Catalog = () => {
   const navigate = useNavigate();
+
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isSidebarOpen, setSidebarOpen] = useState(false);
+
+  const [visibleCount, setVisibleCount] = useState(20);
 
   const { data: backendProducts = [], isLoading, isError } = useGetAllProductsQuery();
   
@@ -101,6 +104,8 @@ const Catalog = () => {
     );
   }
 
+  
+  const visibleProducts = products.slice(0, visibleCount);
 
   //   filtered = filtered.filter(p => p.price <= filters.priceRange[1]);
   //   filtered = filtered.filter(p => p.rating >= filters.rating);
@@ -197,7 +202,7 @@ const Catalog = () => {
 
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {products.map(product => (
+          {visibleProducts.map(product => (
             <ProductCard
               key={product.id}
               id={product.id}
@@ -214,11 +219,14 @@ const Catalog = () => {
         </div>
 
         
+        {visibleCount < products.length && (
         <div className="flex justify-center mt-12">
-          <button className="px-8 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium">
+          <button className="px-8 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium"
+          onClick={() => setVisibleCount(prev => prev + 4)}>
             Show more
+             
           </button>
-        </div>
+        </div>)}
       </div>
     </div>
   );
