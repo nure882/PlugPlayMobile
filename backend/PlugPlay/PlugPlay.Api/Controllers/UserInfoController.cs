@@ -15,6 +15,21 @@ public class UserInfoController : ControllerBase
         _userInfoService = userInfoService;
     }
 
+    [HttpGet("{token}")]
+    public async Task<IActionResult> GetUserByToken(string token)
+    {
+        var userResult = await _userInfoService.GetUserByTokenAsync(token);
+
+        if (userResult.Failure)
+        {
+            return BadRequest("No such user");
+        }
+
+        var user = userResult.Value;
+
+        return Ok(new { FirstName = user.FirstName, LastName = user.LastName });
+    }
+
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetUserInfoById(int id)
     {

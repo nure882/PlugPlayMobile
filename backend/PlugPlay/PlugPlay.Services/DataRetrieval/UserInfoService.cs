@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Dto;
@@ -96,6 +97,45 @@ namespace PlugPlay.Services.DataRetrieval
             await _context.SaveChangesAsync();
 
             return true;
+        }
+
+        public async Task<Result<User>> GetUserByTokenAsync(string token)
+        {
+            if (string.IsNullOrWhiteSpace(token))
+            {
+                return Result.Fail<User>("Token is required.");
+            }
+
+            try
+            {
+                var handler = new System.IdentityModel.Tokens.Jwt.JwtSecurityTokenHandler();
+                var jwt = handler.ReadJwtToken(token);
+                var idClaim = jwt.Claims.FirstOrDefault(c =>
+                    c.Type == System.Security.Claims.ClaimTypes.NameIdentifier ||
+                    c.Type == "id" ||
+                    c.Type == "sub" ||
+                    c.Type == "userId");
+
+                if (idClaim == null || !int.TryParse(idClaim.Value, out var userId))
+                {
+                    return Result.Fail<User>("Invalid token claims.");
+                }
+
+                var user = await _userManager.Users
+                    .Include(u => u.UserAddresses)
+                    .FirstOrDefaultAsync(u => u.Id == userId);
+
+                if (user == null)
+                {
+                    return Result.Fail<User>($"User with ID {userId} not found.");
+                }
+
+                return Result.Success(user);
+            }
+            catch (Exception ex)
+            {
+                return Result.Fail<User>($"Failed to get user from token: {ex.Message}");
+            }
         }
     }
 }

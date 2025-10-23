@@ -1,4 +1,5 @@
-﻿using PlugPlay.Domain.Entities;
+﻿using PlugPlay.Domain.Common;
+using PlugPlay.Domain.Entities;
 using PlugPlay.Services.Dto;
 
 namespace PlugPlay.Services.Interfaces
@@ -8,5 +9,7 @@ namespace PlugPlay.Services.Interfaces
         Task<User> GetUserInfoByIdAsync(int id);
 
         Task<bool> UpdateUserAsync(int userId, UserInfoDto dto);
+
+        Task<Result<User>> GetUserByTokenAsync(string token);
     }
 }
