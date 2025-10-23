@@ -1,10 +1,13 @@
-import { useState } from 'react';
+import {useEffect, useState} from 'react';
 import Header from '../components/Header';
 import AccordionSection from '../components/AccordionSection';
-import { updateUserProfile } from '../lib/api';
-import { PlusCircle, Trash2 } from 'lucide-react';
-import { Address } from '../lib/types';
-import { validateName, validateEmail, validatePhone } from '../lib/validation';
+import {updateUserProfile} from '../lib/api';
+import {PlusCircle, Trash2} from 'lucide-react';
+import {Address} from '../lib/types';
+import {validateName, validateEmail, validatePhone} from '../lib/validation';
+import {useGetUserByTokenQuery} from '../lib/redux/userInfoApi';
+import {storage} from '../lib/utils/StorageService';
+import {o, s} from "../lib/utils/useful.ts";
 
 type Errors = {
   firstName: string;
@@ -20,32 +23,43 @@ type Errors = {
 
 const initialErrors: Errors = {
   firstName: '', lastName: '', phone: '', email: '',
-  address: { city: '', street: '', house: '' }
+  address: {city: '', street: '', house: ''}
 };
 
 export default function Profile() {
-  
-  const [firstName, setFirstName] = useState('John');
-  const [lastName, setLastName] = useState('Doe');
+  // initialize empty; will be populated from token endpoint if available
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('+380123456789');
   const [email, setEmail] = useState('john@example.com');
-  
-  
+
   const [addresses, setAddresses] = useState<Address[]>([
-    { city: 'Kyiv', street: 'Main St', house: '42', apartments: '1' }
+    {city: 'Kyiv', street: 'Main St', house: '42', apartments: '1'}
   ]);
   const [newAddress, setNewAddress] = useState<Address>({
     city: '', street: '', house: '', apartments: ''
   });
-  
- 
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Errors>(initialErrors);
-  
-  
-  const [initialData, setInitialData] = useState({ firstName, lastName, phone, email });
-  
+
+  const [initialData, setInitialData] = useState({firstName: '', lastName: '', phone, email});
+
+  // fetch names by token (server returns { FirstName, LastName })
+  const token = storage.getAccessToken();
+  const {data: tokenUser, isFetching: isFetchingTokenUser} = useGetUserByTokenQuery(token ?? '', {skip: !token});
+// s(`token user: ${tokenUser.firstName} ${tokenUser.lastName}`);
+  // o(tokenUser as object);
+  useEffect(() => {
+    // populate first/last from token endpoint on load, but don't overwrite while editing
+    if (tokenUser && !isEditing) {
+      setFirstName(tokenUser.firstName);
+      setLastName(tokenUser.lastName);
+      setInitialData(prev => ({...prev, firstName: tokenUser.firstName, lastName: tokenUser.lastName}));
+    }
+  }, [tokenUser, isEditing]);
+
   const validateField = (fieldName: keyof Omit<Errors, 'address'>, value: string) => {
     let errorMessage = '';
     switch (fieldName) {
@@ -62,31 +76,30 @@ export default function Profile() {
         if (!validateEmail(value)) errorMessage = 'Invalid email format';
         break;
     }
-    setErrors(prev => ({ ...prev, [fieldName]: errorMessage }));
+    setErrors(prev => ({...prev, [fieldName]: errorMessage}));
   };
-  
+
   const handleChange = (setter: React.Dispatch<React.SetStateAction<string>>, fieldName: keyof Omit<Errors, 'address'>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { value } = e.target;
+    const {value} = e.target;
     setter(value);
     validateField(fieldName, value);
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Errors = { ...initialErrors, address: errors.address };
-    
+    const newErrors: Errors = {...initialErrors, address: errors.address};
+
     if (!validateName(firstName)) newErrors.firstName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
     if (!validateName(lastName)) newErrors.lastName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
     if (!validatePhone(phone)) newErrors.phone = 'International format: +country code + number';
     if (!validateEmail(email)) newErrors.email = 'Invalid email format';
-    
+
     setErrors(newErrors);
-    
-    
+
     return !Object.values(newErrors).some(error => typeof error === 'string' && error.length > 0);
   };
 
   const handleStartEdit = () => {
-    setInitialData({ firstName, lastName, phone, email });
+    setInitialData({firstName, lastName, phone, email});
     setIsEditing(true);
   };
 
@@ -95,7 +108,7 @@ export default function Profile() {
 
     setIsSaving(true);
     try {
-      await updateUserProfile({ firstName, lastName, phone, email });
+      await updateUserProfile({firstName, lastName, phone, email});
       setIsEditing(false);
       setErrors(initialErrors);
     } catch (err) {
@@ -115,20 +128,29 @@ export default function Profile() {
   };
 
   const handleAddAddress = () => {
-    const addressErrors = { city: '', street: '', house: '' };
+    const addressErrors = {city: '', street: '', house: ''};
     let isValid = true;
-    if (!newAddress.city) { addressErrors.city = 'City is required'; isValid = false; }
-    if (!newAddress.street) { addressErrors.street = 'Street is required'; isValid = false; }
-    if (!newAddress.house) { addressErrors.house = 'House number is required'; isValid = false; }
+    if (!newAddress.city) {
+      addressErrors.city = 'City is required';
+      isValid = false;
+    }
+    if (!newAddress.street) {
+      addressErrors.street = 'Street is required';
+      isValid = false;
+    }
+    if (!newAddress.house) {
+      addressErrors.house = 'House number is required';
+      isValid = false;
+    }
 
     if (!isValid) {
-      setErrors(prev => ({ ...prev, address: addressErrors }));
+      setErrors(prev => ({...prev, address: addressErrors}));
       return;
     }
 
     setAddresses(prev => [...prev, newAddress]);
-    setNewAddress({ city: '', street: '', house: '', apartments: '' });
-    setErrors(prev => ({ ...prev, address: initialErrors.address }));
+    setNewAddress({city: '', street: '', house: '', apartments: ''});
+    setErrors(prev => ({...prev, address: initialErrors.address}));
   };
 
   const handleDeleteAddress = (index: number) => {
@@ -137,11 +159,12 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header/>
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
           <h1 className="text-xl font-semibold text-black">Personal Information</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage your personal details, delivery addresses, and account preferences</p>
+          <p className="text-sm text-gray-500 mt-1">Manage your personal details, delivery addresses, and account
+            preferences</p>
         </div>
 
         <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
@@ -151,7 +174,8 @@ export default function Profile() {
                 <label className="block text-sm font-medium text-black mb-1">First Name</label>
                 {isEditing ? (
                   <>
-                    <input value={firstName} onChange={handleChange(setFirstName, 'firstName')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={firstName} onChange={handleChange(setFirstName, 'firstName')}
+                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
                     {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{firstName}</div>}
@@ -160,7 +184,8 @@ export default function Profile() {
                 <label className="block text-sm font-medium text-black mb-1">Last Name</label>
                 {isEditing ? (
                   <>
-                    <input value={lastName} onChange={handleChange(setLastName, 'lastName')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={lastName} onChange={handleChange(setLastName, 'lastName')}
+                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
                     {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{lastName}</div>}
@@ -174,7 +199,8 @@ export default function Profile() {
                 <label className="block text-sm font-medium text-black mb-1">Phone</label>
                 {isEditing ? (
                   <>
-                    <input value={phone} onChange={handleChange(setPhone, 'phone')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={phone} onChange={handleChange(setPhone, 'phone')}
+                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
                     {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{phone}</div>}
@@ -183,14 +209,15 @@ export default function Profile() {
                 <label className="block text-sm font-medium text-black mb-1">Email</label>
                 {isEditing ? (
                   <>
-                    <input value={email} onChange={handleChange(setEmail, 'email')} className="w-full px-3 py-2 border rounded-lg border-gray-300" />
+                    <input value={email} onChange={handleChange(setEmail, 'email')}
+                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{email}</div>}
               </div>
             </div>
           </AccordionSection>
-          
+
           <AccordionSection title="Delivery Addresses" subtitle="Saved delivery addresses">
             <div className="space-y-6">
               {addresses.map((address, index) => (
@@ -207,7 +234,7 @@ export default function Profile() {
                       className="text-red-600 hover:text-red-700"
                       aria-label="Delete address"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-4 h-4"/>
                     </button>
                   )}
                 </div>
@@ -221,7 +248,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">City</label>
                       <input
                         value={newAddress.city}
-                        onChange={e => setNewAddress(prev => ({ ...prev, city: e.target.value }))}
+                        onChange={e => setNewAddress(prev => ({...prev, city: e.target.value}))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter city"
                       />
@@ -231,7 +258,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">Street</label>
                       <input
                         value={newAddress.street}
-                        onChange={e => setNewAddress(prev => ({ ...prev, street: e.target.value }))}
+                        onChange={e => setNewAddress(prev => ({...prev, street: e.target.value}))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter street"
                       />
@@ -241,7 +268,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">House</label>
                       <input
                         value={newAddress.house}
-                        onChange={e => setNewAddress(prev => ({ ...prev, house: e.target.value }))}
+                        onChange={e => setNewAddress(prev => ({...prev, house: e.target.value}))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter house number"
                       />
@@ -251,7 +278,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">Apartment (optional)</label>
                       <input
                         value={newAddress.apartments}
-                        onChange={e => setNewAddress(prev => ({ ...prev, apartments: e.target.value }))}
+                        onChange={e => setNewAddress(prev => ({...prev, apartments: e.target.value}))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter apartment number"
                       />
@@ -261,7 +288,7 @@ export default function Profile() {
                     onClick={handleAddAddress}
                     className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
                   >
-                    <PlusCircle className="w-4 h-4" />
+                    <PlusCircle className="w-4 h-4"/>
                     <span>Add Address</span>
                   </button>
                 </div>
@@ -275,15 +302,19 @@ export default function Profile() {
         </div>
 
         <div className="flex justify-end gap-3 mt-6">
-            {isEditing ? (
+          {isEditing ? (
             <>
-              <button onClick={handleCancel} className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel</button>
-              <button onClick={handleSave} disabled={isSaving} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+              <button onClick={handleCancel}
+                      className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel
+              </button>
+              <button onClick={handleSave} disabled={isSaving}
+                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </>
           ) : (
-            <button onClick={handleStartEdit} className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Edit</button>
+            <button onClick={handleStartEdit}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Edit</button>
           )}
         </div>
       </div>

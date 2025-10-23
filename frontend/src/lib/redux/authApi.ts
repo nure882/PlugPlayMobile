@@ -75,5 +75,5 @@ export const {
   useLogoutMutation,
   useVerifyQuery,
   useRefreshTokenMutation,
-  useCreateAdminMutation,
+  useCreateAdminMutation
 } = authApi;
