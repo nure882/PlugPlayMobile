@@ -3,29 +3,22 @@ import { Filter, Loader2 } from 'lucide-react';
 import ProductCard from '../components/ProductCard';
 import Header from '../components/Header';
 import CategoryFilter from '../components/CategoryFilter';
-//import { mockProducts } from '../data/products';
 import FiltersSidebar, {
   Filters,
   SortOption,
 } from '../components/FiltersSidebar';
 import { mapBackendProductToDetail } from '../lib/utils/productMapper';
 import { useGetAllProductsQuery } from '../lib/redux/productsApi';
+import { useNavigate } from 'react-router-dom';
 
 const Catalog = () => {
+  const navigate = useNavigate();
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
-   const [filters, setFilters] = useState<Filters>({
-     priceRange: [0, 10000],
-     rating: 0,
-     condition: { new: true, used: true },
-     badges: { new: false, sale: false },
-   });
-
-   const [sortOption, setSortOption] = useState<SortOption>({
-     value: 'rating-desc',
-     label: 'Rating (High to Low)',
-   });
+  const { data: backendProducts = [], isLoading, isError } = useGetAllProductsQuery();
+  
+  const products = backendProducts?.map(mapBackendProductToDetail) ?? [];
 
   // const maxPrice = useMemo(
   //   () => Math.max(...mockProducts.map(p => p.price)),
@@ -35,10 +28,17 @@ const Catalog = () => {
   // const filteredAndSortedProducts = useMemo(() => {
   //   let filtered = [...mockProducts];
 
+  const [filters, setFilters] = useState<Filters>({
+     priceRange: [0, 10000],
+     rating: 0,
+     condition: { new: true, used: true },
+     badges: { new: false, sale: false },
+   });
 
-  const { data: backendProducts = [], isLoading, isError } = useGetAllProductsQuery();
-  
-  const products = backendProducts?.map(mapBackendProductToDetail) ?? [];
+  const [sortOption, setSortOption] = useState<SortOption>({
+     value: 'rating-desc',
+     label: 'Rating (High to Low)',
+   });
 
   if (isLoading) {
     return (
@@ -102,7 +102,6 @@ const Catalog = () => {
   }
 
 
-   
   //   filtered = filtered.filter(p => p.price <= filters.priceRange[1]);
   //   filtered = filtered.filter(p => p.rating >= filters.rating);
     
@@ -158,7 +157,7 @@ const Catalog = () => {
   };
 
   const handleProductClick = (productId: string) => {
-    console.log('Clicked product:', productId);
+     navigate(`/product/${productId}`);
   };
 
   return (
