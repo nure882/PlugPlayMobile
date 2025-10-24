@@ -3,11 +3,10 @@ import {useNavigate, Link} from 'react-router-dom';
 import {Loader2} from 'lucide-react';
 import Header from '../components/common/Header.tsx';
 import {useRegisterMutation} from '../api/authApi.ts';
-import {API_BASE_URL} from '../api/baseApi.ts';
 import {GoogleLogin} from "@react-oauth/google";
-import {storage} from "../utils/StorageService.ts";
 import {validateName, validateEmail, validatePhone, validatePassword} from '../utils/validation.ts';
 import {useAuth} from '../context/AuthContext.tsx';
+import {handleGoogleError, handleGoogleSuccess} from "../features/auth/googleHelper.ts";
 // import {s} from "../lib/utils/useful.ts";
 
 
@@ -204,7 +203,6 @@ export default function SignUp() {
     setFieldErrors(prev => ({...prev, [fieldName]: errorMessage}));
   };
 
-
   const handleChange = (setter: React.Dispatch<React.SetStateAction<string>>, fieldName: keyof typeof fieldErrors) => (e: React.ChangeEvent<HTMLInputElement>) => {
     const {value} = e.target;
     setter(value);
@@ -215,35 +213,16 @@ export default function SignUp() {
     }
   };
 
-  const handleGoogleSuccess = async (credentialResponse: any) => {
+  const handleGoogleSuccessWrapper = async (credentialResponse: any) => {
     try {
-      const response = await fetch(
-        `${API_BASE_URL}/api/auth/google`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            idToken: credentialResponse.credential
-          })
-        });
-
-      const data = await response.json();
-      // console.log(data);
-
-      storage.setTokens(data.token, data.refreshToken);
-      setUser(data.user);
-
-
-      // console.log('Login successful:', data.user);
-    } catch (error) {
-      console.error('Login failed:', error);
+      const user = await handleGoogleSuccess(credentialResponse);
+      if (user) {
+        setUser(user);
+      }
+    } catch (e) {
+      console.error('Google sign-in handling failed', e);
     }
-  };
-
-  const handleGoogleError = () => {
-    console.error('Google Sign-In failed');
-  };
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -333,7 +312,7 @@ export default function SignUp() {
 
             <div>
               <GoogleLogin
-                onSuccess={handleGoogleSuccess}
+                onSuccess={handleGoogleSuccessWrapper}
                 onError={handleGoogleError}
                 text={"signup_with"}
               />

@@ -1,6 +1,6 @@
 import axios from 'axios';
-import {storage} from "../utils/StorageService.ts";
-import {API_BASE_URL} from '../api/authApi.ts';
+import {storage} from "../../utils/StorageService.ts";
+import {API_BASE_URL} from '../../api/baseApi.ts';
 
 const api = axios.create({
   baseURL: `${API_BASE_URL}/api`,
