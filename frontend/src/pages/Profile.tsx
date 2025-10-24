@@ -3,7 +3,7 @@ import Header from '../components/common/Header.tsx';
 import AccordionSection from '../components/profile/AccordionSection.tsx';
 import {updateUserProfile} from '../api/userInfoApi.ts';
 import {PlusCircle, Trash2} from 'lucide-react';
-import {Address} from '../models/Product.ts';
+import {Address} from '../models/Address.ts';
 import {validateName, validateEmail, validatePhone} from '../utils/validation.ts';
 import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
 import {storage} from '../utils/StorageService';

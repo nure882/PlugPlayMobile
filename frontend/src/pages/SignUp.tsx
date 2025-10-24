@@ -33,7 +33,7 @@ export default function SignUp() {
     confirmPassword: ''
   });
 
-  const [register, {isLoading: isRegistering}] = useRegisterMutation();
+  const [register] = useRegisterMutation();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
