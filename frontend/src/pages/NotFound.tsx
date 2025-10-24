@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Home, ArrowLeft } from 'lucide-react';
-import Header from '../components/Header';
+import Header from '../components/common/Header.tsx';
 
 export default function NotFound() {
   return (

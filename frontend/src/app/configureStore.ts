@@ -3,7 +3,7 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 import { persistStore, persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
 
-import { baseApi } from './baseApi'
+import { baseApi } from '../api/baseApi.ts'
 
 const rootReducer = combineReducers({
   

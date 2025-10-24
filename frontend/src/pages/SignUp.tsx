@@ -1,14 +1,14 @@
 import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import {Loader2} from 'lucide-react';
-import Header from '../components/Header';
-import {useRegisterMutation} from '../lib/redux/authApi.ts';
-import {API_BASE_URL} from '../lib/redux/baseApi.ts';
+import Header from '../components/common/Header.tsx';
+import {useRegisterMutation} from '../api/authApi.ts';
+import {API_BASE_URL} from '../api/baseApi.ts';
 import {GoogleLogin} from "@react-oauth/google";
-import {storage} from "../lib/utils/StorageService.ts";
-import {validateName, validateEmail, validatePhone, validatePassword} from '../lib/validation';
-import {useAuth} from '../lib/context/AuthContext.tsx';
-import {s} from "../lib/utils/useful.ts";
+import {storage} from "../utils/StorageService.ts";
+import {validateName, validateEmail, validatePhone, validatePassword} from '../utils/validation.ts';
+import {useAuth} from '../context/AuthContext.tsx';
+// import {s} from "../lib/utils/useful.ts";
 
 
 export default function SignUp() {
@@ -160,7 +160,7 @@ export default function SignUp() {
       };
 
       const msg = extractMessage(err);
-      s(msg);
+      // s(msg);
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -229,13 +229,13 @@ export default function SignUp() {
         });
 
       const data = await response.json();
-      console.log(data);
+      // console.log(data);
 
       storage.setTokens(data.token, data.refreshToken);
       setUser(data.user);
 
 
-      console.log('Login successful:', data.user);
+      // console.log('Login successful:', data.user);
     } catch (error) {
       console.error('Login failed:', error);
     }

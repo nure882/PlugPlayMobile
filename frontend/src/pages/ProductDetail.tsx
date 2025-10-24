@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw } from 'lucide-react';
-import Header from '../components/Header';
-import { useGetProductByIdQuery } from '../lib/redux/productsApi';
-import { mapBackendProductToDetail } from '../lib/utils/productMapper';
+import Header from '../components/common/Header.tsx';
+import { useGetProductByIdQuery } from '../api/productsApi.ts';
+import { mapBackendProductToDetail } from '../utils/productMapper';
 
 const ProductDetail = () => {
   const { id } = useParams<{ id: string }>();

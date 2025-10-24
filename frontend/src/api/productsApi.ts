@@ -1,4 +1,4 @@
-import { baseApi } from './baseApi';
+import { baseApi } from './baseApi.ts';
 
 export interface BackendProductDto {
   id: number;

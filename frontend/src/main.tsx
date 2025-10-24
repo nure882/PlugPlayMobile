@@ -3,9 +3,9 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import {Provider} from "react-redux";
-import {persistor, store} from "./lib/redux/configureStore.ts";
+import {persistor, store} from "./app/configureStore.ts";
 import {PersistGate} from "redux-persist/integration/react";
-import { AuthProvider } from './lib/context/AuthContext.tsx';
+import { AuthProvider } from './context/AuthContext.tsx';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

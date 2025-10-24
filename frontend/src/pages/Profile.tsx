@@ -1,13 +1,13 @@
 import {useEffect, useState} from 'react';
-import Header from '../components/Header';
-import AccordionSection from '../components/AccordionSection';
-import {updateUserProfile} from '../lib/api';
+import Header from '../components/common/Header.tsx';
+import AccordionSection from '../components/profile/AccordionSection.tsx';
+import {updateUserProfile} from '../api/userInfoApi.ts';
 import {PlusCircle, Trash2} from 'lucide-react';
-import {Address} from '../lib/types';
-import {validateName, validateEmail, validatePhone} from '../lib/validation';
-import {useGetUserByTokenQuery} from '../lib/redux/userInfoApi';
-import {storage} from '../lib/utils/StorageService';
-import {o, s} from "../lib/utils/useful.ts";
+import {Address} from '../models/Product.ts';
+import {validateName, validateEmail, validatePhone} from '../utils/validation.ts';
+import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
+import {storage} from '../utils/StorageService';
+import {o, s} from "../utils/useful.ts";
 
 type Errors = {
   firstName: string;

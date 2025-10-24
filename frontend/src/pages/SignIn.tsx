@@ -1,11 +1,11 @@
 import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
-import Header from '../components/Header';
+import Header from '../components/common/Header.tsx';
 import {GoogleLogin} from "@react-oauth/google";
-import { useLoginMutation} from "../lib/redux/authApi.ts";
-import { API_BASE_URL } from '../lib/redux/baseApi.ts';
-import {storage} from "../lib/utils/StorageService.ts";
-import { useAuth } from '../lib/context/AuthContext.tsx';
+import { useLoginMutation} from "../api/authApi.ts";
+import { API_BASE_URL } from '../api/baseApi.ts';
+import {storage} from "../utils/StorageService.ts";
+import { useAuth } from '../context/AuthContext.tsx';
 
 export default function SignIn() {
   const navigate = useNavigate();
@@ -79,13 +79,13 @@ export default function SignIn() {
         });
 
       const data = await response.json();
-      console.log(data);
+      // console.log(data);
 
       storage.setTokens(data.token, data.refreshToken);
       setUser(data.user);
 
 
-      console.log('Login successful:', data.user);
+      // console.log('Login successful:', data.user);
     } catch (error) {
       console.error('Login failed:', error);
     }
