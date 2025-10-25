@@ -2,18 +2,38 @@ using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PlugPlay.Api;
-using PlugPlay.Api.Middleware;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services;
+using Serilog;
+using Serilog.Events;
 using ExceptionHandlerMiddleware = PlugPlay.Api.Middleware.ExceptionHandlerMiddleware;
 
+var config = new ConfigurationBuilder()
+    .AddJsonFile("appsettings.json", optional: true, reloadOnChange: true)
+    .AddEnvironmentVariables()
+    .Build();
+
+Log.Logger = new LoggerConfiguration()
+    .ReadFrom.Configuration(config) // optional: if you add Serilog section to appsettings.json
+    .Enrich.FromLogContext()
+    .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
+    .WriteTo.Console()
+    .WriteTo.File(
+        path: "Logs/log-.txt", // todo: change dir
+        rollingInterval: RollingInterval.Day,
+        retainedFileCountLimit: 14,
+        fileSizeLimitBytes: 10_000_000,
+        rollOnFileSizeLimit: true,
+        shared: true) // important for Docker
+    .CreateLogger();
+
 var builder = WebApplication.CreateBuilder(args);
+builder.Host.UseSerilog();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -110,28 +130,40 @@ builder.Logging.ClearProviders();
 builder.Logging.AddConsole();
 
 var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
+try
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
+    Log.Information("Starting up");
+    if (app.Environment.IsDevelopment())
+    {
+        app.UseSwagger();
+        app.UseSwaggerUI();
+    }
+
+    app.UseMiddleware<ExceptionHandlerMiddleware>();
+    // using var scope = app.Services.CreateScope();
+    // var services = scope.ServiceProvider;
+    // try
+    // {
+    //     DataSeed.Seed(services);
+    // }
+    // catch (Exception ex)
+    // {
+    //     Debug.WriteLine(ex.Message, ex.StackTrace);
+    // }
+
+    app.UseCors("AllowAllOrigins");
+    app.UseAuthentication();
+    app.UseAuthorization();
+    app.MapControllers();
+
+    app.Run();
+}
+catch (Exception ex)
+{
+    Log.Fatal(ex, "Application start-up failed");
+}
+finally
+{
+    Log.CloseAndFlush();
 }
 
-app.UseMiddleware<ExceptionHandlerMiddleware>();
-// using var scope = app.Services.CreateScope();
-// var services = scope.ServiceProvider;
-// try
-// {
-//     DataSeed.Seed(services);
-// }
-// catch (Exception ex)
-// {
-//     Debug.WriteLine(ex.Message, ex.StackTrace);
-// }
-
-app.UseCors("AllowAllOrigins");
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
-
-app.Run();

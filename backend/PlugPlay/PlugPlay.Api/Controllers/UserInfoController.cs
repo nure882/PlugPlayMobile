@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Dto;
 using PlugPlay.Services.Interfaces;
 
@@ -24,15 +25,16 @@ public class UserInfoController : ControllerBase
         _logger.LogInformation("Getting user by token");
         
         var userResult = await _userInfoService.GetUserByTokenAsync(token);
-
+        userResult.OnFailure(() =>
+                _logger.LogWarning("Failed to get user by token: {Error}", userResult.Error))
+            .OnSuccess(() =>
+                _logger.LogInformation("Successfully retrieved user ID: {UserId} by token", userResult.Value.Id));
         if (userResult.Failure)
         {
-            _logger.LogWarning("Failed to get user by token: {Error}", userResult.Error);
             return BadRequest("No such user");
         }
 
         var user = userResult.Value;
-        _logger.LogInformation("Successfully retrieved user ID: {UserId} by token", user.Id);
 
         return Ok(new { FirstName = user.FirstName, LastName = user.LastName });
     }
@@ -80,7 +82,7 @@ public class UserInfoController : ControllerBase
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UserInfoDto dto)
     {
         _logger.LogInformation("Updating user with ID: {UserId}", id);
-        
+
         try
         {
             var result = await _userInfoService.UpdateUserAsync(id, dto);
