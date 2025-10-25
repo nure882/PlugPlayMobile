@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Enums;
@@ -23,22 +24,28 @@ public class AuthService : IAuthService
 
     private readonly IHttpContextAccessor _httpContextAccessor;
 
+    private readonly ILogger<AuthService> _logger;
+
     public AuthService(PlugPlayDbContext context,
         UserManager<User> userManager,
         IJwtService jwtService,
         IHttpContextAccessor httpContextAccessor,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        ILogger<AuthService> logger)
     {
         _context = context;
         _userManager = userManager;
         _jwtService = jwtService;
         _httpContextAccessor = httpContextAccessor;
         _configuration = configuration;
+        _logger = logger;
     }
 
     public async Task<Result> RegisterAsync(User user, string password,
         string phoneNumber, string firstName, string lastName)
     {
+        _logger.LogInformation("Registering new user with email: {Email}", user.Email);
+        
         user.PhoneNumber = phoneNumber ?? "";
         user.UserName = user.Email;
         user.FirstName = firstName;
@@ -47,6 +54,9 @@ public class AuthService : IAuthService
         var result = await _userManager.CreateAsync(user, password);
         if (!result.Succeeded)
         {
+            _logger.LogError("Failed to create user {Email}. Errors: {Errors}", 
+                user.Email, string.Join(", ", result.Errors.Select(e => e.Description)));
+            
             return Result.Fail($"Failed to create a user: {string.Join(", ",
                 result.Errors.Select(e => e.Description))}");
         }
@@ -54,29 +64,42 @@ public class AuthService : IAuthService
         var roleResult = await _userManager.AddToRoleAsync(user, user.Role.ToString());
         if (!roleResult.Succeeded)
         {
+            _logger.LogError("Failed to assign role {Role} to user {Email}. Errors: {Errors}", 
+                user.Role, user.Email, string.Join(", ", roleResult.Errors.Select(e => e.Description)));
+           
             return Result.Fail(
                 $"Failed to assign role: {string.Join(", ",
                     roleResult.Errors.Select(e => e.Description))}");
         }
 
+        _logger.LogInformation("Successfully registered user with email: {Email}", user.Email);
+       
         return Result.Success();
     }
 
     public async Task<Result<User>> ValidateUserCredentials(string email, string password)
     {
+        _logger.LogInformation("Validating credentials for user: {Email}", email);
+        
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Email == email);
 
         if (user == null || !(await VerifyPasswordAsync(user, password)))
         {
+            _logger.LogWarning("Invalid credentials for user: {Email}", email);
+            
             return Result.Fail<User>("Invalid email or password");
         }
 
+        _logger.LogInformation("Successfully validated credentials for user: {Email}", email);
+       
         return Result.Success(user);
     }
 
     public async Task<(string token, string refreshToken)> GenerateTokens(User user)
     {
+        _logger.LogInformation("Generating tokens for user ID: {UserId}", user.Id);
+        
         var token = _jwtService.GenerateToken(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
 
@@ -84,8 +107,10 @@ public class AuthService : IAuthService
             .Where(rt => rt.UserId == user.Id && rt.Expires > DateTime.UtcNow && rt.Revoked == null)
             .OrderBy(rt => rt.CreatedAt)
             .ToListAsync();
+            
         if (activeTokens.Count >= 5)
         {
+            _logger.LogInformation("Removing oldest refresh token for user ID: {UserId}", user.Id);
             var oldestToken = activeTokens.First();
             _context.UserRefreshTokens.Remove(oldestToken);
         }
@@ -105,12 +130,15 @@ public class AuthService : IAuthService
         _context.UserRefreshTokens.RemoveRange(oldTokens);
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Successfully generated and saved tokens for user ID: {UserId}", user.Id);
 
         return (token, refreshToken);
     }
 
     public async Task<Result<GoogleJsonWebSignature.Payload>> ValidateGoogleSignInRequestAsync(string idToken)
     {
+        _logger.LogInformation("Validating Google sign-in request");
+        
         GoogleJsonWebSignature.Payload payload;
         try
         {
@@ -122,50 +150,69 @@ public class AuthService : IAuthService
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Google token validation failed");
+           
             return Result.Fail<GoogleJsonWebSignature.Payload>("Validation error");
         }
 
         if (payload == null)
         {
+            _logger.LogWarning("Google token payload is null");
+            
             return Result.Fail<GoogleJsonWebSignature.Payload>("Invalid Google token payload");
         }
 
         var issuer = payload.Issuer;
         if (issuer != "accounts.google.com" && issuer != "https://accounts.google.com")
         {
+            _logger.LogWarning("Invalid Google token issuer: {Issuer}", issuer);
+          
             return Result.Fail<GoogleJsonWebSignature.Payload>("Invalid token issuer");
         }
 
         if (payload.EmailVerified == null || payload.EmailVerified == false)
         {
+            _logger.LogWarning("Email not verified by Google for user: {Email}", payload.Email);
+           
             return Result.Fail<GoogleJsonWebSignature.Payload>("Email not verified by Google");
         }
 
+        _logger.LogInformation("Successfully validated Google sign-in request for email: {Email}", payload.Email);
+       
         return Result.Success(payload);
     }
 
     public async Task<Result<User>> GetOrCreateUser(string payloadEmail, string payloadName, string payloadSubject)
     {
+        _logger.LogInformation("Getting or creating user for Google ID: {GoogleId}", payloadSubject);
+        
         if (string.IsNullOrEmpty(payloadSubject) || string.IsNullOrEmpty(payloadEmail))
         {
+            _logger.LogWarning("Invalid Google payload: empty subject or email");
+           
             return Result.Fail<User>("Invalid Google payload");
         }
 
         var user = await _userManager.FindByLoginAsync("Google", payloadSubject);
         if (user != null)
         {
+            _logger.LogInformation("Found existing user with Google login: {Email}", user.Email);
+          
             return Result.Success(user);
         }
 
         user = await _userManager.FindByEmailAsync(payloadEmail);
         if (user != null)
         {
+            _logger.LogInformation("Found existing user by email, fixing Google login: {Email}", payloadEmail);
             var fixResult = await FixLoginInUserManager(payloadSubject, user);
+          
             return fixResult.Failure ? Result.Fail<User>(fixResult.Error) : Result.Success(user);
         }
 
         try
         {
+            _logger.LogInformation("Creating new user for Google email: {Email}", payloadEmail);
             var userCreateResult = await CreateNewUser(payloadEmail, payloadName, payloadSubject);
             if (userCreateResult.Failure)
             {
@@ -176,18 +223,25 @@ public class AuthService : IAuthService
             var addLogin = await _userManager.AddLoginAsync(userCreateResult.Value, login);
             if (!addLogin.Succeeded)
             {
+                _logger.LogError("Failed to add Google login for user: {Email}. Errors: {Errors}", 
+                    payloadEmail, string.Join(", ", addLogin.Errors.Select(e => e.Description)));
+             
                 return Result.Fail<User>(
                     string.Join(", ", addLogin.Errors.Select(e => e.Description)));
             }
 
+            _logger.LogInformation("Successfully created user with Google login: {Email}", payloadEmail);
+          
             return Result.Success(userCreateResult.Value);
         }
         catch (DbUpdateException ex)
         {
+            _logger.LogError(ex, "Database error while creating user for Google email: {Email}", payloadEmail);
             user = await _userManager.FindByEmailAsync(payloadEmail);
             if (user != null)
             {
                 var fixResult = await FixLoginInUserManager(payloadSubject, user);
+              
                 return fixResult.Failure ? Result.Fail<User>(fixResult.Error) : Result.Success(user);
             }
 
@@ -197,6 +251,8 @@ public class AuthService : IAuthService
 
     public async Task<Result<RefreshTokenResponse>> RefreshTokenAsync(string token)
     {
+        _logger.LogInformation("Refreshing token");
+        
         await using var tx = await _context.Database.BeginTransactionAsync();
 
         var storedRefreshToken = await _context.UserRefreshTokens
@@ -205,13 +261,17 @@ public class AuthService : IAuthService
 
         if (storedRefreshToken == null)
         {
+            _logger.LogWarning("Invalid or expired refresh token provided");
+           
             return Result.Fail<RefreshTokenResponse>("Invalid refresh token");
         }
 
         if (storedRefreshToken.Revoked != null)
         {
+            _logger.LogWarning("Token theft detected for user ID: {UserId}", storedRefreshToken.UserId);
             await RevokeTokenChainAsync(storedRefreshToken);
             await tx.CommitAsync();
+         
             return Result.Fail<RefreshTokenResponse>("Token theft detected");
         }
 
@@ -235,6 +295,8 @@ public class AuthService : IAuthService
 
         await _context.SaveChangesAsync();
         await tx.CommitAsync();
+        
+        _logger.LogInformation("Successfully refreshed token for user ID: {UserId}", storedRefreshToken.UserId);
 
         return Result.Success(new RefreshTokenResponse
         {
@@ -249,6 +311,8 @@ public class AuthService : IAuthService
 
     private async Task RevokeTokenChainAsync(UserRefreshToken startToken)
     {
+        _logger.LogInformation("Revoking token chain starting from token for user ID: {UserId}", startToken.UserId);
+        
         if (startToken.Revoked == null)
         {
             startToken.Revoked = DateTime.UtcNow;
@@ -276,10 +340,13 @@ public class AuthService : IAuthService
         }
 
         await _context.SaveChangesAsync();
+        _logger.LogInformation("Successfully revoked token chain for user ID: {UserId}", startToken.UserId);
     }
 
     public async Task<Result> LogoutAsync(string token)
     {
+        _logger.LogInformation("Logging out user with refresh token");
+        
         var refreshToken = await _context.UserRefreshTokens
             .FirstOrDefaultAsync(rt => rt.Token == token);
 
@@ -288,9 +355,12 @@ public class AuthService : IAuthService
             refreshToken.Revoked = DateTime.UtcNow;
             refreshToken.RevokedByIp = GetIpAddress();
             await _context.SaveChangesAsync();
+            _logger.LogInformation("Successfully logged out user ID: {UserId}", refreshToken.UserId);
         }
         else
         {
+            _logger.LogWarning("Refresh token not found during logout");
+       
             return Result.Fail("Refresh token wasn't found");
         }
 
@@ -299,14 +369,21 @@ public class AuthService : IAuthService
 
     public async Task<Result<User>> GetUserAsync(int userId)
     {
+        _logger.LogInformation("Fetching user with ID: {UserId}", userId);
+        
         var user = await _context.Users
             .Where(u => u.Id == userId)
             .FirstOrDefaultAsync();
+            
         if (user == null)
         {
+            _logger.LogWarning("User with ID {UserId} not found", userId);
+            
             return Result.Fail<User>("User is not found");
         }
 
+        _logger.LogInformation("Successfully fetched user with ID: {UserId}", userId);
+       
         return Result.Success(user);
     }
 
@@ -331,6 +408,8 @@ public class AuthService : IAuthService
 
     private async Task<Result<User>> CreateNewUser(string payloadEmail, string payloadName, string payloadSubject)
     {
+        _logger.LogInformation("Creating new user with email: {Email}", payloadEmail);
+        
         string firstName = "", lastName;
         int i = 0;
         for (;i < payloadName.Length; i++)
@@ -368,23 +447,32 @@ public class AuthService : IAuthService
         var createResult = await _userManager.CreateAsync(newUser1);
         if (!createResult.Succeeded)
         {
+            _logger.LogError("Failed to create user {Email}. Errors: {Errors}", 
+                payloadEmail, string.Join(", ", createResult.Errors.Select(e => e.Description)));
+           
             return (Result.Fail<User>(
                 string.Join(", ", createResult.Errors.Select(e => e.Description))));
         }
 
+        _logger.LogInformation("Successfully created user with email: {Email}", payloadEmail);
+        
         return Result.Success(newUser1);
     }
 
     private async Task<Result> FixLoginInUserManager(string payloadSubject, User user)
     {
+        _logger.LogInformation("Fixing Google login for user: {Email}", user.Email);
+        
         var loginInfo = new UserLoginInfo("Google", payloadSubject, "Google");
         var addLoginResult = await _userManager.AddLoginAsync(user, loginInfo);
+        
         if (!addLoginResult.Succeeded && addLoginResult.Errors.Any())
         {
             var nonDuplicateErrors = addLoginResult.Errors
                 .Where(e =>
                 {
                     var desc = e.Description ?? string.Empty;
+               
                     return !(desc.Contains("already", StringComparison.OrdinalIgnoreCase)
                              || desc.Contains("exists", StringComparison.OrdinalIgnoreCase)
                              || desc.Contains("associated", StringComparison.OrdinalIgnoreCase));
@@ -393,6 +481,9 @@ public class AuthService : IAuthService
 
             if (nonDuplicateErrors.Any())
             {
+                _logger.LogError("Failed to add Google login for user {Email}. Errors: {Errors}", 
+                    user.Email, string.Join(", ", nonDuplicateErrors.Select(e => e.Description)));
+               
                 return Result.Fail(string.Join(", ", nonDuplicateErrors.Select(e => e.Description)));
             }
         }
@@ -405,7 +496,9 @@ public class AuthService : IAuthService
 
         user.GoogleId ??= payloadSubject;
         await _userManager.UpdateAsync(user);
-
+        
+        _logger.LogInformation("Successfully fixed Google login for user: {Email}", user.Email);
+       
         return Result.Success();
     }
 }

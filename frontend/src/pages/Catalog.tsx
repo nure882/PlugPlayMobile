@@ -1,14 +1,14 @@
 import { useState, useMemo } from 'react';
 import { Filter, Loader2 } from 'lucide-react';
-import ProductCard from '../components/ProductCard';
-import Header from '../components/Header';
-import CategoryFilter from '../components/CategoryFilter';
+import ProductCard from '../components/products/ProductCard.tsx';
+import Header from '../components/common/Header.tsx';
+import CategoryFilter from '../components/products/CategoryFilter.tsx';
 import FiltersSidebar, {
   Filters,
   SortOption,
-} from '../components/FiltersSidebar';
-import { mapBackendProductToDetail } from '../lib/utils/productMapper';
-import { useGetAllProductsQuery } from '../lib/redux/productsApi';
+} from '../components/products/FiltersSidebar.tsx';
+import { mapBackendProductToDetail } from '../utils/productMapper';
+import { useGetAllProductsQuery } from '../api/productsApi.ts';
 import { useNavigate } from 'react-router-dom';
 
 const Catalog = () => {

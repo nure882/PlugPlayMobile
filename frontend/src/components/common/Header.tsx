@@ -1,8 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { ShoppingCart, User, Search, LogOut } from 'lucide-react';
-import logoUrl from '../assets/logo.svg';
+import logoUrl from '../../../assets/logo.svg';
 import { useState } from 'react';
-import { useAuth } from '../lib/context/AuthContext';
+import { useAuth } from '../../context/AuthContext.tsx';
 
 export default function Header() {
   const navigate = useNavigate();

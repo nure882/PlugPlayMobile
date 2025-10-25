@@ -1,18 +1,3 @@
-export interface Address {
-  city: string;
-  street: string;
-  house: string;
-  apartments: string;
-}
-
-
-export interface DeliveryOption {
-  icon: string;
-  title: string;
-  description: string;
-}
-
-
 export interface BackendProduct {
   id: number;
   name: string;
@@ -30,7 +15,6 @@ export interface BackendProduct {
   } | null;
 }
 
-
 export interface Product {
   id: string;
   name: string;
@@ -47,6 +31,5 @@ export interface Product {
     };
   } | null;
 }
-
 
 export interface ProductDetail extends Product {}

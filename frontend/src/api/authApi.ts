@@ -1,7 +1,5 @@
-import { baseApi } from './baseApi';
+import { baseApi } from './baseApi.ts';
 import {User} from "../models/User.ts";
-
-export const API_BASE_URL = 'http://localhost:5298'; // port may be different
 
 export interface LoginRequest {
   email: string;

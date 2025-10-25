@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Dto;
 using PlugPlay.Services.Interfaces;
 
@@ -10,16 +11,24 @@ public class UserInfoController : ControllerBase
 {
     private readonly IUserInfoService _userInfoService;
 
-    public UserInfoController(IUserInfoService userInfoService)
+    private readonly ILogger<UserInfoController> _logger;
+
+    public UserInfoController(IUserInfoService userInfoService, ILogger<UserInfoController> logger)
     {
         _userInfoService = userInfoService;
+        _logger = logger;
     }
 
     [HttpGet("{token}")]
     public async Task<IActionResult> GetUserByToken(string token)
     {
+        _logger.LogInformation("Getting user by token");
+        
         var userResult = await _userInfoService.GetUserByTokenAsync(token);
-
+        userResult.OnFailure(() =>
+                _logger.LogWarning("Failed to get user by token: {Error}", userResult.Error))
+            .OnSuccess(() =>
+                _logger.LogInformation("Successfully retrieved user ID: {UserId} by token", userResult.Value.Id));
         if (userResult.Failure)
         {
             return BadRequest("No such user");
@@ -33,6 +42,8 @@ public class UserInfoController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetUserInfoById(int id)
     {
+        _logger.LogInformation("Getting user info for user ID: {UserId}", id);
+        
         try
         {
             var user = await _userInfoService.GetUserInfoByIdAsync(id);
@@ -55,10 +66,14 @@ public class UserInfoController : ControllerBase
                 .ToList()
             };
 
+            _logger.LogInformation("Successfully retrieved user info for user ID: {UserId}", id);
+            
             return Ok(userInfo);
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning(ex, "User with ID {UserId} not found", id);
+            
             return NotFound(new { message = ex.Message });
         }
     }
@@ -66,14 +81,20 @@ public class UserInfoController : ControllerBase
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateUser(int id, [FromBody] UserInfoDto dto)
     {
+        _logger.LogInformation("Updating user with ID: {UserId}", id);
+
         try
         {
             var result = await _userInfoService.UpdateUserAsync(id, dto);
+            
+            _logger.LogInformation("Successfully updated user with ID: {UserId}", id);
 
             return Ok("User updated successfully.");
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, "Error updating user with ID: {UserId}", id);
+           
             return BadRequest(new { message = ex.Message });
         }
     }

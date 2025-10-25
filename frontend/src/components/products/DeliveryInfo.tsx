@@ -1,5 +1,5 @@
 import { Truck, Shield, RotateCcw, Package } from 'lucide-react';
-import { DeliveryOption } from '../lib/types';
+import {DeliveryOption} from "../../models/Address.ts";
 
 interface DeliveryInfoProps {
   deliveryOptions: DeliveryOption[];

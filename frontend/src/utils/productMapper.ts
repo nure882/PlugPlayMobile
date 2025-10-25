@@ -1,4 +1,4 @@
-import { BackendProduct, ProductDetail } from '../types';
+import { BackendProduct, ProductDetail } from '../models/Product.ts';
 
 
 export const mapBackendProductToDetail = (backendProduct: BackendProduct): ProductDetail => {

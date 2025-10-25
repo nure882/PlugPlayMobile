@@ -11,14 +11,19 @@ public class ProductsController : ControllerBase
 {
     private readonly IProductsService _productsService;
 
-    public ProductsController(IProductsService productsService)
+    private readonly ILogger<ProductsController> _logger;
+
+    public ProductsController(IProductsService productsService, ILogger<ProductsController> logger)
     {
         _productsService = productsService;
+        _logger = logger;
     }
 
     [HttpGet("all")]
     public async Task<IActionResult> GetAllProducts()
     {
+        _logger.LogInformation("Getting all products");
+        
         var products = await _productsService.GetAllProductsAsync();
         var productDtos = products.Select(p => new ProductDto(
             p.Id,
@@ -30,13 +35,16 @@ public class ProductsController : ControllerBase
             MapCategory(p.Category)
         ));
 
-
+        _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
+        
         return Ok(productDtos);
     }
 
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetProductById(int id)
     {
+        _logger.LogInformation("Getting product by ID: {ProductId}", id);
+        
         try
         {
             var product = await _productsService.GetProductByIdAsync(id);
@@ -50,10 +58,14 @@ public class ProductsController : ControllerBase
                 MapCategory(product.Category)
             );
 
+            _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
+            
             return Ok(productDto);
         }
         catch (KeyNotFoundException ex)
         {
+            _logger.LogWarning(ex, "Product with ID {ProductId} not found", id);
+            
             return NotFound(new { message = ex.Message });
         }
     }

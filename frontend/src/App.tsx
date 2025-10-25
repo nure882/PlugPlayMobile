@@ -6,7 +6,7 @@ import Profile from './pages/Profile';
 import ProductDetail from './pages/ProductDetail';
 import NotFound from './pages/NotFound';
 import {GoogleOAuthProvider} from "@react-oauth/google";
-import ProtectedRoute from './components/ProtectedRoute';
+import ProtectedRoute from './components/common/ProtectedRoute.tsx';
 
 function App() {
   return (
