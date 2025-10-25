@@ -27,6 +27,7 @@ dist-ssr
 # Backend
 .idea/
 appsettings.json
+backend/PlugPlay/PlugPlay.Api/[Ll]ogs/
 
 # Build results
 [Bb]in/
