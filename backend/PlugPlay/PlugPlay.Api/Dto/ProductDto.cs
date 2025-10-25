@@ -7,4 +7,5 @@ public record ProductDto(
     decimal Price,
     int StockQuantity,
     DateTime CreatedAt,
-    CategoryDto? Category);
+    CategoryDto? Category,
+    string PictureUrl);

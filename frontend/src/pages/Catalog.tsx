@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState} from 'react';
 import { Filter, Loader2 } from 'lucide-react';
 import ProductCard from '../components/products/ProductCard.tsx';
 import Header from '../components/common/Header.tsx';
@@ -8,7 +8,7 @@ import FiltersSidebar, {
   SortOption,
 } from '../components/products/FiltersSidebar.tsx';
 import { mapBackendProductToDetail } from '../utils/productMapper';
-import { useGetAllProductsQuery } from '../api/productsApi.ts';
+import { useGetAvailableProductsQuery } from '../api/productsApi.ts';
 import { useNavigate } from 'react-router-dom';
 
 const Catalog = () => {
@@ -19,7 +19,7 @@ const Catalog = () => {
 
   const [visibleCount, setVisibleCount] = useState(4);
 
-  const { data: backendProducts = [], isLoading, isError } = useGetAllProductsQuery();
+  const { data: backendProducts = [], isLoading, isError } = useGetAvailableProductsQuery();
   
   const products = backendProducts?.map(mapBackendProductToDetail) ?? [];
 

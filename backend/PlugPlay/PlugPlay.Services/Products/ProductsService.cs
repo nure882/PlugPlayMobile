@@ -1,5 +1,6 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
+using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
@@ -56,6 +57,22 @@ namespace PlugPlay.Services.Products
             _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
            
             return product;
+        }
+
+        public async Task<Result<IEnumerable<Product>>> GetAvailableProductsAsync()
+        {
+            _logger.LogInformation("Fetching available products");
+
+            var products = _context.Products
+                .Where(p => p.StockQuantity != 0)
+                .Include(p => p.ProductAttributes)
+                .ThenInclude(pa => pa.Attribute)
+                .Include(p => p.ProductImages)
+                .Include(p => p.Category);
+
+            _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
+
+            return Result.Success<IEnumerable<Product>>(products);
         }
     }
 }

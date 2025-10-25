@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using PlugPlay.Api.Dto;
 using PlugPlay.Domain.Entities;
+using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Api.Controllers;
@@ -25,18 +26,42 @@ public class ProductsController : ControllerBase
         _logger.LogInformation("Getting all products");
         
         var products = await _productsService.GetAllProductsAsync();
-        var productDtos = products.Select(p => new ProductDto(
-            p.Id,
-            p.Name,
-            p.Description,
-            p.Price,
-            p.StockQuantity,
-            p.CreatedAt,
-            MapCategory(p.Category)
+        var productDtos = products.Select(pd => new ProductDto(
+            pd.Id,
+            pd.Name,
+            pd.Description,
+            pd.Price,
+            pd.StockQuantity,
+            pd.CreatedAt,
+            MapCategory(pd.Category),
+            pd.ProductImages.FirstOrDefault()?.ImageUrl
         ));
 
         _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
         
+        return Ok(productDtos);
+    }
+
+    [HttpGet("available")]
+    public async Task<IActionResult> GetAllAvailableProducts()
+    {
+        _logger.LogInformation("Getting all products");
+
+        var result = await _productsService.GetAvailableProductsAsync();
+        result.OnSuccess(() =>
+            _logger.LogInformation("Successfully retrieved {Count} products", result.Value.Count()));
+
+        var productDtos = result.Value.Select(pd => new ProductDto(
+            pd.Id,
+            pd.Name,
+            pd.Description,
+            pd.Price,
+            pd.StockQuantity,
+            pd.CreatedAt,
+            MapCategory(pd.Category),
+            pd.ProductImages.FirstOrDefault()?.ImageUrl
+        ));
+
         return Ok(productDtos);
     }
 
@@ -55,7 +80,8 @@ public class ProductsController : ControllerBase
                 product.Price,
                 product.StockQuantity,
                 product.CreatedAt,
-                MapCategory(product.Category)
+                MapCategory(product.Category),
+                product.ProductImages.FirstOrDefault()?.ImageUrl
             );
 
             _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);

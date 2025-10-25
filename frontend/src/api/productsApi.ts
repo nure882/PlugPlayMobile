@@ -25,6 +25,12 @@ export const productsApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
     }),
+    getAvailableProducts: builder.query<BackendProductDto[], void>({
+        query: () => ({
+            url: 'products/available',
+            method: 'GET',
+        }),
+    }),
     getProductById: builder.query<BackendProductDto, number>({
       query: (id) => ({
         url: `products/${id}`,
@@ -37,4 +43,5 @@ export const productsApi = baseApi.injectEndpoints({
 export const {
   useGetAllProductsQuery,
   useGetProductByIdQuery,
+  useGetAvailableProductsQuery
 } = productsApi;
