@@ -1,7 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using PlugPlay.Services.Auth;
 using PlugPlay.Services.Interfaces;
-using PlugPlay.Services.DataRetrieval;
+using PlugPlay.Services.Products;
+using PlugPlay.Services.Profile;
 
 namespace PlugPlay.Services;
 

@@ -7,7 +7,7 @@ using PlugPlay.Infrastructure;
 using PlugPlay.Services.Dto;
 using PlugPlay.Services.Interfaces;
 
-namespace PlugPlay.Services.DataRetrieval
+namespace PlugPlay.Services.Profile
 {
     public class UserInfoService : IUserInfoService
     {

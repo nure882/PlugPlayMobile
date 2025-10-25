@@ -4,7 +4,7 @@ using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
 
-namespace PlugPlay.Services.DataRetrieval
+namespace PlugPlay.Services.Products
 {
     public class ProductsService : IProductsService
     {
