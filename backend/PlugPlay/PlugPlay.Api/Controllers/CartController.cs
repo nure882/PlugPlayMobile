@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
 using PlugPlay.Api.Dto;
-using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
 
@@ -90,13 +89,7 @@ public class CartController : ControllerBase
             return BadRequest(new ProblemDetails { Title = "Invalid cart item fields" });
         }
 
-        var cartItem = new CartItem
-        {
-            ProductId = dto.ProductId,
-            Quantity = dto.Quantity,
-            UserId = dto.UserId
-        };
-        var result = await _cartService.AddItemToCartAsync(cartItem);
+        var result = await _cartService.AddItemToCartAsync(dto.ProductId, dto.Quantity, dto.UserId);
         result.OnFailure(() => 
                 _logger.LogWarning("Problem adding a cart item: {result.Error}", result.Error))
             .OnSuccess(() => 
@@ -138,7 +131,7 @@ public class CartController : ControllerBase
             return BadRequest(new ProblemDetails() { Title = $"Problem updating a cart item: {result.Error}" });
         }
 
-        return Ok(result);
+        return Ok();
     }
 
     [HttpDelete("{itemId:int}")]
@@ -164,5 +157,82 @@ public class CartController : ControllerBase
         }
 
         return Ok();
+    }
+
+    [HttpDelete("clear/{userId:int}")]
+    public async Task<IActionResult> ClearCartAsync(int userId)
+    {
+        _logger.LogInformation("Clearing cart for user {UserId}", userId);
+
+        if (userId < 1)
+        {
+            _logger.LogWarning("Invalid userId: {UserId}", userId);
+
+            return BadRequest(new ProblemDetails { Title = "Invalid userId" });
+        }
+
+        var result = await _cartService.ClearCartAsync(userId);
+        result.OnFailure(() => _logger.LogWarning("Problem clearing cart: {Error}", result.Error))
+              .OnSuccess(() => _logger.LogInformation("Cleared cart for user {UserId}", userId));
+
+        if (result.Failure)
+        {
+            return BadRequest(new ProblemDetails { Title = $"Problem clearing cart: {result.Error}" });
+        }
+
+        return Ok();
+    }
+
+    [HttpGet("total/{userId:int}")]
+    public async Task<ActionResult<int>> GetCartItemsTotalAsync(int userId)
+    {
+        _logger.LogInformation("Getting cart items total for user {UserId}", userId);
+
+        if (userId < 1)
+        {
+            _logger.LogWarning("Invalid userId: {UserId}", userId);
+
+            return BadRequest(new ProblemDetails { Title = "Invalid userId" });
+        }
+
+        var result = await _cartService.GetCartItemsTotalAsync(userId);
+        result.OnFailure(() =>
+                _logger.LogWarning("Problem getting cart items total: {Error}", result.Error))
+              .OnSuccess(() =>
+                  _logger.LogInformation("Cart items total for user {UserId}: {Total}", userId, result.Value));
+
+        if (result.Failure)
+        {
+            return BadRequest(new ProblemDetails { Title = $"Problem getting cart total: {result.Error}" });
+        }
+
+        return result.Value;
+    }
+
+    [HttpGet("isincart/{productId:int}/{userId:int}")]
+    public async Task<ActionResult<bool>> IsInCartAsync(int productId, int userId)
+    {
+        _logger.LogInformation("Checking if product {ProductId} is in cart for user {UserId}", productId, userId);
+
+        if (productId < 1 || userId < 1)
+        {
+            _logger.LogWarning("Invalid productId or userId: {ProductId}, {UserId}", productId, userId);
+
+            return BadRequest(new ProblemDetails { Title = "Invalid productId or userId" });
+        }
+
+        var result = await _cartService.IsInCartAsync(productId, userId);
+        result.OnFailure(() =>
+                _logger.LogWarning("Problem checking cart item presence: {Error}", result.Error))
+              .OnSuccess(() =>
+                  _logger.LogInformation("Product {ProductId} presence for user {UserId}: {Exists}",
+                      productId, userId, result.Value));
+
+        if (result.Failure)
+        {
+            return BadRequest(new ProblemDetails { Title = $"Problem checking cart item: {result.Error}" });
+        }
+
+        return result.Value;
     }
 }

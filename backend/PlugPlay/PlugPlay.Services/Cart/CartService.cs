@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
+using PlugPlay.Domain.Extensions;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
 
@@ -19,30 +20,42 @@ public class CartService : ICartService
         _logger = logger;
     }
 
-    public async Task<Result<int>> AddItemToCartAsync(CartItem item)
+    public async Task<Result<int>> AddItemToCartAsync(int productId, int quantity, int userId)
     {
-        if (item == null)
+        if (userId < 1)
         {
-            return Result.Fail<int>("Invalid cart item");
+            return Result.Fail<int>("Invalid user id");
         }
 
-        if (item.Quantity <= 0)
+        if (quantity < 1)
         {
             return Result.Fail<int>("Quantity must be greater than zero");
         }
 
-        item.Id = 0;
+        var product = await _context.Products.FindAsync(productId);
+        if (product is null)
+        {
+            return Result.Fail<int>($"Product with id {productId} not found");
+        }
+
+        var item = await _context.CartItems
+            .FirstOrDefaultAsync(ci => ci.UserId == userId && ci.ProductId == productId);
+        var existed = true;
+        if (item is null)
+        {
+            item = new CartItem
+            {
+                ProductId = productId,
+                UserId = userId
+            };
+            existed = false;
+        }
+
+        item.Quantity = existed ? item.Quantity + quantity : quantity;
+        item.Total = product.Price * item.Quantity;
         try
         {
-            var product = await _context.Products.FindAsync(item.ProductId);
-            if (product == null)
-            {
-                return Result.Fail<int>($"Product with id {item.ProductId} not found");
-            }
-
-            item.Total = product.Price * item.Quantity;
-
-            var entityEntry = await _context.CartItems.AddAsync(item);
+            var entityEntry = existed ? _context.CartItems.Update(item) : await _context.CartItems.AddAsync(item);
             await _context.SaveChangesAsync();
 
             return Result.Success(entityEntry.Entity.Id);
@@ -159,4 +172,37 @@ public class CartService : ICartService
 
         return Result.Success();
     }
+
+    public async Task<Result> ClearCartAsync(int userId)
+    {
+        if (userId < 1)
+        {
+            return Result.Fail("Invalid user id");
+        }
+
+        try
+        {
+            await _context.CartItems.Where(ci => ci.UserId == userId).ExecuteDeleteAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error deleting cart of user {UserId}", userId);
+
+            return Result.Fail($"Problem deleting cart of user {userId}");
+        }
+
+        return Result.Success();
+    }
+
+    public async Task<Result<int>> GetCartItemsTotalAsync(int userId)
+        => userId < 1 || await _context.Users.FindAsync(userId) == null
+            ? Result.Fail<int>($"Problem getting cart total for user {userId}")
+            : Result.Success(await _context.CartItems.Where(ci => ci.UserId == userId).CountAsync());
+
+    public async Task<Result<bool>> IsInCartAsync(int productId, int userId)
+        => userId < 1 || productId < 1 || await _context.Users.FindAsync(userId) == null
+            ? Result.Fail<bool>($"Error checking cart item presence for user {userId}, product {productId}")
+            : Result.Success(
+                await _context.CartItems.
+                    FirstOrDefaultAsync(ci => ci.ProductId == productId && ci.UserId == userId) != null);
 }
