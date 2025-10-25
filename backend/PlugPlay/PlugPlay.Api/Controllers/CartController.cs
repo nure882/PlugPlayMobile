@@ -76,18 +76,24 @@ public class CartController : ControllerBase
     {
         _logger.LogInformation("Adding item to cart for user {UserId}", dto?.UserId);
 
-        if (dto == null)
+        if (dto is null)
         {
             _logger.LogWarning("Invalid cart item data provided");
             
             return BadRequest(new ProblemDetails { Title = "Invalid cart item data" });
         }
 
+        if (dto.UserId < 1 || dto.ProductId < 1 || dto.Quantity < 1)
+        {
+            _logger.LogWarning("Invalid cart item fields provided");
+
+            return BadRequest(new ProblemDetails { Title = "Invalid cart item fields" });
+        }
+
         var cartItem = new CartItem
         {
             ProductId = dto.ProductId,
             Quantity = dto.Quantity,
-            Total = dto.Total,
             UserId = dto.UserId
         };
         var result = await _cartService.AddItemToCartAsync(cartItem);
@@ -115,6 +121,13 @@ public class CartController : ControllerBase
             return BadRequest(new ProblemDetails() { Title = "Invalid quantity data" });
         }
 
+        if (dto.CartItemId < 1 || dto.NewQuantity < 1)
+        {
+            _logger.LogWarning("Invalid quantity fields provided");
+
+            return BadRequest(new ProblemDetails() { Title = "Invalid quantity fields" });
+        }
+
         var result = await _cartService.UpdateQuantityAsync(dto.CartItemId, dto.NewQuantity);
         result.OnFailure(() => 
                 _logger.LogWarning("Problem updating a cart item: {result.Error}", result.Error))
@@ -125,7 +138,7 @@ public class CartController : ControllerBase
             return BadRequest(new ProblemDetails() { Title = $"Problem updating a cart item: {result.Error}" });
         }
 
-        return Ok(result.Value);
+        return Ok(result);
     }
 
     [HttpDelete("{itemId:int}")]

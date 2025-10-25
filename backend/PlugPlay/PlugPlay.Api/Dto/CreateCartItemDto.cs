@@ -7,6 +7,4 @@ public record CreateCartItemDto
     public int UserId { get; init; }
 
     public int Quantity { get; init; }
-
-    public int Total { get; init; }
 }

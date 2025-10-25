@@ -1,8 +1,8 @@
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
-using PlugPlay.Services.Auth;
 using PlugPlay.Services.Interfaces;
 
 namespace PlugPlay.Services.Cart;
@@ -19,28 +19,144 @@ public class CartService : ICartService
         _logger = logger;
     }
 
-    public Task<Result<int>> AddItemToCartAsync(CartItem item)
+    public async Task<Result<int>> AddItemToCartAsync(CartItem item)
     {
-        throw new NotImplementedException();
+        if (item == null)
+        {
+            return Result.Fail<int>("Invalid cart item");
+        }
+
+        if (item.Quantity <= 0)
+        {
+            return Result.Fail<int>("Quantity must be greater than zero");
+        }
+
+        item.Id = 0;
+        try
+        {
+            var product = await _context.Products.FindAsync(item.ProductId);
+            if (product == null)
+            {
+                return Result.Fail<int>($"Product with id {item.ProductId} not found");
+            }
+
+            item.Total = product.Price * item.Quantity;
+
+            var entityEntry = await _context.CartItems.AddAsync(item);
+            await _context.SaveChangesAsync();
+
+            return Result.Success(entityEntry.Entity.Id);
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error adding item to cart");
+
+            return Result.Fail<int>($"Problem adding an item: {e.Message}");
+        }
     }
 
-    public Task<Result<IEnumerable<CartItem>>> GetUserCartAsync(int userId)
+    public async Task<Result<IEnumerable<CartItem>>> GetUserCartAsync(int userId)
     {
-        throw new NotImplementedException();
+        if (userId < 1)
+        {
+            return Result.Fail<IEnumerable<CartItem>>("Invalid userId");
+        }
+
+        var cart = await _context.CartItems
+            .Where(ci => ci.UserId == userId)
+            .AsNoTracking()
+            .ToListAsync();
+
+        return Result.Success<IEnumerable<CartItem>>(cart);
     }
 
-    public Task<Result<CartItem>> GetCartItemByIdAsync(int itemId)
+    public async Task<Result<CartItem>> GetCartItemByIdAsync(int itemId)
     {
-        throw new NotImplementedException();
+        if (itemId < 1)
+        {
+            return Result.Fail<CartItem>("Invalid item id");
+        }
+
+        var cartItem = await _context.CartItems
+            .AsNoTracking()
+            .FirstOrDefaultAsync(ci => ci.Id == itemId);
+
+        if (cartItem is null)
+        {
+            return Result.Fail<CartItem>($"No cart item with id {itemId}");
+        }
+
+        return Result.Success(cartItem);
     }
 
-    public Task<Result<int>> UpdateQuantityAsync(int itemId, int newQuantity)
+    public async Task<Result> UpdateQuantityAsync(int itemId, int newQuantity)
     {
-        throw new NotImplementedException();
+        if (itemId < 1)
+        {
+            return Result.Fail("Invalid item id");
+        }
+
+        if (newQuantity < 1)
+        {
+            return Result.Fail("Quantity must be greater than zero");
+        }
+
+        try
+        {
+            var cartItem = await _context.CartItems
+                .Include(ci => ci.Product)
+                .FirstOrDefaultAsync(ci => ci.Id == itemId);
+            if (cartItem is null)
+            {
+                return Result.Fail($"No cart item {itemId}");
+            }
+
+            if (cartItem.Product is null)
+            {
+                return Result.Fail($"No product related to cart item {itemId}");
+            }
+
+            cartItem.Quantity = newQuantity;
+            cartItem.Total = cartItem.Product.Price * newQuantity;
+
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error updating cart item {ItemId}", itemId);
+
+            return Result.Fail($"Problem updating cart item {itemId}");
+        }
+
+        return Result.Success();
     }
 
-    public Task<Result> DeleteItemFromCartAsync(int itemId)
+    public async Task<Result> DeleteItemFromCartAsync(int itemId)
     {
-        throw new NotImplementedException();
+        if (itemId < 1)
+        {
+            return Result.Fail("Invalid item id");
+        }
+
+        try
+        {
+            var entity = await _context.CartItems.FindAsync(itemId);
+
+            if (entity == null)
+            {
+                return Result.Fail($"No cart item {itemId}");
+            }
+
+            _context.Remove(entity);
+            await _context.SaveChangesAsync();
+        }
+        catch (Exception e)
+        {
+            _logger.LogError(e, "Error deleting cart item {ItemId}", itemId);
+
+            return Result.Fail($"Problem deleting cart item {itemId}");
+        }
+
+        return Result.Success();
     }
 }
