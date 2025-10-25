@@ -4,6 +4,7 @@ export interface BackendProduct {
   description: string;
   price: number;
   stockQuantity: number;
+  pictureUrl: string;
   createdAt: string;
   category: {
     id: number;
@@ -21,6 +22,7 @@ export interface Product {
   price: number;
   description: string;
   stockQuantity: number;
+  pictureUrl: string;
   createdAt: string;
   category: {
     id: number;

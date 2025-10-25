@@ -210,7 +210,7 @@ const Catalog = () => {
               price={product.price}
               rating={0}
               reviewCount={10} 
-              image=""
+              image={product.pictureUrl}
               isFavorite={favoriteIds.has(product.id)}
               onToggleFavorite={handleToggleFavorite}
               onClick={handleProductClick}

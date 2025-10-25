@@ -6,6 +6,7 @@ export interface BackendProductDto {
   description: string;
   price: number;
   stockQuantity: number;
+  pictureUrl: string;
   createdAt: string;
   category: {
     id: number;

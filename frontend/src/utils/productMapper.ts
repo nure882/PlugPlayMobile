@@ -8,6 +8,7 @@ export const mapBackendProductToDetail = (backendProduct: BackendProduct): Produ
     price: backendProduct.price,
     description: backendProduct.description,
     stockQuantity: backendProduct.stockQuantity,
+    pictureUrl: backendProduct.pictureUrl,
     createdAt: backendProduct.createdAt,
     category: backendProduct.category,
   };
