@@ -15,5 +15,3 @@ export interface Product {
     };
   } | null;
 }
-
-// export interface ProductDetail extends Product {}

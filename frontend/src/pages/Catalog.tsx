@@ -168,9 +168,7 @@ const Catalog = () => {
     
     <div className="min-h-screen bg-gray-50">
       <Header />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
         <div className="flex justify-between items-center mb-8">
           <CategoryFilter />
           <div className="relative">
@@ -198,7 +196,6 @@ const Catalog = () => {
             )}
           </div>
         </div>
-
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {visibleProducts.map(product => (
@@ -217,13 +214,11 @@ const Catalog = () => {
           ))}
         </div>
 
-        
         {visibleCount < products.length && (
         <div className="flex justify-center mt-12">
           <button className="px-8 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium"
           onClick={() => setVisibleCount(prev => prev + 4)}>
             Show more
-             
           </button>
         </div>)}
       </div>
