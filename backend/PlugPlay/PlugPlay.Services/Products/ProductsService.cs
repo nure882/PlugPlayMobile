@@ -82,6 +82,7 @@ namespace PlugPlay.Services.Products
             if (product is null)
             {
                 _logger.LogWarning("Product with ID {ProductId} not found", productId);
+
                 return Result.Fail("No such product");
             }
 
@@ -99,6 +100,7 @@ namespace PlugPlay.Services.Products
             catch (Exception e)
             {
                 _logger.LogError(e, "Failed to add image for product {ProductId}", productId);
+
                 return Result.Fail($"{e.Message}");
             }
 

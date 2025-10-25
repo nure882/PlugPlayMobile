@@ -8,4 +8,4 @@ public record ProductDto(
     int StockQuantity,
     DateTime CreatedAt,
     CategoryDto? Category,
-    string PictureUrl);
+    IEnumerable<string> PictureUrls);

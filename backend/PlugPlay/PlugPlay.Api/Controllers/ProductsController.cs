@@ -41,7 +41,7 @@ public class ProductsController : ControllerBase
             pd.StockQuantity,
             pd.CreatedAt,
             MapCategory(pd.Category),
-            pd.ProductImages.FirstOrDefault()?.ImageUrl
+            pd.ProductImages.Select(pi => pi.ImageUrl)
         ));
 
         _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
@@ -66,7 +66,7 @@ public class ProductsController : ControllerBase
             pd.StockQuantity,
             pd.CreatedAt,
             MapCategory(pd.Category),
-            pd.ProductImages.FirstOrDefault()?.ImageUrl
+            pd.ProductImages.Select(pi => pi.ImageUrl)
         ));
 
         return Ok(productDtos);
@@ -88,7 +88,7 @@ public class ProductsController : ControllerBase
                 product.StockQuantity,
                 product.CreatedAt,
                 MapCategory(product.Category),
-                product.ProductImages.FirstOrDefault()?.ImageUrl
+                product.ProductImages.Select(pi => pi.ImageUrl)
             );
 
             _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
