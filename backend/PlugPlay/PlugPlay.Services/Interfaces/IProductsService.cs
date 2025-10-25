@@ -10,5 +10,7 @@ namespace PlugPlay.Services.Interfaces
         Task<Product> GetProductByIdAsync(int id);
 
         Task<Result<IEnumerable<Product>>> GetAvailableProductsAsync();
+
+        Task<Result> AddImageAsync(int productId, string uploadResultUrl);
     }
 }

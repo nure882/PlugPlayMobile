@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using System.Security.Claims;
 using System.Text;
@@ -47,7 +48,9 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddControllers();
-builder.Services.AddAutoMapper(Assembly.GetExecutingAssembly());
+builder.Services.RegisterAutomapper();
+builder.Services.RegisterCloudinary(builder.Configuration["Cloudinary:Cloud"],
+    builder.Configuration["Cloudinary:ApiKey"], builder.Configuration["Cloudinary:ApiSecret"]);
 
 builder.Services.AddDbContext<PlugPlayDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")!));
@@ -117,10 +120,7 @@ builder.Services.AddAuthentication(options =>
             }
         };
     });
-builder.WebHost.ConfigureKestrel(options =>
-{
-    options.AddServerHeader = false;
-});
+builder.WebHost.ConfigureKestrel(options => { options.AddServerHeader = false; });
 builder.Services.AddAuthorization();
 builder.Services.RegisterServices();
 builder.Services.RegisterAutomapper();
@@ -140,16 +140,16 @@ try
     }
 
     app.UseMiddleware<ExceptionHandlerMiddleware>();
-    // using var scope = app.Services.CreateScope();
-    // var services = scope.ServiceProvider;
-    // try
-    // {
-    //     DataSeed.Seed(services);
-    // }
-    // catch (Exception ex)
-    // {
-    //     Debug.WriteLine(ex.Message, ex.StackTrace);
-    // }
+    using var scope = app.Services.CreateScope();
+    var services = scope.ServiceProvider;
+    try
+    {
+        DataSeed.Seed(services);
+    }
+    catch (Exception ex)
+    {
+        Debug.WriteLine(ex.Message, ex.StackTrace);
+    }
 
     app.UseCors("AllowAllOrigins");
     app.UseAuthentication();
@@ -166,4 +166,3 @@ finally
 {
     Log.CloseAndFlush();
 }
-
