@@ -7,21 +7,20 @@ import FiltersSidebar, {
   Filters,
   SortOption,
 } from '../components/products/FiltersSidebar.tsx';
-import { mapBackendProductToDetail } from '../utils/productMapper';
 import { useGetAvailableProductsQuery } from '../api/productsApi.ts';
 import { useNavigate } from 'react-router-dom';
 
 const Catalog = () => {
   const navigate = useNavigate();
 
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const [visibleCount, setVisibleCount] = useState(4);
 
   const { data: backendProducts = [], isLoading, isError } = useGetAvailableProductsQuery();
   
-  const products = backendProducts?.map(mapBackendProductToDetail) ?? [];
+  const products = backendProducts//?.map(mapBackendProductToDetail) ?? [];
 
   // const maxPrice = useMemo(
   //   () => Math.max(...mockProducts.map(p => p.price)),
@@ -149,7 +148,7 @@ const Catalog = () => {
   //   return filtered;
   // }, [filters, sortOption]);
 
-  const handleToggleFavorite = (productId: string) => {
+  const handleToggleFavorite = (productId: number) => {
     setFavoriteIds(prev => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(productId)) {
@@ -161,7 +160,7 @@ const Catalog = () => {
     });
   };
 
-  const handleProductClick = (productId: string) => {
+  const handleProductClick = (productId: number) => {
      navigate(`/product/${productId}`);
   };
 
@@ -210,7 +209,7 @@ const Catalog = () => {
               price={product.price}
               rating={0}
               reviewCount={10} 
-              image={product.pictureUrl}
+              image={product.pictureUrls[0]}
               isFavorite={favoriteIds.has(product.id)}
               onToggleFavorite={handleToggleFavorite}
               onClick={handleProductClick}

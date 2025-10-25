@@ -1,7 +1,7 @@
 import { Heart } from 'lucide-react';
 
 interface ProductCardProps {
-  id: string;
+  id: number;
   name: string;
   price: number;
   originalPrice?: number;
@@ -10,8 +10,8 @@ interface ProductCardProps {
   image: string;
   badge?: 'NEW' | 'SALE';
   isFavorite: boolean;
-  onToggleFavorite: (id: string) => void;
-  onClick?: (id: string) => void;
+  onToggleFavorite: (id: number) => void;
+  onClick?: (id: number) => void;
 }
 
 const ProductCard = ({
