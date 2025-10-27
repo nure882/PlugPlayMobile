@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState} from 'react';
 import { Filter, Loader2 } from 'lucide-react';
 import ProductCard from '../components/products/ProductCard.tsx';
 import Header from '../components/common/Header.tsx';
@@ -7,21 +7,20 @@ import FiltersSidebar, {
   Filters,
   SortOption,
 } from '../components/products/FiltersSidebar.tsx';
-import { mapBackendProductToDetail } from '../utils/productMapper';
-import { useGetAllProductsQuery } from '../api/productsApi.ts';
+import { useGetAvailableProductsQuery } from '../api/productsApi.ts';
 import { useNavigate } from 'react-router-dom';
 
 const Catalog = () => {
   const navigate = useNavigate();
 
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [isSidebarOpen, setSidebarOpen] = useState(false);
 
   const [visibleCount, setVisibleCount] = useState(4);
 
-  const { data: backendProducts = [], isLoading, isError } = useGetAllProductsQuery();
+  const { data: backendProducts = [], isLoading, isError } = useGetAvailableProductsQuery();
   
-  const products = backendProducts?.map(mapBackendProductToDetail) ?? [];
+  const products = backendProducts//?.map(mapBackendProductToDetail) ?? [];
 
   // const maxPrice = useMemo(
   //   () => Math.max(...mockProducts.map(p => p.price)),
@@ -149,7 +148,7 @@ const Catalog = () => {
   //   return filtered;
   // }, [filters, sortOption]);
 
-  const handleToggleFavorite = (productId: string) => {
+  const handleToggleFavorite = (productId: number) => {
     setFavoriteIds(prev => {
       const newFavorites = new Set(prev);
       if (newFavorites.has(productId)) {
@@ -161,7 +160,7 @@ const Catalog = () => {
     });
   };
 
-  const handleProductClick = (productId: string) => {
+  const handleProductClick = (productId: number) => {
      navigate(`/product/${productId}`);
   };
 
@@ -169,9 +168,7 @@ const Catalog = () => {
     
     <div className="min-h-screen bg-gray-50">
       <Header />
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        
         <div className="flex justify-between items-center mb-8">
           <CategoryFilter />
           <div className="relative">
@@ -199,7 +196,6 @@ const Catalog = () => {
             )}
           </div>
         </div>
-
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {visibleProducts.map(product => (
@@ -210,7 +206,7 @@ const Catalog = () => {
               price={product.price}
               rating={0}
               reviewCount={10} 
-              image=""
+              image={product.pictureUrls[0]}
               isFavorite={favoriteIds.has(product.id)}
               onToggleFavorite={handleToggleFavorite}
               onClick={handleProductClick}
@@ -218,13 +214,11 @@ const Catalog = () => {
           ))}
         </div>
 
-        
         {visibleCount < products.length && (
         <div className="flex justify-center mt-12">
           <button className="px-8 py-3 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors duration-200 font-medium"
           onClick={() => setVisibleCount(prev => prev + 4)}>
             Show more
-             
           </button>
         </div>)}
       </div>

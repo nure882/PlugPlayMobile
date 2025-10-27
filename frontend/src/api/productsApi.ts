@@ -1,31 +1,21 @@
 import { baseApi } from './baseApi.ts';
-
-export interface BackendProductDto {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stockQuantity: number;
-  createdAt: string;
-  category: {
-    id: number;
-    name: string;
-    parentCategory?: {
-      id: number;
-      name: string;
-    };
-  } | null;
-}
+import {Product} from "../models/Product.ts";
 
 export const productsApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getAllProducts: builder.query<BackendProductDto[], void>({
+    getAllProducts: builder.query<Product[], void>({
       query: () => ({
         url: 'products/all',
         method: 'GET',
       }),
     }),
-    getProductById: builder.query<BackendProductDto, number>({
+    getAvailableProducts: builder.query<Product[], void>({
+        query: () => ({
+            url: 'products/available',
+            method: 'GET',
+        }),
+    }),
+    getProductById: builder.query<Product, number>({
       query: (id) => ({
         url: `products/${id}`,
         method: 'GET',
@@ -37,4 +27,5 @@ export const productsApi = baseApi.injectEndpoints({
 export const {
   useGetAllProductsQuery,
   useGetProductByIdQuery,
+  useGetAvailableProductsQuery
 } = productsApi;

@@ -1,9 +1,10 @@
-export interface BackendProduct {
+export interface Product {
   id: number;
   name: string;
-  description: string;
   price: number;
+  description: string;
   stockQuantity: number;
+  pictureUrls: string[];
   createdAt: string;
   category: {
     id: number;
@@ -14,22 +15,3 @@ export interface BackendProduct {
     };
   } | null;
 }
-
-export interface Product {
-  id: string;
-  name: string;
-  price: number;
-  description: string;
-  stockQuantity: number;
-  createdAt: string;
-  category: {
-    id: number;
-    name: string;
-    parentCategory?: {
-      id: number;
-      name: string;
-    };
-  } | null;
-}
-
-export interface ProductDetail extends Product {}

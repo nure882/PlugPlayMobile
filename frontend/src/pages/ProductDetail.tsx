@@ -1,37 +1,35 @@
-import { useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw } from 'lucide-react';
+import {useState} from 'react';
+import {useParams} from 'react-router-dom';
+import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
 import Header from '../components/common/Header.tsx';
-import { useGetProductByIdQuery } from '../api/productsApi.ts';
-import { mapBackendProductToDetail } from '../utils/productMapper';
+import {useGetProductByIdQuery} from '../api/productsApi.ts';
+import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 
 const ProductDetail = () => {
-  const { id } = useParams<{ id: string }>();
+  const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
-  
-  const { 
-    data: backendProduct, 
-    isLoading, 
-    error, 
-    isError 
+
+  const {
+    data,
+    isLoading,
+    error,
+    isError
   } = useGetProductByIdQuery(productId, {
     skip: !productId || isNaN(productId)
   });
 
   const [isFavorite, setIsFavorite] = useState(false);
 
- 
-  const product = backendProduct ? mapBackendProductToDetail(backendProduct) : undefined;
+  const product = data;
 
-  
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        <Header/>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex flex-col items-center gap-4">
-              <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-blue-600"/>
               <p className="text-gray-600">Loading product...</p>
             </div>
           </div>
@@ -40,11 +38,10 @@ const ProductDetail = () => {
     );
   }
 
-
   if (isError || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        <Header/>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -114,17 +111,18 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      <Header/>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          {/* Product Image Placeholder */}
-          <div className="bg-white rounded-lg p-8 flex items-center justify-center">
-            <div className="text-center">
-              <Package className="w-24 h-24 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">Product Image</p>
-              <p className="text-sm text-gray-400">Image will be added soon</p>
-            </div>
+          {/* Product Image Gallery */}
+          <div className="bg-white rounded-lg p-8">
+            <ProductImageGallery
+              images={product.pictureUrls ?? []}
+              initialIndex={0}
+              altPrefix={product.name}
+              className=""
+            />
           </div>
 
           {/* Product Info */}
@@ -142,16 +140,17 @@ const ProductDetail = () => {
             </div>
 
             <div className="flex items-baseline gap-3">
-              <span className="text-4xl font-bold text-gray-900">
-                {formatPrice(product.price)} ₴
-              </span>
+                <span className="text-4xl font-bold text-gray-900">
+                  {formatPrice(product.price)} ₴
+                </span>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${product.stockQuantity > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              <div
+                className={`w-2 h-2 rounded-full ${product.stockQuantity > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
               <span className="text-sm text-gray-700 font-medium">
-                {product.stockQuantity > 0 ? `In stock (${product.stockQuantity} items)` : 'Out of stock'}
-              </span>
+                  {product.stockQuantity > 0 ? `In stock (${product.stockQuantity} items)` : 'Out of stock'}
+                </span>
             </div>
 
             <div className="flex gap-3">
@@ -160,10 +159,10 @@ const ProductDetail = () => {
                 disabled={product.stockQuantity === 0}
                 className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                <ShoppingCart className="w-5 h-5" />
+                <ShoppingCart className="w-5 h-5"/>
                 Buy
               </button>
-              
+
               <button
                 onClick={() => setIsFavorite(!isFavorite)}
                 className={`p-3 rounded-lg border-2 transition-all ${
@@ -192,17 +191,17 @@ const ProductDetail = () => {
               <h3 className="text-lg font-semibold text-gray-900 mb-4">
                 Delivery and warranty
               </h3>
-              
+
               <div className="space-y-4">
                 {deliveryOptions.map((option, index) => {
                   const IconComponent = iconMap[option.icon as keyof typeof iconMap];
-                  
+
                   return (
                     <div key={index} className="flex items-start gap-3">
                       <div className="flex-shrink-0 w-10 h-10 bg-blue-50 rounded-lg flex items-center justify-center">
-                        <IconComponent className="w-5 h-5 text-blue-600" />
+                        <IconComponent className="w-5 h-5 text-blue-600"/>
                       </div>
-                      
+
                       <div>
                         <h4 className="font-medium text-gray-900 text-sm">
                           {option.title}
@@ -224,7 +223,7 @@ const ProductDetail = () => {
           <h2 className="text-2xl font-bold text-gray-900 mb-6">
             Description
           </h2>
-          
+
           <p className="text-gray-700 leading-relaxed">
             {product.description}
           </p>

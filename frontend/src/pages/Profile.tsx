@@ -48,7 +48,7 @@ export default function Profile() {
 
   // fetch names by token (server returns { FirstName, LastName })
   const token = storage.getAccessToken();
-  const {data: tokenUser, isFetching: isFetchingTokenUser} = useGetUserByTokenQuery(token ?? '', {skip: !token});
+  const {data: tokenUser} = useGetUserByTokenQuery(token ?? '', {skip: !token});
 // s(`token user: ${tokenUser.firstName} ${tokenUser.lastName}`);
   // o(tokenUser as object);
   useEffect(() => {
