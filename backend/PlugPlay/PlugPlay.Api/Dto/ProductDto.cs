@@ -1,3 +1,5 @@
+using PlugPlay.Domain.Entities;
+
 namespace PlugPlay.Api.Dto;
 
 public record ProductDto(
@@ -8,4 +10,6 @@ public record ProductDto(
     int StockQuantity,
     DateTime CreatedAt,
     CategoryDto? Category,
-    IEnumerable<string> PictureUrls);
+    IEnumerable<string> PictureUrls,
+    IEnumerable<ReviewDto> Reviews,
+    IEnumerable<AttributeDto> Attributes);
