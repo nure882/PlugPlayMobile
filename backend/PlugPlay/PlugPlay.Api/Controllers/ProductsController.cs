@@ -33,7 +33,7 @@ public class ProductsController : ControllerBase
         _logger.LogInformation("Getting all products");
 
         var products = await _productsService.GetAllProductsAsync();
-        var productDtos = products.Select(pd => MapProduct(pd));
+        var productDtos = products.Select(MapProduct);
 
         _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
 
@@ -49,7 +49,7 @@ public class ProductsController : ControllerBase
         result.OnSuccess(() =>
             _logger.LogInformation("Successfully retrieved {Count} products", result.Value.Count()));
 
-        var productDtos = result.Value.Select(pd => MapProduct(pd));
+        var productDtos = result.Value.Select(MapProduct);
 
         return Ok(productDtos);
     }
@@ -122,7 +122,7 @@ public class ProductsController : ControllerBase
             product.CreatedAt,
             MapCategory(product.Category),
             product.ProductImages.Select(pi => pi.ImageUrl),
-            product.Reviews.Select(r => MapReview(r)),
+            product.Reviews.Select(MapReview),
             product.ProductAttributes.Select(pa => MapAttribute(pa.Attribute)));
     }
 
@@ -155,7 +155,7 @@ public class ProductsController : ControllerBase
             review.UpdatedAt);
     }
 
-    private AttributeDto MapAttribute(PlugPlay.Domain.Entities.Attribute attribute)
+    private AttributeDto MapAttribute(Domain.Entities.Attribute attribute)
     {
         return new AttributeDto(
             attribute.Id,
