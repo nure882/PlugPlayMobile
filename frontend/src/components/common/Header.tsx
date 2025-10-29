@@ -4,7 +4,11 @@ import logoUrl from '../../../assets/logo.svg';
 import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 
-export default function Header() {
+interface HeaderProps {
+  onCartClick: () => void;
+}
+
+export default function Header({ onCartClick }: HeaderProps) {
   const navigate = useNavigate();
   const { user, logout, isLoggingOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,7 +48,10 @@ export default function Header() {
           </div>
 
           <div className="flex items-center space-x-4">
-            <button className="p-2 text-gray-700 hover:text-black transition-colors">
+            <button 
+              onClick={onCartClick} 
+              className="p-2 text-gray-700 hover:text-black transition-colors"
+            >
               <ShoppingCart className="w-6 h-6" />
             </button>
 

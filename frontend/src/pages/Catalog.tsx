@@ -1,7 +1,8 @@
+// src/pages/Catalog.tsx
+
 import { useState} from 'react';
 import { Filter, Loader2 } from 'lucide-react';
 import ProductCard from '../components/products/ProductCard.tsx';
-import Header from '../components/common/Header.tsx';
 import CategoryFilter from '../components/products/CategoryFilter.tsx';
 import FiltersSidebar, {
   Filters,
@@ -45,7 +46,7 @@ const Catalog = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex flex-col items-center gap-4">
@@ -61,7 +62,7 @@ const Catalog = () => {
   if (isError) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header />
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -82,26 +83,7 @@ const Catalog = () => {
     );
   }
 
-  if (products.length === 0) {
-    return (
-      <div className="min-h-screen bg-gray-50">
-        <Header />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <div className="flex items-center justify-center min-h-[400px]">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">The catalog is empty</h2>
-              <button
-                onClick={() => window.history.back()}
-                className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                Go Back
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
+
 
   
   const visibleProducts = products.slice(0, visibleCount);
@@ -167,7 +149,7 @@ const Catalog = () => {
   return (
     
     <div className="min-h-screen bg-gray-50">
-      <Header />
+      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <CategoryFilter />

@@ -1,7 +1,6 @@
 import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import {Loader2} from 'lucide-react';
-import Header from '../components/common/Header.tsx';
 import {useRegisterMutation} from '../api/authApi.ts';
 import {GoogleLogin} from "@react-oauth/google";
 import {validateName, validateEmail, validatePhone, validatePassword} from '../utils/validation.ts';
@@ -226,7 +225,7 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header/>
+      
       <div className="flex items-center justify-center px-4">
         <div className="w-full max-w-md py-10">
           <div className="text-center mb-8">
