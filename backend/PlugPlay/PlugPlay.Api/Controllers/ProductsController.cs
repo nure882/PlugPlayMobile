@@ -33,16 +33,7 @@ public class ProductsController : ControllerBase
         _logger.LogInformation("Getting all products");
 
         var products = await _productsService.GetAllProductsAsync();
-        var productDtos = products.Select(pd => new ProductDto(
-            pd.Id,
-            pd.Name,
-            pd.Description,
-            pd.Price,
-            pd.StockQuantity,
-            pd.CreatedAt,
-            MapCategory(pd.Category),
-            pd.ProductImages.Select(pi => pi.ImageUrl)
-        ));
+        var productDtos = products.Select(MapProduct);
 
         _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
 
@@ -58,16 +49,7 @@ public class ProductsController : ControllerBase
         result.OnSuccess(() =>
             _logger.LogInformation("Successfully retrieved {Count} products", result.Value.Count()));
 
-        var productDtos = result.Value.Select(pd => new ProductDto(
-            pd.Id,
-            pd.Name,
-            pd.Description,
-            pd.Price,
-            pd.StockQuantity,
-            pd.CreatedAt,
-            MapCategory(pd.Category),
-            pd.ProductImages.Select(pi => pi.ImageUrl)
-        ));
+        var productDtos = result.Value.Select(MapProduct);
 
         return Ok(productDtos);
     }
@@ -80,16 +62,7 @@ public class ProductsController : ControllerBase
         try
         {
             var product = await _productsService.GetProductByIdAsync(id);
-            var productDto = new ProductDto(
-                product.Id,
-                product.Name,
-                product.Description,
-                product.Price,
-                product.StockQuantity,
-                product.CreatedAt,
-                MapCategory(product.Category),
-                product.ProductImages.Select(pi => pi.ImageUrl)
-            );
+            var productDto = MapProduct(product);
 
             _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
 
@@ -138,6 +111,21 @@ public class ProductsController : ControllerBase
 
     #region Helpers
 
+    private ProductDto MapProduct(Product product)
+    {
+        return new ProductDto(
+            product.Id,
+            product.Name,
+            product.Description,
+            product.Price,
+            product.StockQuantity,
+            product.CreatedAt,
+            MapCategory(product.Category),
+            product.ProductImages.Select(pi => pi.ImageUrl),
+            product.Reviews.Select(MapReview),
+            product.ProductAttributes.Select(pa => MapAttribute(pa.Attribute)));
+    }
+
     private CategoryDto? MapCategory(Category category, int maxDepth = 16)
     {
         return category == null ? null : MapCategoryInternal(category, 0, maxDepth, new HashSet<int>());
@@ -153,6 +141,27 @@ public class ProductsController : ControllerBase
 
             return new CategoryDto(category.Id, category.Name, parent);
         }
+    }
+
+    private ReviewDto MapReview(Review review)
+    {
+        return new ReviewDto(
+            review.Id,
+            review.ProductId,
+            review.UserId,
+            review.Rating,
+            review.Comment,
+            review.CreatedAt,
+            review.UpdatedAt);
+    }
+
+    private AttributeDto MapAttribute(Domain.Entities.Attribute attribute)
+    {
+        return new AttributeDto(
+            attribute.Id,
+            attribute.Name,
+            attribute.Unit,
+            attribute.DataType);
     }
 
     #endregion

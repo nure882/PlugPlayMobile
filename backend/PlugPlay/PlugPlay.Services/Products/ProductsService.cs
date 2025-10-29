@@ -28,6 +28,7 @@ namespace PlugPlay.Services.Products
                 .ThenInclude(pa => pa.Attribute)
                 .Include(p => p.ProductImages)
                 .Include(p => p.Category)
+                .Include(p => p.Reviews)
                 .AsQueryable();
 
             var products = await query.ToListAsync();
@@ -68,7 +69,8 @@ namespace PlugPlay.Services.Products
                 .Include(p => p.ProductAttributes)
                 .ThenInclude(pa => pa.Attribute)
                 .Include(p => p.ProductImages)
-                .Include(p => p.Category);
+                .Include(p => p.Category)
+                .Include(p => p.Reviews);
 
             _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
 
