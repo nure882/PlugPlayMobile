@@ -140,17 +140,6 @@ try
     }
 
     app.UseMiddleware<ExceptionHandlerMiddleware>();
-    using var scope = app.Services.CreateScope();
-    var services = scope.ServiceProvider;
-    try
-    {
-        DataSeed.Seed(services);
-    }
-    catch (Exception ex)
-    {
-        Debug.WriteLine(ex.Message, ex.StackTrace);
-    }
-
     app.UseCors("AllowAllOrigins");
     app.UseAuthentication();
     app.UseAuthorization();
