@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Home, ArrowLeft } from 'lucide-react';
-import Header from '../components/common/Header.tsx';
 
 export default function NotFound() {
   return (
     <div className="min-h-screen bg-white">
-      <Header />
+      
       <div className="flex items-center justify-center px-4 py-20">
         <div className="text-center max-w-md">
           <div className="mb-8">
