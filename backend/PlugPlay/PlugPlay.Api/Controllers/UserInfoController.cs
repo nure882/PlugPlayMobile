@@ -35,8 +35,9 @@ public class UserInfoController : ControllerBase
         }
 
         var user = userResult.Value;
+        UserInfoDto userInfo = MapUser(user); 
 
-        return Ok(new { FirstName = user.FirstName, LastName = user.LastName });
+        return Ok(userInfo);
     }
 
     [HttpGet("{id:int}")]
@@ -48,23 +49,7 @@ public class UserInfoController : ControllerBase
         {
             var user = await _userInfoService.GetUserInfoByIdAsync(id);
 
-            UserInfoDto userInfo = new UserInfoDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Addresses = user.UserAddresses
-                .Select(a => new UserAddressDto
-                {
-                    Id = a.Id,
-                    House = a.House,
-                    Apartments = a.Apartments,
-                    Street = a.Street,
-                    City = a.City
-                })
-                .ToList()
-            };
+            UserInfoDto userInfo = MapUser(user);
 
             _logger.LogInformation("Successfully retrieved user info for user ID: {UserId}", id);
             
@@ -132,4 +117,28 @@ public class UserInfoController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    #region Helpers
+    private UserInfoDto MapUser(Domain.Entities.User user)
+    {
+        return new UserInfoDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Addresses = user.UserAddresses
+                .Select(a => new UserAddressDto
+                {
+                    Id = a.Id,
+                    House = a.House,
+                    Apartments = a.Apartments,
+                    Street = a.Street,
+                    City = a.City
+                })
+                .ToList()
+        };
+    }
+
+    #endregion
 }
