@@ -96,6 +96,18 @@ namespace PlugPlay.Services.Profile
                         existing.Apartments = addrDto.Apartments;
                         existing.Street = addrDto.Street;
                         existing.City = addrDto.City;
+                        _context.UserAddresses.Update(existing);
+                    }
+                    else
+                    {
+                        _logger.LogDebug("Adding new address for user ID: {UserId}", id);
+                        user.UserAddresses.Add(new UserAddress
+                        {
+                            House = addrDto.House,
+                            Apartments = addrDto.Apartments,
+                            Street = addrDto.Street,
+                            City = addrDto.City
+                        });
                     }
                 }
                 else

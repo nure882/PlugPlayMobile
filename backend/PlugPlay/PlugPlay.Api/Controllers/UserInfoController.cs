@@ -35,8 +35,9 @@ public class UserInfoController : ControllerBase
         }
 
         var user = userResult.Value;
+        UserInfoDto userInfo = MapUser(user); 
 
-        return Ok(new { FirstName = user.FirstName, LastName = user.LastName });
+        return Ok(userInfo);
     }
 
     [HttpGet("{id:int}")]
@@ -47,24 +48,7 @@ public class UserInfoController : ControllerBase
         try
         {
             var user = await _userInfoService.GetUserInfoByIdAsync(id);
-
-            UserInfoDto userInfo = new UserInfoDto
-            {
-                Id = user.Id,
-                Email = user.Email,
-                FirstName = user.FirstName,
-                LastName = user.LastName,
-                Addresses = user.UserAddresses
-                .Select(a => new UserAddressDto
-                {
-                    Id = a.Id,
-                    House = a.House,
-                    Apartments = a.Apartments,
-                    Street = a.Street,
-                    City = a.City
-                })
-                .ToList()
-            };
+            UserInfoDto userInfo = MapUser(user);
 
             _logger.LogInformation("Successfully retrieved user info for user ID: {UserId}", id);
             
@@ -79,7 +63,7 @@ public class UserInfoController : ControllerBase
     }
 
     [HttpPut("{id:int}")]
-    public async Task<IActionResult> UpdateUser(int id, [FromBody] UserInfoDto dto)
+    public async Task<IActionResult> UpdateUserById(int id, [FromBody] UserInfoDto dto)
     {
         _logger.LogInformation("Updating user with ID: {UserId}", id);
 
@@ -98,4 +82,63 @@ public class UserInfoController : ControllerBase
             return BadRequest(new { message = ex.Message });
         }
     }
+
+    [HttpPut("{token}")]
+    public async Task<IActionResult> UpdateUserByToken(string token, [FromBody] UserInfoDto dto)
+    {
+        _logger.LogInformation("Getting user by token");
+
+        var userResult = await _userInfoService.GetUserByTokenAsync(token);
+        userResult.OnFailure(() =>
+                _logger.LogWarning("Failed to get user by token: {Error}", userResult.Error))
+            .OnSuccess(() =>
+                _logger.LogInformation("Successfully retrieved user ID: {UserId} by token", userResult.Value.Id));
+
+        if (userResult.Failure)
+        {
+            return BadRequest("No such user");
+        }
+
+        int id = userResult.Value.Id;
+        try
+        {
+            _logger.LogInformation("Updating user with ID: {UserId}", id);
+            var result = await _userInfoService.UpdateUserAsync(id, dto);
+
+            _logger.LogInformation("Successfully updated user with ID: {UserId}", id);
+
+            return Ok("User updated successfully.");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating user with ID: {UserId}", id);
+
+            return BadRequest(new { message = ex.Message });
+        }
+    }
+
+    #region Helpers
+
+    private UserInfoDto MapUser(Domain.Entities.User user)
+    {
+        return new UserInfoDto
+        {
+            Id = user.Id,
+            Email = user.Email,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            Addresses = user.UserAddresses
+                .Select(a => new UserAddressDto
+                {
+                    Id = a.Id,
+                    House = a.House,
+                    Apartments = a.Apartments,
+                    Street = a.Street,
+                    City = a.City
+                })
+                .ToList()
+        };
+    }
+
+    #endregion
 }
