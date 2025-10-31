@@ -48,7 +48,6 @@ public class UserInfoController : ControllerBase
         try
         {
             var user = await _userInfoService.GetUserInfoByIdAsync(id);
-
             UserInfoDto userInfo = MapUser(user);
 
             _logger.LogInformation("Successfully retrieved user info for user ID: {UserId}", id);
@@ -119,6 +118,7 @@ public class UserInfoController : ControllerBase
     }
 
     #region Helpers
+
     private UserInfoDto MapUser(Domain.Entities.User user)
     {
         return new UserInfoDto
