@@ -1,8 +1,9 @@
 import {baseApi} from "./baseApi.ts";
+import {User} from "../models/User.ts";
 
 export const userInfoApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
-    getUserByToken: builder.query<{ FirstName: string; LastName: string }, string>({
+    getUserByToken: builder.query<{ user: User }, string>({
       query: (token) => ({
         url: `userinfo/${token}`,
         method: 'GET',

@@ -1,3 +1,4 @@
+import { Address } from "./Address.ts";
 import {Role} from "./Role.ts";
 
 export interface User {
@@ -9,4 +10,5 @@ export interface User {
   pictureUrl?: string;
   createdAt: string;
   updatedAt: string;
+  adresses: Address[];
 }

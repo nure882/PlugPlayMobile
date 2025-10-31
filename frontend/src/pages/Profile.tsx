@@ -53,8 +53,12 @@ export default function Profile() {
   useEffect(() => {
     // populate first/last from token endpoint on load, but don't overwrite while editing
     if (tokenUser && !isEditing) {
+      console.log(tokenUser);
+
       setFirstName(tokenUser.firstName);
       setLastName(tokenUser.lastName);
+      setEmail(tokenUser.email);
+      setAddresses(tokenUser.addresses)
       setInitialData(prev => ({...prev, firstName: tokenUser.firstName, lastName: tokenUser.lastName}));
     }
   }, [tokenUser, isEditing]);
@@ -219,7 +223,7 @@ export default function Profile() {
 
           <AccordionSection title="Delivery Addresses" subtitle="Saved delivery addresses">
             <div className="space-y-6">
-              {addresses.map((address, index) => (
+              {(addresses ?? []).map((address, index) => (
                 <div key={index} className="flex items-start justify-between p-4 bg-gray-50 rounded-lg">
                   <div className="space-y-1">
                     <div className="text-sm font-medium text-gray-900">
