@@ -2,10 +2,16 @@ using System.Net;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Query;
 using PlugPlay.Api.Dto;
+using PlugPlay.Api.Dto.Product;
+using PlugPlay.Api.Helpers;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
+using PlugPlay.Services.Products;
+using Attribute = PlugPlay.Domain.Entities.Attribute;
 
 namespace PlugPlay.Api.Controllers;
 
@@ -52,6 +58,100 @@ public class ProductsController : ControllerBase
         var productDtos = result.Value.Select(MapProduct);
 
         return Ok(productDtos);
+    }
+
+    [HttpGet("attribute/{categoryId:int}")]
+    public async Task<IActionResult> GetAttributes(int categoryId)
+    {
+        if (categoryId < 1)
+        {
+            return BadRequest("Invalid categroyId");
+        }
+
+        var result = await _productsService.GetCategoryAttributesAsync(categoryId);
+        result.OnFailure(() =>
+        {
+            var failed = LoggerMessage.Define<int, string>(LogLevel.Error,
+                new EventId(2001, $"{nameof(GetAttributes)}Failed"),
+                @"Failed to retrieve attributes for category {CategoryId}. Error: {Error}");
+            failed(_logger, categoryId, result.Error, null);
+        });
+        result.OnSuccess(() =>
+        {
+            var success = LoggerMessage.Define<int>(LogLevel.Information,
+                new EventId(2002, $"{nameof(GetAttributes)}Success"),
+                @"Successfully retrieved attributes for category {CategoryId}");
+            success(_logger, categoryId, null);
+        });
+
+        if (result.Failure)
+        {
+            return BadRequest($"Error: {result.Error}");
+        }
+
+        var attributeDtos = result.Value.Select(MapAttribute);
+
+        return Ok(attributeDtos);
+    }
+
+    [HttpGet("filter/{categoryId:int}")]
+    public async Task<IActionResult> FilterProducts(
+        int categoryId,
+        [FromQuery] decimal? minPrice = null,
+        [FromQuery] decimal? maxPrice = null,
+        [FromQuery] string filter = null,
+        [FromQuery] string sort = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        var predicate = AttributeHelper.BuildPredicate(filter, categoryId, minPrice, maxPrice);
+        var includes = new List<Func<IQueryable<Product>, IIncludableQueryable<Product, object>>>
+        {
+            q => q
+                .Include(p => p.ProductAttributes).ThenInclude(av => av.Attribute)
+                .Include(p => p.Category).ThenInclude(c => c.ParentCategory)
+        };
+        var orderBy = AttributeHelper.BuildOrderByDelegate(sort);
+        var skipCount = (page - 1) * pageSize;
+        int? takeCount = pageSize;
+
+        var result = await _productsService.FilterProductsAsync(new FilterProductsRequest
+        {
+            Predicate = predicate,
+            Includes = includes,
+            OrderBy = orderBy,
+            SkipCount = skipCount,
+            TakeCount = takeCount
+        });
+        result.OnFailure(() =>
+        {
+            var failed = LoggerMessage.Define<int, string, string, int, int, string>(LogLevel.Error,
+                new EventId(2001, "FilterProductsFailed"),
+                @"Failed to filter products for category {CategoryId} with filter '{Filter}', 
+                            sort '{Sort}', page {Page}, pageSize {PageSize}. Error: {Error}");
+
+            failed(_logger, categoryId, filter, sort, page, pageSize, result.Error, null);
+        });
+        result.OnSuccess(() =>
+        {
+            var success = LoggerMessage.Define<int, string, string, int, int>(LogLevel.Information,
+                new EventId(2002, "FilterProductsSuccess"),
+                @"Successfully filtered products for category {CategoryId} with filter '{Filter}', 
+                            sort '{Sort}', page {Page}, pageSize {PageSize}");
+
+            success(_logger, categoryId, filter, sort, page, pageSize, null);
+        });
+        if (result.Failure)
+        {
+            return BadRequest(result.Error);
+        }
+
+        var productDtos = result.Value.Select(MapProduct);
+        var total = result.Value.Count();
+        var totalPages = (int)Math.Ceiling(total / (double)pageSize);
+
+        return Ok(new FilterProductsResponse
+            { Products = productDtos, Total = total, TotalPages = totalPages, Page = page, PageSize = pageSize });
     }
 
     [HttpGet("{id:int}")]
@@ -123,7 +223,26 @@ public class ProductsController : ControllerBase
             MapCategory(product.Category),
             product.ProductImages.Select(pi => pi.ImageUrl),
             product.Reviews.Select(MapReview),
-            product.ProductAttributes.Select(pa => MapAttribute(pa.Attribute)));
+            product.ProductAttributes.Select(pa => pa.Attribute),
+            product.ProductAttributes.Select(MapProductAttribute)
+        );
+    }
+
+    private ProductAttributeDto MapProductAttribute(ProductAttribute pa)
+    {
+        double? numValue = null;
+        if (pa.Attribute?.DataType == "num" && double.TryParse(pa.Value, out var d))
+        {
+            numValue = d;
+        }
+
+        return new ProductAttributeDto(
+            pa.Id,
+            pa.AttributeId,
+            pa.ProductId,
+            pa.Value,
+            numValue
+        );
     }
 
     private CategoryDto? MapCategory(Category category, int maxDepth = 16)
@@ -155,13 +274,35 @@ public class ProductsController : ControllerBase
             review.UpdatedAt);
     }
 
-    private AttributeDto MapAttribute(Domain.Entities.Attribute attribute)
+    private AttributeDto MapAttribute(Attribute attribute)
     {
+        var pas = new List<ProductAttributeDto>();
+        foreach (var pa in attribute.ProductAttributes)
+        {
+            var paDto = new ProductAttributeDto
+            {
+                Id = pa.Id,
+                AttributeId = pa.AttributeId,
+                ProductId = pa.ProductId,
+            };
+            var value = pa.GetTypedValue();
+            if (value.Item2 == typeof(string))
+            {
+                paDto.StrValue = value.Item1;
+            }
+            else
+            {
+                paDto.NumValue = value.Item1;
+            }
+        }
+
         return new AttributeDto(
             attribute.Id,
             attribute.Name,
             attribute.Unit,
-            attribute.DataType);
+            attribute.DataType,
+            pas
+            );
     }
 
     #endregion

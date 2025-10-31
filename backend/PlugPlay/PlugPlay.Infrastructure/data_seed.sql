@@ -227,6 +227,7 @@ INSERT INTO public.product_attribute (id, attribute_id, product_id, value) VALUE
   (30, 10, 10, '0.15')
 ON CONFLICT DO NOTHING;
 
+
 -- ===============================================
 -- ADDITIONAL ATTRIBUTES
 -- ===============================================
@@ -333,6 +334,29 @@ INSERT INTO public.product_attribute (id, attribute_id, product_id, value) VALUE
   (79, 7, 20, 'Desktop'),
   (80, 1, 20, 'Black')
 ON CONFLICT DO NOTHING;
+
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (1, 9, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761419900/uploads/4b368387-5bae-4313-a090-0bdae62b28cf.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (2, 8, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422322/uploads/92942d36-2b38-49d9-9f66-19f5992566b2.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (3, 1, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761867319/Gemini_Generated_Image_3vl0793vl0793vl0_ly2vhd.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (4, 2, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420157/uploads/8e65b215-f887-40d3-9e69-e12bef53810d.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (5, 3, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761761430/5192691606795450845_b7twbr.jpg');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (6, 3, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761761430/5192691606795450844_p6odh2.jpg');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (7, 4, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420213/uploads/92338612-f60f-4344-ab2f-479686b36251.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (8, 5, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420763/uploads/a00e7a08-79b8-48cb-ab94-86cc9d8a069a.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (9, 6, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761599314/5188579197084367820_kechi9.jpg');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (10, 6, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761599314/5188579197084367819_1_gtlzzq.jpg');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (11, 7, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (12, 10, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (13, 11, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (14, 12, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (15, 17, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422207/uploads/33560038-abe3-447e-bb99-675cbc0cfc16.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (16, 16, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (17, 19, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422295/uploads/488a04d8-a483-47fd-b251-ea0b1d834a86.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (18, 20, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422295/uploads/488a04d8-a483-47fd-b251-ea0b1d834a86.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (19, 18, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761867003/s-l1600_sncgz8.webp');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (20, 13, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (21, 15, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (22, 14, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761866164/maxresdefault_zkrrsb.jpg');
 
 -- ====== sequence sync ======
 DO $$
