@@ -58,6 +58,7 @@ export default function Profile() {
       setFirstName(tokenUser.firstName);
       setLastName(tokenUser.lastName);
       setEmail(tokenUser.email);
+      setPhone(tokenUser.phoneNumber)
       setAddresses(tokenUser.addresses)
       setInitialData(prev => ({...prev, firstName: tokenUser.firstName, lastName: tokenUser.lastName}));
     }

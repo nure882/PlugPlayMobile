@@ -5,10 +5,12 @@ export interface User {
   id: number;
   firstName: string;
   lastName: string;
+  email : string;
+  phoneNumber : string; 
   role: Role;
   googleId?: string;
   pictureUrl?: string;
   createdAt: string;
   updatedAt: string;
-  adresses: Address[];
+  addresses: Address[];
 }
