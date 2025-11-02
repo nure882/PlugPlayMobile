@@ -125,6 +125,7 @@ public class UserInfoController : ControllerBase
         {
             Id = user.Id,
             Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Addresses = user.UserAddresses
