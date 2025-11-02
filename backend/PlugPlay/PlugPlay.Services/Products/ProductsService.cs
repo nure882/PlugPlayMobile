@@ -130,36 +130,67 @@ public class ProductsService : IProductsService
             return Result.Fail<IEnumerable<Attribute>>($"No category with id {categoryId}");
         }
 
-        var products = _context.Products.AsQueryable();
-        if (await products.Where(p => p.CategoryId == categoryId && p.Category.ParentCategoryId != null)
-                .CountAsync() != 0)
-        {
-            while (await _context.Categories
-                       .Where(c => c.SubCategories.Contains(category)).CountAsync() > 1)
-            {
-                category = await _context.Categories
-                    .Where(c => c.SubCategories.Contains(category))
-                    .FirstOrDefaultAsync();
-            }
-        }
+        var allCategories = await _context.Categories.AsNoTracking().ToListAsync();
+        var childrenLookup = allCategories
+            .GroupBy(c => c.ParentCategoryId)
+            .ToDictionary(g => g.Key ?? -1, g => g.ToList());
 
-        var attributeIds = new List<int>();
+        var categoryIds = new List<int>();
+        var stack = new Stack<int>();
+        stack.Push(categoryId);
 
-        foreach (var p in products.Include(product => product.ProductAttributes))
+        while (stack.Count > 0)
         {
-            foreach (var pa in p.ProductAttributes)
+            var current = stack.Pop();
+            if (categoryIds.Contains(current)) continue;
+            categoryIds.Add(current);
+
+            if (childrenLookup.TryGetValue(current, out var children))
             {
-                if (!attributeIds.Contains(pa.AttributeId))
+                foreach (var child in children)
                 {
-                    attributeIds.Add(pa.AttributeId);
+                    stack.Push(child.Id);
                 }
             }
         }
 
-        var attributes = await _context.Attributes.FromSqlInterpolated(@"SELECT * FROM attribute a
-                                                                WHERE a.id IN {attributeIds");
+        var products = await _context.Products
+            .Where(p => categoryIds.Contains(p.CategoryId))
+            .Include(p => p.ProductAttributes)
+            .ToListAsync();
 
-        return Result.Success(attributes);
+        var attributeIds = products
+            .SelectMany(p => p.ProductAttributes)
+            .Select(pa => pa.AttributeId)
+            .Distinct()
+            .ToList();
+
+        if (!attributeIds.Any())
+        {
+            return Result.Success<IEnumerable<Attribute>>(new List<Attribute>());
+        }
+
+        var attributes = await _context.Attributes
+            .Where(a => attributeIds.Contains(a.Id))
+            .Include(a => a.ProductAttributes)
+            .ToListAsync();
+
+        return Result.Success<IEnumerable<Attribute>>(attributes);
+    }
+
+    public async Task<Result<Category>> GetCategoryAsync(int categoryId)
+    {
+        var category = await _context.Categories
+            .Include(c => c.ParentCategory)
+            .Include(c => c.SubCategories)
+            .FirstOrDefaultAsync(c => c.Id == categoryId);
+
+        if (category is null)
+        {
+            return Result.Fail<Category>($"No category {categoryId}");
+        }
+
+        return Result.Success(category);
     }
 
     public async Task<Product> GetProductByIdAsync(int id)

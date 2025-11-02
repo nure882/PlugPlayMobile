@@ -352,7 +352,7 @@ INSERT INTO public.product_image (id, product_id, image_url) VALUES (14, 12, 'ht
 INSERT INTO public.product_image (id, product_id, image_url) VALUES (15, 17, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422207/uploads/33560038-abe3-447e-bb99-675cbc0cfc16.png');
 INSERT INTO public.product_image (id, product_id, image_url) VALUES (16, 16, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
 INSERT INTO public.product_image (id, product_id, image_url) VALUES (17, 19, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422295/uploads/488a04d8-a483-47fd-b251-ea0b1d834a86.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (18, 20, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422295/uploads/488a04d8-a483-47fd-b251-ea0b1d834a86.png');
+INSERT INTO public.product_image (id, product_id, image_url) VALUES (18, 20, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761870221/18308988_vjwt4o.jpg');
 INSERT INTO public.product_image (id, product_id, image_url) VALUES (19, 18, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761867003/s-l1600_sncgz8.webp');
 INSERT INTO public.product_image (id, product_id, image_url) VALUES (20, 13, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png');
 INSERT INTO public.product_image (id, product_id, image_url) VALUES (21, 15, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png');

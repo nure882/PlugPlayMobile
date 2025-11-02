@@ -85,9 +85,9 @@ public class ProductAttribute
 
         switch (dataType)
         {
-            case "num":
+            case "decimal":
                 return typeof(int);
-            case "str":
+            case "string":
                 return typeof(string);
             case "bool":
                 return typeof(bool);

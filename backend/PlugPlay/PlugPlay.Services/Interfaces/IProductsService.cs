@@ -18,5 +18,7 @@ namespace PlugPlay.Services.Interfaces
         Task<Result<IEnumerable<Product>>> FilterProductsAsync(FilterProductsRequest request);
 
         Task<Result<IEnumerable<Attribute>>> GetCategoryAttributesAsync(int categoryId);
+
+        Task<Result<Category>> GetCategoryAsync(int categoryId);
     }
 }

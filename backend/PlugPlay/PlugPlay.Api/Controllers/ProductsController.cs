@@ -1,12 +1,12 @@
 using System.Net;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
 using PlugPlay.Api.Dto;
 using PlugPlay.Api.Dto.Product;
-using PlugPlay.Api.Helpers;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
@@ -104,7 +104,13 @@ public class ProductsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var predicate = AttributeHelper.BuildPredicate(filter, categoryId, minPrice, maxPrice);
+        var categoryResult = await _productsService.GetCategoryAsync(categoryId);
+        if (categoryResult.Failure)
+        {
+            return BadRequest("Invalid categoryId");
+        }
+
+        var predicate = await AttributeHelper.BuildPredicate(filter, categoryResult.Value, minPrice, maxPrice);
         var includes = new List<Func<IQueryable<Product>, IIncludableQueryable<Product, object>>>
         {
             q => q
@@ -176,7 +182,7 @@ public class ProductsController : ControllerBase
         }
     }
 
-    // todo: [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")]
     [HttpPost("image/{productId:int}")]
     public async Task<IActionResult> UploadImage(int productId, IFormFile file)
     {
@@ -195,18 +201,19 @@ public class ProductsController : ControllerBase
 
         var uploadResult = await _cloudinary.UploadAsync(uploadParams);
 
-        if (uploadResult.StatusCode == HttpStatusCode.OK)
+        if (uploadResult.StatusCode != HttpStatusCode.OK)
         {
-            var result = await _productsService.AddImageAsync(productId, uploadResult.Url.AbsoluteUri);
-            result.OnFailure(() =>
-                    _logger.LogError("Failed to add image for product {ProductId}", productId))
-                .OnSuccess(() =>
-                    _logger.LogInformation("Successfully added image for product {ProductId}", productId));
-
-            return Ok();
+            return BadRequest(new ProblemDetails() { Title = "Upload failed." });
         }
 
-        return BadRequest(new ProblemDetails() { Title = "Upload failed." });
+        var result = await _productsService.AddImageAsync(
+            productId, uploadResult.Url.AbsoluteUri);
+        result.OnFailure(() =>
+                _logger.LogError("Failed to add image for product {ProductId}", productId))
+            .OnSuccess(() =>
+                _logger.LogInformation("Added image for product {ProductId}", productId));
+
+        return Ok();
     }
 
     #region Helpers
@@ -230,19 +237,23 @@ public class ProductsController : ControllerBase
 
     private ProductAttributeDto MapProductAttribute(ProductAttribute pa)
     {
-        double? numValue = null;
-        if (pa.Attribute?.DataType == "num" && double.TryParse(pa.Value, out var d))
+        var dto = new ProductAttributeDto
         {
-            numValue = d;
+            Id = pa.Id,
+            AttributeId = pa.AttributeId,
+            ProductId = pa.ProductId
+        };
+        var value = pa.GetTypedValue();
+        if (value.Item2 == typeof(string))
+        {
+            dto.StrValue = value.Item1;
+        }
+        else
+        {
+            dto.NumValue = value.Item1;
         }
 
-        return new ProductAttributeDto(
-            pa.Id,
-            pa.AttributeId,
-            pa.ProductId,
-            pa.Value,
-            numValue
-        );
+        return dto;
     }
 
     private CategoryDto? MapCategory(Category category, int maxDepth = 16)
@@ -294,6 +305,7 @@ public class ProductsController : ControllerBase
             {
                 paDto.NumValue = value.Item1;
             }
+            pas.Add(paDto);
         }
 
         return new AttributeDto(

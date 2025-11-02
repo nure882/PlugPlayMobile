@@ -2,7 +2,7 @@ using System.Linq.Expressions;
 using LinqKit;
 using PlugPlay.Domain.Entities;
 
-namespace PlugPlay.Api.Helpers;
+namespace PlugPlay.Services.Products;
 
 public static class AttributeHelper
 {
@@ -23,13 +23,23 @@ public static class AttributeHelper
 
         return orderBy;
     }
-// GET /api/products?categoryId=2&filter=5=1,2,3;7=red,blue&minPrice=10&maxPrice=100&sort=price_asc
-    // GET /api/products?categoryId=2&filter=5%3D1%2C2%2C3%3B7%3Dred%2Cblue&minPrice=10&maxPrice=100&sort=price_asc
-    public static ExpressionStarter<Product> BuildPredicate(string filter, int categoryId, decimal? minPrice = null,
+
+    public async static Task<ExpressionStarter<Product>> BuildPredicate(string filter, Category category, decimal? minPrice = null,
         decimal? maxPrice = null)
     {
         var predicate = PredicateBuilder.New<Product>(true);
-        predicate = predicate.And(p => p.CategoryId == categoryId);
+        if (category.ParentCategoryId.HasValue)
+        {
+            predicate = predicate.And(p => p.CategoryId == category.Id);
+        }
+        else
+        {
+            foreach (var sc in category.SubCategories)
+            {
+                predicate = predicate.Or(p => p.CategoryId == sc.Id);
+            }
+        }
+
         if (minPrice.HasValue)
         {
             predicate = predicate.And(p => p.Price >= minPrice.Value);
@@ -54,7 +64,7 @@ public static class AttributeHelper
         var filterParts = decodedFilter.Split(';');
         foreach (var part in filterParts)
         {
-            var kvp = part.Split('=');
+            var kvp = part.Split(':');
             if (kvp.Length != 2)
             {
                 continue;
