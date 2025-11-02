@@ -7,6 +7,8 @@ import {validateName, validateEmail, validatePhone} from '../utils/validation.ts
 import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
 import {storage} from '../utils/StorageService';
 import {o, s} from "../utils/useful.ts";
+import LoadingMessage from '../components/common/LoadingMessage.tsx';
+import ErrorMessage from '../components/common/ErrorMessage.tsx';
 
 type Errors = {
   firstName: string;
@@ -47,7 +49,9 @@ export default function Profile() {
 
   // fetch names by token (server returns { FirstName, LastName })
   const token = storage.getAccessToken();
-  const {data: tokenUser} = useGetUserByTokenQuery(token ?? '', {skip: !token});
+
+  const {data: tokenUser, isLoading, isError}  = useGetUserByTokenQuery(token ?? '', {skip: !token});
+
 // s(`token user: ${tokenUser.firstName} ${tokenUser.lastName}`);
   // o(tokenUser as object);
   useEffect(() => {
@@ -160,6 +164,14 @@ export default function Profile() {
   const handleDeleteAddress = (index: number) => {
     setAddresses(prev => prev.filter((_, i) => i !== index));
   };
+
+  if (isLoading) {
+    return LoadingMessage("profile page");
+  } 
+
+  if(isError) {
+    return ErrorMessage("error loading personal page", "couldn't retrieve data from the database")
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
