@@ -29,11 +29,11 @@ export default function Profile() {
   // initialize empty; will be populated from token endpoint if available
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('+380123456789');
-  const [email, setEmail] = useState('john@example.com');
+  const [phone, setPhone] = useState('');
+  const [email, setEmail] = useState('');
 
   const [addresses, setAddresses] = useState<Address[]>([
-    {city: 'Kyiv', street: 'Main St', house: '42', apartments: '1'}
+    {city: '', street: '', house: '', apartments: ''}
   ]);
   const [newAddress, setNewAddress] = useState<Address>({
     city: '', street: '', house: '', apartments: ''
