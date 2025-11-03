@@ -4,7 +4,7 @@ import {updateUserProfile} from '../api/userInfoApi.ts';
 import {PlusCircle, Trash2} from 'lucide-react';
 import {Address} from '../models/Address.ts';
 import {validateName, validateEmail, validatePhone} from '../utils/validation.ts';
-import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
+import {useGetUserByTokenQuery,  useUpdateUserByTokenMutation} from '../api/userInfoApi.ts';
 import {storage} from '../utils/StorageService';
 import {o, s} from "../utils/useful.ts";
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
@@ -47,12 +47,12 @@ export default function Profile() {
 
   const [initialData, setInitialData] = useState({firstName: '', lastName: '', phone, email});
 
-  // fetch names by token (server returns { FirstName, LastName })
   const token = storage.getAccessToken();
 
-  const {data: tokenUser, isLoading, isError}  = useGetUserByTokenQuery(token ?? '', {skip: !token});
+  const {data: tokenUser, isLoading, isError, refetch}  = useGetUserByTokenQuery(token ?? '', {skip: !token});
+  const [updateUserByToken] = useUpdateUserByTokenMutation();
 
-// s(`token user: ${tokenUser.firstName} ${tokenUser.lastName}`);
+
   // o(tokenUser as object);
   useEffect(() => {
     // populate first/last from token endpoint on load, but don't overwrite while editing
@@ -116,9 +116,18 @@ export default function Profile() {
 
     setIsSaving(true);
     try {
-      await updateUserProfile({firstName, lastName, phone, email});
+      await updateUserByToken({
+        token : token ?? '',
+        firstName : firstName,
+        lastName : lastName,
+        email : email,
+        phoneNumber : phone,
+        addresses : addresses
+      })
       setIsEditing(false);
       setErrors(initialErrors);
+
+      refetch();
     } catch (err) {
       console.error('Failed to save profile:', err);
     } finally {
