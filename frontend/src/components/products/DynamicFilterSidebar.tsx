@@ -57,6 +57,21 @@ export default function DynamicFiltersSidebar({
                                                 attributeGroups,
                                               }: DynamicFiltersSidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
+  // local inputs for price so we only commit on blur (unfocus)
+  const [minInput, setMinInput] = useState<string>(priceRange.min?.toString() ?? '0');
+  const [maxInput, setMaxInput] = useState<string>(priceRange.max?.toString() ?? '5000');
+
+  // keep local inputs in sync when parent priceRange changes
+  useEffect(() => {
+    setMinInput(priceRange.min?.toString() ?? '0');
+    setMaxInput(priceRange.max?.toString() ?? '5000');
+  }, [priceRange.min, priceRange.max]);
+
+  const commitPriceRange = () => {
+    const min = Number(minInput) || 0;
+    const max = Number(maxInput) || 0;
+    setPriceRange(prev => (prev.min === min && prev.max === max) ? prev : { min, max });
+  };
 
   const hasProducts = attributeGroups.length > 0;
 
@@ -172,12 +187,14 @@ export default function DynamicFiltersSidebar({
                   <div className="relative">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                     <input
-                      type="number"
-                      value={priceRange.min}
-                      onChange={(e) => setPriceRange({...priceRange, min: Number(e.target.value)})}
-                      className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="0"
-                    />
+                    type="number"
+                    value={minInput}
+                    onChange={(e) => setMinInput(e.target.value)}
+                    onBlur={commitPriceRange}
+                    onKeyDown={(e) => { if (e.key === 'Enter') commitPriceRange(); }}
+                    className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                    placeholder="0"
+                  />
                   </div>
                 </div>
 
@@ -187,8 +204,10 @@ export default function DynamicFiltersSidebar({
                     <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">$</span>
                     <input
                       type="number"
-                      value={priceRange.max}
-                      onChange={(e) => setPriceRange({...priceRange, max: Number(e.target.value)})}
+                      value={maxInput}
+                      onChange={(e) => setMaxInput(e.target.value)}
+                      onBlur={commitPriceRange}
+                      onKeyDown={(e) => { if (e.key === 'Enter') commitPriceRange(); }}
                       className="w-full pl-7 pr-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                       placeholder="5000"
                     />

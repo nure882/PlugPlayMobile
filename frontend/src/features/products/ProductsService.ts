@@ -87,89 +87,62 @@ class ProductsService {
       page = 1,
       pageSize = 100,
     } = options;
-
+    
     console.log('[ProductsService] Options:', { categoryId, minPrice, maxPrice, sort, page, pageSize });
 
-    // Fetch all available products when no category is selected
-    const {
-      data: allProducts = [],
-      isLoading: isLoadingAll,
-      isError: isErrorAll,
-      refetch: refetchAll,
-    } = useGetAvailableProductsQuery(undefined, {
-      skip: categoryId !== null && categoryId !== undefined,
-    });
+    // Use int.MaxValue (2147483647) for "all categories"
+    const actualCategoryId = categoryId ?? 2147483647;
 
     // Build filter query parameters
-    const filterParams = categoryId !== null && categoryId !== undefined ? {
-      categoryId,
-      minPrice: minPrice && minPrice > 0 ? minPrice : undefined,
-      maxPrice: maxPrice && maxPrice < 5000 ? maxPrice : undefined,
-      filter: this.buildFilterString(attributeFilters),
+    const filterString = this.buildFilterString(attributeFilters);
+
+    const filterParams: any = {
+      categoryId: actualCategoryId,
+      minPrice: minPrice && minPrice > 0 ? minPrice : 0,
+      maxPrice: maxPrice && maxPrice < 5000 ? maxPrice : 1000000,
       sort,
       page,
       pageSize,
-    } : skipToken;
+    };
+
+    if (filterString !== undefined) {
+      filterParams.filter = filterString;
+    }
 
     console.log('[ProductsService] Filter params:', filterParams);
 
-    // Fetch filtered products when category is selected
-     const {
-      data: filteredResponse,
+    // Always fetch filtered products (no skipToken)
+    const {
+      data: filteredResponse = { products: [], total: 0, totalPages: 0, page: 1, pageSize: 100 },
       isLoading: isLoadingFiltered,
       isError: isErrorFiltered,
       refetch: refetchFiltered,
     } = useFilterProductsQuery(filterParams);
 
-    const productIds = filteredResponse?.products.map(p => p.id) ?? [] as number[];    
+    const productIds = (filteredResponse?.products ?? []).map((p: Product) => p.id) as number[];
+
     const [fetchAttributeGroups, {
       data: attributeGroups = [],
       isLoading: isLoadingAttributes,
       isError: isErrorAttributes,
     }] = useGetAttributeGroupsMutation();
-    
+
     useEffect(() => {
-      if (categoryId !== null && categoryId !== undefined) {
-        // console.log("------------------------------------------------------------")
-        // console.log("seriously, wtf");
-        // console.log(categoryId);
-        // console.log(productIds);
-        
-        // console.log("Calling fetchAttributeGroups with:", { 
-        //   categoryId, 
-        //   productIds: productIds.length ? productIds : undefined 
-        // });
-        
-        fetchAttributeGroups({ 
-          categoryId, 
-          productIds: productIds.length ? productIds : undefined 
-        }).then((result) => {
-          console.log("fetchAttributeGroups resolved:", result);
-        }).catch((error) => {
-          console.error("fetchAttributeGroups rejected:", error);
-        });
-      } else {
-        fetchAttributeGroups({ 
-          categoryId: 2147483647, 
-          productIds: productIds.length ? productIds : undefined 
-        }).then((result) => {
-          console.log("fetchAttributeGroups resolved:", result);
-        }).catch((error) => {
-          console.error("fetchAttributeGroups rejected:", error);
-        });
-      }
-    }, [categoryId, fetchAttributeGroups, productIds.length, productIds.join(',')]);
-    const shouldUseFiltered = categoryId !== null && categoryId !== undefined;
-    const products = shouldUseFiltered ? (filteredResponse?.products || []) : allProducts;
-    const isLoading = shouldUseFiltered
-      ? (isLoadingFiltered || isLoadingAttributes)
-      : isLoadingAll;
-    const isError = shouldUseFiltered
-      ? (isErrorFiltered || isErrorAttributes)
-      : isErrorAll;
+      fetchAttributeGroups({ 
+        categoryId: actualCategoryId, 
+        productIds: productIds.length ? productIds : undefined 
+      }).then((result) => {
+        console.log("fetchAttributeGroups resolved:", result);
+      }).catch((error) => {
+        console.error("fetchAttributeGroups rejected:", error);
+      });
+    }, [categoryId, fetchAttributeGroups, productIds.length]); // Remove productIds.join(',')
+
+    const products = filteredResponse?.products || [];
+    const isLoading = isLoadingFiltered || isLoadingAttributes;
+    const isError = isErrorFiltered || isErrorAttributes;
 
     console.log('[ProductsService] Results:', {
-      shouldUseFiltered,
       productsCount: products.length,
       isLoading,
       isError,
@@ -188,7 +161,7 @@ class ProductsService {
       isError,
       total: filteredResponse?.total,
       totalPages: filteredResponse?.totalPages,
-      refetch: shouldUseFiltered ? refetchFiltered : refetchAll,
+      refetch: refetchFiltered,
     };
   }
 

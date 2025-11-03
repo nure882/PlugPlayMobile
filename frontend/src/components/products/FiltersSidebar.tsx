@@ -29,13 +29,6 @@ interface FiltersSidebarProps {
   maxPrice: number;
 }
 
-const sortOptions: SortOption[] = [
-  { value: 'rating-desc', label: 'Rating (High to Low)' },
-  { value: 'rating-asc', label: 'Rating (Low to High)' },
-  { value: 'price-desc', label: 'Price (High to Low)' },
-  { value: 'price-asc', label: 'Price (Low to High)' },
-];
-
 const FiltersSidebar = ({
   isOpen,
   onClose,
@@ -62,7 +55,9 @@ const FiltersSidebar = ({
     }));
   };
 
-  if (!isOpen) return null;
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <div
@@ -77,7 +72,7 @@ const FiltersSidebar = ({
       </div>
 
       
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Sort by
         </label>
@@ -111,10 +106,10 @@ const FiltersSidebar = ({
           className="w-full"
         />
         <div className="flex justify-between text-sm text-gray-600 mt-1">
-          <span>₴0</span>
-          <span>₴{filters.priceRange[1]}</span>
+          <span>0</span>
+          <span>{filters.priceRange[1]}</span>
         </div>
-      </div>
+      </div> */}
 
       
       <div className="mb-6">
@@ -138,7 +133,7 @@ const FiltersSidebar = ({
       </div>
 
       
-      <div className="mb-6">
+      {/* <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Condition
         </label>
@@ -170,10 +165,10 @@ const FiltersSidebar = ({
             </label>
           </div>
         </div>
-      </div>
+      </div> */}
 
       
-      <div>
+      {/* <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Badges
         </label>
@@ -217,7 +212,7 @@ const FiltersSidebar = ({
             </label>
           </div>
         </div>
-      </div>
+      </div> */}
     </div>
   );
 };

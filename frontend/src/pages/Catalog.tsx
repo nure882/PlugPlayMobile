@@ -27,11 +27,6 @@ const Catalog = () => {
     return filtersParam ? JSON.parse(filtersParam) : {};
   });
 
-  const [priceRange, setPriceRange] = useState<PriceRange>(() => ({
-    min: parseInt(searchParams.get('minPrice') || '0', 10),
-    max: parseInt(searchParams.get('maxPrice') || '5000', 10),
-  }));
-
   const [sortOption, setSortOption] = useState<SortOption>(() => {
     const sortValue = searchParams.get('sort') || 'price-asc';
     const sortLabels: Record<string, string> = {
@@ -45,7 +40,12 @@ const Catalog = () => {
     };
   });
 
-  const {products, attributeGroups, isLoading, isError} = useProductsService({
+  const [priceRange, setPriceRange] = useState<PriceRange>(() => ({
+    min: 0,
+    max: 5000,
+  }));
+
+  const {products, attributeGroups, isLoading, isError, refetch} = useProductsService({
     categoryId: selectedCategory,
     minPrice: priceRange.min,
     maxPrice: priceRange.max,
@@ -54,7 +54,23 @@ const Catalog = () => {
     page: 1,
     pageSize: 100,
   });
-  console.log(products); console.log("<=from catalog")
+
+  useEffect(() => {
+    if (typeof refetch === 'function') {
+      refetch();
+    }
+  }, [sortOption.value, refetch]);
+  
+  // Add this useEffect after your other useEffect hooks
+  useEffect(() => {
+    if (products && products.length > 0) {
+      const sortedProducts = [...products].sort((a, b) => a.price - b.price);
+      setPriceRange({
+        min: sortedProducts[0]?.price || 0,
+        max: sortedProducts[sortedProducts.length - 1]?.price || 5000
+      });
+    }
+  }, [products]);
 
   // Update URL when filters change
   useEffect(() => {
@@ -101,8 +117,6 @@ const Catalog = () => {
     });
   }, [selectedCategory]);
 
-  console.log(`Products in catalog: ${products.length}`);
-  console.log(`Selected Category: ${selectedCategory}`);
 
   if (isLoading) {
     return (
@@ -179,7 +193,7 @@ const Catalog = () => {
                   key={product.id}
                   id={product.id}
                   name={product.name}
-                  price={product.price * 42}
+                  price={product.price}
                   rating={0}
                   reviewCount={10}
                   image={product.pictureUrls[0]}
