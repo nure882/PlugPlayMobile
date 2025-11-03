@@ -38,7 +38,7 @@ export default function Profile() {
     {city: '', street: '', house: '', apartments: ''}
   ]);
   const [newAddress, setNewAddress] = useState<Address>({
-    city: '', street: '', house: '', apartments: ''
+    id: undefined, city: '', street: '', house: '', apartments: ''
   });
 
   const [isEditing, setIsEditing] = useState(false);

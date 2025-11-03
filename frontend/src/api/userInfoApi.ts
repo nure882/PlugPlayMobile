@@ -10,7 +10,6 @@ export const userInfoApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
     }),
-
     updateUserByToken: builder.mutation<UpdateProfileResponse, UpdateProfileRequest>({
       query: ({ token, ...body }) => ({
         url: `userinfo/${token}`,
@@ -33,9 +32,9 @@ interface UpdateProfileRequest {
   token: string;
   firstName?: string;
   lastName?: string;
-  phone?: string;
+  phoneNumber?: string;
   email?: string;
-  adresses : Address[];
+  addresses : Address[];
 }
 
 interface UpdateProfileResponse {
