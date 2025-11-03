@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
-using PlugPlay.Api.Dto;
 using PlugPlay.Api.Dto.Product;
+using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
@@ -60,15 +60,15 @@ public class ProductsController : ControllerBase
         return Ok(productDtos);
     }
 
-    [HttpGet("attribute/{categoryId:int}")]
-    public async Task<IActionResult> GetAttributes(int categoryId)
+    [HttpPost("attribute/{categoryId:int}")]
+    public async Task<IActionResult> GetAttributes(int categoryId, [FromBody] int[] productIds = null)
     {
         if (categoryId < 1)
         {
             return BadRequest("Invalid categroyId");
         }
 
-        var result = await _productsService.GetCategoryAttributesAsync(categoryId);
+        var result = await _productsService.GetCategoryAttributesAsync(categoryId, productIds ?? new int[] {});
         result.OnFailure(() =>
         {
             var failed = LoggerMessage.Define<int, string>(LogLevel.Error,
@@ -104,18 +104,24 @@ public class ProductsController : ControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 20)
     {
-        var categoryResult = await _productsService.GetCategoryAsync(categoryId);
-        if (categoryResult.Failure)
+        Result<Category> categoryResult = Result.Success(new Category() {Id = categoryId});
+        if (categoryId != int.MaxValue)
         {
-            return BadRequest("Invalid categoryId");
+            categoryResult = await _productsService.GetCategoryAsync(categoryId);
+            if (categoryResult.Failure)
+            {
+                return BadRequest("Invalid categoryId");
+            }
         }
 
-        var predicate = await AttributeHelper.BuildPredicate(filter, categoryResult.Value, minPrice, maxPrice);
+        var predicate = await AttributeHelper.BuildPredicate(
+            filter, categoryResult.Value, minPrice, maxPrice);
         var includes = new List<Func<IQueryable<Product>, IIncludableQueryable<Product, object>>>
         {
             q => q
                 .Include(p => p.ProductAttributes).ThenInclude(av => av.Attribute)
                 .Include(p => p.Category).ThenInclude(c => c.ParentCategory)
+                .Include(p => p.ProductImages)
         };
         var orderBy = AttributeHelper.BuildOrderByDelegate(sort);
         var skipCount = (page - 1) * pageSize;
