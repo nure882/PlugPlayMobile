@@ -1,12 +1,10 @@
 import {useEffect, useState} from 'react';
 import AccordionSection from '../components/profile/AccordionSection.tsx';
-import {updateUserProfile} from '../api/userInfoApi.ts';
 import {PlusCircle, Trash2, Pencil, Check, X} from 'lucide-react';
 import {Address} from '../models/Address.ts';
 import {validateName, validateEmail, validatePhone} from '../utils/validation.ts';
 import {useGetUserByTokenQuery,  useUpdateUserByTokenMutation} from '../api/userInfoApi.ts';
 import {storage} from '../utils/StorageService';
-import {o, s} from "../utils/useful.ts";
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
 
@@ -47,7 +45,7 @@ export default function Profile() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Errors>(initialErrors);
-  const [addressErrors, setAddressErrors] = useState<{ [key: string]: string }>({});
+  const [addressEditErrors, setAddressEditErrors] = useState<{ [key: string]: string }>({});
 
   const [initialData, setInitialData] = useState({firstName: '', lastName: '', phone, email});
 
@@ -190,13 +188,13 @@ export default function Profile() {
    const handleEditAddress = (index: number) => {
     setEditIndex(index);
     setEditedAddress({ ...addresses[index] }); 
-    setAddressErrors({});
+    setAddressEditErrors({});
   };
 
    const handleAddressCancelEdit = () => {
     setEditIndex(null);
     setEditedAddress(null);
-     setAddressErrors({});
+     setAddressEditErrors({});
   };
 
   const handleAddressSaveEdit = () => {
@@ -223,7 +221,7 @@ export default function Profile() {
     if (!address.street?.trim()) newErrors.street = "Street is required.";
     if (!address.house?.trim()) newErrors.house = "House number is required.";
 
-    setAddressErrors(newErrors);
+    setAddressEditErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
@@ -320,12 +318,12 @@ export default function Profile() {
                                 })
                               }
                               className={`w-full px-3 py-2 border rounded-lg ${
-                                addressErrors.city ? "border-red-500" : "border-gray-300"
+                                addressEditErrors.city ? "border-red-500" : "border-gray-300"
                               }`}
                               placeholder="Enter city"
                             />
-                            {addressErrors.city && (
-                              <p className="text-red-500 text-xs mt-1">{addressErrors.city}</p>
+                            {addressEditErrors.city && (
+                              <p className="text-red-500 text-xs mt-1">{addressEditErrors.city}</p>
                             )}
                           </div>
 
@@ -342,12 +340,12 @@ export default function Profile() {
                                 })
                               }
                               className={`w-full px-3 py-2 border rounded-lg ${
-                                addressErrors.street ? "border-red-500" : "border-gray-300"
+                                addressEditErrors.street ? "border-red-500" : "border-gray-300"
                               }`}
                               placeholder="Enter street"
                             />
-                            {addressErrors.street && (
-                              <p className="text-red-500 text-xs mt-1">{addressErrors.street}</p>
+                            {addressEditErrors.street && (
+                              <p className="text-red-500 text-xs mt-1">{addressEditErrors.street}</p>
                             )}
                           </div>
 
@@ -364,12 +362,12 @@ export default function Profile() {
                                 })
                               }
                               className={`w-full px-3 py-2 border rounded-lg ${
-                                addressErrors.house ? "border-red-500" : "border-gray-300"
+                                addressEditErrors.house ? "border-red-500" : "border-gray-300"
                               }`}
                               placeholder="Enter house number"
                             />
-                            {addressErrors.house && (
-                              <p className="text-red-500 text-xs mt-1">{addressErrors.house}</p>
+                            {addressEditErrors.house && (
+                              <p className="text-red-500 text-xs mt-1">{addressEditErrors.house}</p>
                             )}
                           </div>
 

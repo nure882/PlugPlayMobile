@@ -42,8 +42,3 @@ interface UpdateProfileResponse {
   message?: string;
 }
 
-export const updateUserProfile = async (payload: UpdateProfileRequest): Promise<UpdateProfileResponse> => {
-  await new Promise(resolve => setTimeout(resolve, 300));
-  console.log('updateUserProfile placeholder called with', payload);
-  return { success: true };
-};
