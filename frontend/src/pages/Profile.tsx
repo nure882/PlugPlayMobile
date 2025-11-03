@@ -1,7 +1,7 @@
 import {useEffect, useState} from 'react';
 import AccordionSection from '../components/profile/AccordionSection.tsx';
 import {updateUserProfile} from '../api/userInfoApi.ts';
-import {PlusCircle, Trash2} from 'lucide-react';
+import {PlusCircle, Trash2, Pencil, Check, X} from 'lucide-react';
 import {Address} from '../models/Address.ts';
 import {validateName, validateEmail, validatePhone} from '../utils/validation.ts';
 import {useGetUserByTokenQuery,  useUpdateUserByTokenMutation} from '../api/userInfoApi.ts';
@@ -41,9 +41,13 @@ export default function Profile() {
     id: undefined, city: '', street: '', house: '', apartments: ''
   });
 
+  const [addressEditIndex, setEditIndex] = useState<number | null>(null);
+  const [editedAddress, setEditedAddress] = useState<any>(null);
+
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [errors, setErrors] = useState<Errors>(initialErrors);
+  const [addressErrors, setAddressErrors] = useState<{ [key: string]: string }>({});
 
   const [initialData, setInitialData] = useState({firstName: '', lastName: '', phone, email});
 
@@ -116,6 +120,11 @@ export default function Profile() {
 
     setIsSaving(true);
     try {
+      const updated = [...addresses];
+      updated[addressEditIndex!] = editedAddress;
+      setAddresses(updated);
+      setEditIndex(null);
+
       await updateUserByToken({
         token : token ?? '',
         firstName : firstName,
@@ -140,6 +149,10 @@ export default function Profile() {
     setLastName(initialData.lastName);
     setPhone(initialData.phone);
     setEmail(initialData.email);
+
+    setEditIndex(null);
+    setEditedAddress(null);
+
     setIsEditing(false);
     setErrors(initialErrors);
   };
@@ -172,6 +185,46 @@ export default function Profile() {
 
   const handleDeleteAddress = (index: number) => {
     setAddresses(prev => prev.filter((_, i) => i !== index));
+  };
+
+   const handleEditAddress = (index: number) => {
+    setEditIndex(index);
+    setEditedAddress({ ...addresses[index] }); 
+    setAddressErrors({});
+  };
+
+   const handleAddressCancelEdit = () => {
+    setEditIndex(null);
+    setEditedAddress(null);
+     setAddressErrors({});
+  };
+
+  const handleAddressSaveEdit = () => {
+    if (addressEditIndex === null || !editedAddress)
+    {
+      return; 
+    } 
+
+    if (!validateAddress(editedAddress))
+    {
+      return;
+    } 
+    const updated = [...addresses];
+    updated[addressEditIndex] = editedAddress;
+    setAddresses(updated);
+    setEditIndex(null);
+    setEditedAddress(null);
+  };
+
+  const validateAddress = (address: Address): boolean => {
+    const newErrors: { [key: string]: string } = {};
+
+    if (!address.city?.trim()) newErrors.city = "City is required.";
+    if (!address.street?.trim()) newErrors.street = "Street is required.";
+    if (!address.house?.trim()) newErrors.house = "House number is required.";
+
+    setAddressErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   if (isLoading) {
@@ -245,80 +298,203 @@ export default function Profile() {
 
           <AccordionSection title="Delivery Addresses" subtitle="Saved delivery addresses">
             <div className="space-y-6">
-              {(addresses ?? []).map((address, index) => (
-                <div key={index} className="flex items-start justify-between p-4 bg-gray-50 rounded-lg">
-                  <div className="space-y-1">
-                    <div className="text-sm font-medium text-gray-900">
-                      {address.street}, {address.house}{address.apartments ? `, apt ${address.apartments}` : ''}
-                    </div>
-                    <div className="text-sm text-gray-500">{address.city}</div>
-                  </div>
-                  {isEditing && (
-                    <button
-                      onClick={() => handleDeleteAddress(index)}
-                      className="text-red-600 hover:text-red-700"
-                      aria-label="Delete address"
-                    >
-                      <Trash2 className="w-4 h-4"/>
-                    </button>
-                  )}
-                </div>
-              ))}
+               <div className="space-y-6">
+                {(addresses ?? []).map((address, index) => (
+                  <div key={index} className="p-4 border border-gray-200 rounded-lg">
+                    {addressEditIndex === index && editedAddress ? (
+                      <>
+                        <h4 className="text-sm font-medium text-black mb-4">
+                          Edit Address
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-black mb-1">
+                              City
+                            </label>
+                            <input
+                              value={editedAddress.city}
+                              onChange={(e) =>
+                                setEditedAddress({
+                                  ...editedAddress,
+                                  city: e.target.value,
+                                })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg ${
+                                addressErrors.city ? "border-red-500" : "border-gray-300"
+                              }`}
+                              placeholder="Enter city"
+                            />
+                            {addressErrors.city && (
+                              <p className="text-red-500 text-xs mt-1">{addressErrors.city}</p>
+                            )}
+                          </div>
 
-              {isEditing && (
-                <div className="mt-4 p-4 border border-gray-200 rounded-lg">
-                  <h4 className="text-sm font-medium text-black mb-4">Add New Address</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-1">City</label>
-                      <input
-                        value={newAddress.city}
-                        onChange={e => setNewAddress(prev => ({...prev, city: e.target.value}))}
-                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                        placeholder="Enter city"
-                      />
-                      {errors.address.city && <p className="text-red-500 text-xs mt-1">{errors.address.city}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-1">Street</label>
-                      <input
-                        value={newAddress.street}
-                        onChange={e => setNewAddress(prev => ({...prev, street: e.target.value}))}
-                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                        placeholder="Enter street"
-                      />
-                      {errors.address.street && <p className="text-red-500 text-xs mt-1">{errors.address.street}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-1">House</label>
-                      <input
-                        value={newAddress.house}
-                        onChange={e => setNewAddress(prev => ({...prev, house: e.target.value}))}
-                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                        placeholder="Enter house number"
-                      />
-                      {errors.address.house && <p className="text-red-500 text-xs mt-1">{errors.address.house}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-black mb-1">Apartment (optional)</label>
-                      <input
-                        value={newAddress.apartments}
-                        onChange={e => setNewAddress(prev => ({...prev, apartments: e.target.value}))}
-                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                        placeholder="Enter apartment number"
-                      />
-                    </div>
+                          <div>
+                            <label className="block text-sm font-medium text-black mb-1">
+                              Street
+                            </label>
+                            <input
+                              value={editedAddress.street}
+                              onChange={(e) =>
+                                setEditedAddress({
+                                  ...editedAddress,
+                                  street: e.target.value,
+                                })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg ${
+                                addressErrors.street ? "border-red-500" : "border-gray-300"
+                              }`}
+                              placeholder="Enter street"
+                            />
+                            {addressErrors.street && (
+                              <p className="text-red-500 text-xs mt-1">{addressErrors.street}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-black mb-1">
+                              House
+                            </label>
+                            <input
+                              value={editedAddress.house}
+                              onChange={(e) =>
+                                setEditedAddress({
+                                  ...editedAddress,
+                                  house: e.target.value,
+                                })
+                              }
+                              className={`w-full px-3 py-2 border rounded-lg ${
+                                addressErrors.house ? "border-red-500" : "border-gray-300"
+                              }`}
+                              placeholder="Enter house number"
+                            />
+                            {addressErrors.house && (
+                              <p className="text-red-500 text-xs mt-1">{addressErrors.house}</p>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="block text-sm font-medium text-black mb-1">
+                              Apartment (optional)
+                            </label>
+                            <input
+                              value={editedAddress.apartments ?? ""}
+                              onChange={(e) =>
+                                setEditedAddress({
+                                  ...editedAddress,
+                                  apartments: e.target.value,
+                                })
+                              }
+                              className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                              placeholder="Enter apartment number"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex space-x-3 mt-4">
+                          <button
+                            onClick={handleAddressSaveEdit}
+                            className="text-green-600 hover:text-green-700"
+                            aria-label="Save address"
+                          >
+                            <Check className="w-4 h-4 inline-block mr-1" /> Save
+                          </button>
+                          <button
+                            onClick={handleAddressCancelEdit}
+                            className="text-gray-600 hover:text-gray-700"
+                            aria-label="Cancel editing"
+                          >
+                            <X className="w-4 h-4 inline-block mr-1" /> Cancel
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="flex items-start justify-between">
+                        <div className="space-y-1">
+                          <div className="text-sm font-medium text-gray-900">
+                            {address.street}, {address.house}
+                            {address.apartments ? `, apt ${address.apartments}` : ""}
+                          </div>
+                          <div className="text-sm text-gray-500">{address.city}</div>
+                        </div>
+
+                        {isEditing && (
+                          <div className="flex items-center space-x-3">
+                            <button
+                              onClick={() => handleEditAddress(index)}
+                              className="text-blue-600 hover:text-blue-700"
+                              aria-label="Edit address"
+                            >
+                              <Pencil className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteAddress(index)}
+                              className="text-red-600 hover:text-red-700"
+                              aria-label="Delete address"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
-                  <button
-                    onClick={handleAddAddress}
-                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
-                  >
-                    <PlusCircle className="w-4 h-4"/>
-                    <span>Add Address</span>
-                  </button>
+                ))}
+              </div>
+            {isEditing && (
+              <div className="mt-4 p-4 border border-gray-200 rounded-lg">
+                <h4 className="text-sm font-medium text-black mb-4">Add New Address</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-1">City</label>
+                    <input
+                      value={newAddress.city}
+                      onChange={e => setNewAddress(prev => ({...prev, city: e.target.value}))}
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                      placeholder="Enter city"
+                    />
+                    {errors.address.city && <p className="text-red-500 text-xs mt-1">{errors.address.city}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-1">Street</label>
+                    <input
+                      value={newAddress.street}
+                      onChange={e => setNewAddress(prev => ({...prev, street: e.target.value}))}
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                      placeholder="Enter street"
+                    />
+                    {errors.address.street && <p className="text-red-500 text-xs mt-1">{errors.address.street}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-1">House</label>
+                    <input
+                      value={newAddress.house}
+                      onChange={e => setNewAddress(prev => ({...prev, house: e.target.value}))}
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                      placeholder="Enter house number"
+                    />
+                    {errors.address.house && <p className="text-red-500 text-xs mt-1">{errors.address.house}</p>}
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-1">Apartment (optional)</label>
+                    <input
+                      value={newAddress.apartments}
+                      onChange={e => setNewAddress(prev => ({...prev, apartments: e.target.value}))}
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                      placeholder="Enter apartment number"
+                    />
+                  </div>
                 </div>
-              )}
-            </div>
+                <button
+                  onClick={handleAddAddress}
+                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                >
+                  <PlusCircle className="w-4 h-4"/>
+                  <span>Add Address</span>
+                </button>
+              </div>
+            )}
+          </div>
           </AccordionSection>
 
           <AccordionSection title="My Orders" subtitle="Your order history">
