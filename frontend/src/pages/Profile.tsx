@@ -116,13 +116,10 @@ export default function Profile() {
   const handleSave = async () => {
     if (!validateForm()) return;
 
+    if(addressEditIndex !== null || editedAddress) return;
+
     setIsSaving(true);
     try {
-      const updated = [...addresses];
-      updated[addressEditIndex!] = editedAddress;
-      setAddresses(updated);
-      setEditIndex(null);
-
       await updateUserByToken({
         token : token ?? '',
         firstName : firstName,
@@ -198,15 +195,10 @@ export default function Profile() {
   };
 
   const handleAddressSaveEdit = () => {
-    if (addressEditIndex === null || !editedAddress)
-    {
-      return; 
-    } 
-
-    if (!validateAddress(editedAddress))
-    {
-      return;
-    } 
+    if (addressEditIndex === null || !editedAddress) return; 
+    
+    if (!validateAddress(editedAddress)) return;
+    
     const updated = [...addresses];
     updated[addressEditIndex] = editedAddress;
     setAddresses(updated);
@@ -507,7 +499,11 @@ export default function Profile() {
                       className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel
               </button>
               <button onClick={handleSave} disabled={isSaving}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50">
+                      className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 
+                      ${addressEditIndex !== null || editedAddress
+                        ? 'bg-blue-900 hover:bg-blue-900 cursor-not-allowed'  
+                        : 'bg-blue-600 hover:bg-blue-700'  
+                      }`}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </>
