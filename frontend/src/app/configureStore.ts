@@ -28,7 +28,7 @@ export const store = configureStore({
       },
     })
     
-    .concat(baseApi.middleware),
+    .concat(baseApi.middleware), devTools: true,
 });
 
 export const persistor = persistStore(store);

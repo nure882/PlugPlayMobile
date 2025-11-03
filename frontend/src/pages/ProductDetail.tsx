@@ -1,7 +1,6 @@
 import {useState} from 'react';
 import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
-import Header from '../components/common/Header.tsx';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 
@@ -25,7 +24,6 @@ const ProductDetail = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header/>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex flex-col items-center gap-4">
@@ -41,7 +39,7 @@ const ProductDetail = () => {
   if (isError || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Header/>
+        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -111,7 +109,7 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header/>
+      
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">

@@ -1,5 +1,4 @@
 import {useEffect, useState} from 'react';
-import Header from '../components/common/Header.tsx';
 import AccordionSection from '../components/profile/AccordionSection.tsx';
 import {updateUserProfile} from '../api/userInfoApi.ts';
 import {PlusCircle, Trash2} from 'lucide-react';
@@ -159,7 +158,7 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <Header/>
+      
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
           <h1 className="text-xl font-semibold text-black">Personal Information</h1>

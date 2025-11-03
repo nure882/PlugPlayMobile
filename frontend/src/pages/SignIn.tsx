@@ -1,6 +1,5 @@
 import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
-import Header from '../components/common/Header.tsx';
 import {GoogleLogin} from "@react-oauth/google";
 import { useLoginMutation} from "../api/authApi.ts";
 import {storage} from "../utils/StorageService.ts";
@@ -78,7 +77,7 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Header/>
+      
       <div className="flex items-center justify-center px-4">
         <div className="w-full max-w-md py-10">
           <div className="text-center mb-8">
