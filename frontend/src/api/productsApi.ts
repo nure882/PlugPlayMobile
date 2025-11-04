@@ -1,19 +1,6 @@
 import {baseApi} from './baseApi.ts';
 import {Product} from "../models/Product.ts";
-
-interface AttributeGroup {
-  id: number;
-  name: string;
-  dataType: string;
-  unit?: string;
-  productAttributeDtos: Array<{
-    id: number;
-    attributeId: number;
-    productId: number;
-    strValue?: string;
-    numValue?: number;
-  }>;
-}
+import AttributeGroup from "../models/AttributeGroup.ts";
 
 interface FilterProductsResponse {
   products: Product[];
@@ -71,24 +58,17 @@ export const productsApi = baseApi.injectEndpoints({
       }),
       providesTags: [{type: 'Products'} as any],
     }),
-        // ...existing code...
-        
-            getAttributeGroups: builder.mutation<AttributeGroup[], { categoryId: number; productIds?: number[] }>({
-              query: ({ categoryId, productIds }) => {
-                const body = productIds && productIds.length ? productIds : undefined;
-                console.log("============ getAttributeGroups query function called ============");
-                console.log("categoryId:", categoryId);
-                console.log("productIds:", productIds);
-                console.log("body:", body);
-                return {
-                  url: `products/attribute/${categoryId}`,
-                  method: 'POST',
-                  body,
-                };
-              },
-            }),
-        
-        // ...existing code...
+    getAttributeGroups: builder.mutation<AttributeGroup[], { categoryId: number; productIds?: number[] }>({
+      query: ({categoryId, productIds}) => {
+        const body = productIds && productIds.length ? productIds : undefined;
+
+        return {
+          url: `products/attribute/${categoryId}`,
+          method: 'POST',
+          body,
+        };
+      },
+    }),
     getProductById: builder.query<Product, number>({
       query: (id) => ({
         url: `products/${id}`,

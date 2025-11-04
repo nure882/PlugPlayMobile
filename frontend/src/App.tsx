@@ -1,4 +1,4 @@
-import {BrowserRouter, Routes, Route, Outlet, useSearchParams, useNavigate} from 'react-router-dom';
+import {BrowserRouter, Routes, Route, Outlet, useSearchParams} from 'react-router-dom';
 import {useState, useEffect} from 'react';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
@@ -14,13 +14,11 @@ import {ShoppingCart} from './components/common/ShoppingCart.tsx';
 const MainLayout = ({onCartClick}: { onCartClick: () => void }) => {
   const [searchParams, setSearchParams] = useSearchParams();
   
-  // Initialize selectedCategory from URL
   const categoryParam = searchParams.get('category');
   const [selectedCategory, setSelectedCategory] = useState<number | null>(
     categoryParam ? parseInt(categoryParam, 10) : null
   );
 
-  // Update URL when category changes
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
     

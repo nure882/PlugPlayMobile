@@ -1,24 +1,9 @@
-import {ComponentType} from 'react';
-
-interface Subcategory {
-  id: number;
-  name: string;
-}
-
-interface CategoryWithSubcategories {
-  id: number;
-  name: string;
-  icon: ComponentType<{ size?: number | string; className?: string }>;
-  subcategories: Subcategory[];
-}
+import { categories } from './CategoriesSidebar';
 
 interface CategoryFilterProps {
   selectedCategoryId: number | null;
   onCategorySelect: (categoryId: number | null) => void;
 }
-
-// Import categories from CategoriesSidebar to keep them in sync
-import { categories } from './CategoriesSidebar';
 
 const CategoryFilter = ({ selectedCategoryId, onCategorySelect }: CategoryFilterProps) => {
   const handleCategoryClick = (categoryId: number) => {

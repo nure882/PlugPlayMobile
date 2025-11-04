@@ -1,19 +1,6 @@
 import {ChevronDown, ChevronUp} from 'lucide-react';
 import {useState, useEffect} from 'react';
-
-export interface AttributeGroup {
-  id: number;
-  name: string;
-  dataType: string;
-  unit?: string;
-  productAttributeDtos: Array<{
-    id: number;
-    attributeId: number;
-    productId: number;
-    strValue?: string;
-    numValue?: number;
-  }>;
-}
+import AttributeGroup from "../../models/AttributeGroup.ts";
 
 export interface DynamicFilters {
   [attributeId: string]: string[];
@@ -57,11 +44,9 @@ export default function DynamicFiltersSidebar({
                                                 attributeGroups,
                                               }: DynamicFiltersSidebarProps) {
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
-  // local inputs for price so we only commit on blur (unfocus)
   const [minInput, setMinInput] = useState<string>(priceRange.min?.toString() ?? '0');
   const [maxInput, setMaxInput] = useState<string>(priceRange.max?.toString() ?? '5000');
 
-  // keep local inputs in sync when parent priceRange changes
   useEffect(() => {
     setMinInput(priceRange.min?.toString() ?? '0');
     setMaxInput(priceRange.max?.toString() ?? '5000');
@@ -89,6 +74,7 @@ export default function DynamicFiltersSidebar({
       } else {
         newSet.add(attributeId);
       }
+
       return newSet;
     });
   };
@@ -114,7 +100,6 @@ export default function DynamicFiltersSidebar({
     priceRange.min > 0 ||
     priceRange.max < 5000;
 
-  // Extract unique values from ProductAttributeDtos
   const getUniqueValues = (group: AttributeGroup): string[] => {
     const values = group.productAttributeDtos.map(pa => {
       if (group.dataType === 'string' || group.dataType === 'str') {
@@ -126,6 +111,7 @@ export default function DynamicFiltersSidebar({
           console.log("pa.numValue")
           console.log(pa);
         }
+
         return pa.numValue?.toString();
       }
     }).filter(v => v != null) as string[];
@@ -134,6 +120,7 @@ export default function DynamicFiltersSidebar({
       if (group.dataType === 'decimal' || group.dataType === 'num') {
         return parseFloat(a) - parseFloat(b);
       }
+
       return a.localeCompare(b);
     });
   };

@@ -21,9 +21,9 @@ const Catalog = () => {
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [visibleCount, setVisibleCount] = useState(20);
 
-  // Initialize filters from URL
   const [dynamicFilters, setDynamicFilters] = useState<DynamicFilters>(() => {
     const filtersParam = searchParams.get('filters');
+
     return filtersParam ? JSON.parse(filtersParam) : {};
   });
 
@@ -34,6 +34,7 @@ const Catalog = () => {
       'price-desc': 'Price (High to Low)',
       'newest': 'Newest',
     };
+
     return {
       value: sortValue,
       label: sortLabels[sortValue] || 'Price (Low to High)',
@@ -61,7 +62,6 @@ const Catalog = () => {
     }
   }, [sortOption.value, refetch]);
   
-  // Add this useEffect after your other useEffect hooks
   useEffect(() => {
     if (products && products.length > 0) {
       const sortedProducts = [...products].sort((a, b) => a.price - b.price);
@@ -72,11 +72,9 @@ const Catalog = () => {
     }
   }, [products]);
 
-  // Update URL when filters change
   useEffect(() => {
     const params = new URLSearchParams(searchParams);
 
-    // Update price range
     if (priceRange.min > 0) {
       params.set('minPrice', priceRange.min.toString());
     } else {
@@ -89,14 +87,12 @@ const Catalog = () => {
       params.delete('maxPrice');
     }
 
-    // Update dynamic filters
     if (Object.keys(dynamicFilters).length > 0) {
       params.set('filters', JSON.stringify(dynamicFilters));
     } else {
       params.delete('filters');
     }
 
-    // Update sort option
     if (sortOption.value !== 'price-asc') {
       params.set('sort', sortOption.value);
     } else {
@@ -106,7 +102,6 @@ const Catalog = () => {
     setSearchParams(params, { replace: true });
   }, [priceRange, dynamicFilters, sortOption]);
 
-  // Reset filters when category changes
   useEffect(() => {
     setVisibleCount(20);
     setDynamicFilters({});
