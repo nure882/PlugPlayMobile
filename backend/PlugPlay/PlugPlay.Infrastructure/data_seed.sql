@@ -166,7 +166,7 @@ ON CONFLICT DO NOTHING;
 -- ====== attribute ======
 INSERT INTO public.attribute (id, name, unit, data_type) VALUES
   (1, 'Color', '', 'string'),
-  (2, 'Weight', 'kg', 'decimal'),
+  (2, 'Weight', 'kg', 'string'),
   (3, 'Dimensions', 'cm', 'string'),
   (4, 'Storage', 'GB', 'decimal'),
   (5, 'Battery Capacity', 'mAh', 'decimal'),
@@ -174,7 +174,7 @@ INSERT INTO public.attribute (id, name, unit, data_type) VALUES
   (7, 'Form Factor', '', 'string'),
   (8, 'Resolution', '', 'string'),
   (9, 'Color Variant', '', 'string'),
-  (10, 'Weight (packaging)', 'kg', 'decimal')
+  (10, 'Weight (packaging)', 'kg', 'string')
 ON CONFLICT DO NOTHING;
 
 
