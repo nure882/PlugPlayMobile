@@ -6,6 +6,7 @@ using PlugPlay.Api.Dto;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
+using PlugPlay.Services.Products;
 
 namespace PlugPlay.Api.Controllers;
 
@@ -74,6 +75,43 @@ public class ProductsController : ControllerBase
 
             return NotFound(new { message = ex.Message });
         }
+    }
+
+    [HttpGet("search/{query}")]
+    public async Task<IActionResult> SearchProducts(
+        string query,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _logger.LogWarning("No search query provided");
+
+            return StatusCode(400, "No search query provided");
+        }
+
+        if (page <= 0 || pageSize <= 0)
+        {
+            _logger.LogWarning("Invalid paging parameters: page={Page}, pageSize={PageSize}", page, pageSize);
+
+            return StatusCode(400, "page and pageSize must be positive integers");
+        }
+
+        var result = await _productsService.SearchProductsAsync(new ProductSearchRequest
+            { Query = query, Page = page, PageSize = pageSize });
+        result.OnSuccess(()
+                => _logger.LogInformation("Successfully found {Count} products", result.Value.Count()))
+            .OnFailure(()
+                => _logger.LogError($"{result.Error}"));
+
+        if (result.Failure)
+        {
+            return StatusCode(500, new ProblemDetails { Detail = "Search failed" });
+        }
+
+        var productsDtos = result.Value.Select(MapProduct);
+
+        return Ok(productsDtos);
     }
 
     // todo: [Authorize(Roles = "Admin")]
