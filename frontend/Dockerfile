@@ -2,14 +2,11 @@
 FROM node:20-slim AS builder
 WORKDIR /app
 
-# Set production environment for build
-ENV NODE_ENV=production
-
 # Copy package metadata first for efficient caching
 COPY package*.json ./
 
-# Install dependencies (use ci if lockfile exists)
-RUN if [ -f package-lock.json ]; then npm ci; else npm install; fi
+# Install dependencies (include dev deps so build tools like vite are available)
+RUN if [ -f package-lock.json ]; then npm ci --include=dev; else npm install; fi
 
 # Copy source and build
 COPY . .
