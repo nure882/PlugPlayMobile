@@ -6,7 +6,7 @@ import Catalog from './pages/Catalog';
 import Profile from './pages/Profile';
 import ProductDetail from './pages/ProductDetail';
 import NotFound from './pages/NotFound';
-import {GoogleOAuthProvider} from "@react-oauth/google";
+import { GoogleOAuthProvider } from "@react-oauth/google";
 import ProtectedRoute from './components/common/ProtectedRoute.tsx';
 import Header from './components/common/Header.tsx';
 import {ShoppingCart} from './components/common/ShoppingCart.tsx';
