@@ -105,7 +105,7 @@ public class ProductsController : ControllerBase
         [FromQuery] int pageSize = 20)
     {
         Result<Category> categoryResult = Result.Success(new Category() {Id = categoryId});
-        if (categoryId != int.MaxValue)
+        if (categoryId != int.MaxValue)  //  2147483647
         {
             categoryResult = await _productsService.GetCategoryAsync(categoryId);
             if (categoryResult.Failure)
