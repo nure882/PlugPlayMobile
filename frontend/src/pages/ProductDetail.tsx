@@ -3,13 +3,15 @@ import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
+import {useAddToCartMutation, useIsInCartQuery} from '../api/cartApi.ts';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
 
   const {
-    data,
+    data : product,
     isLoading,
     error,
     isError
@@ -17,9 +19,13 @@ const ProductDetail = () => {
     skip: !productId || isNaN(productId)
   });
 
-  const [isFavorite, setIsFavorite] = useState(false);
+const { data: isInCart = false, refetch: recheckInCart } = useIsInCartQuery(
+  product ? { userId: 1, productId: product.id } : skipToken
+);
 
-  const product = data;
+  const [addToCart] = useAddToCartMutation(); 
+
+  const [isFavorite, setIsFavorite] = useState(false);
 
   if (isLoading) {
     return (
@@ -65,15 +71,16 @@ const ProductDetail = () => {
   };
 
   const handleBuy = () => {
-    console.log('Buy product:', {
-      productId: product.id,
-    });
+    handleAddToCart();
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     console.log('Add to cart:', {
       productId: product.id,
     });
+
+    await addToCart({userId : 1, productId : product.id, quantity : 1});
+    recheckInCart();
   };
 
   // Mock delivery options
@@ -178,10 +185,10 @@ const ProductDetail = () => {
 
             <button
               onClick={handleAddToCart}
-              disabled={product.stockQuantity === 0}
+              disabled={(product.stockQuantity === 0 || isInCart)}
               className="w-full bg-white text-gray-900 px-6 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors font-semibold disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
-              Add to cart
+              {isInCart ? "Already in cart" : "Add to cart"}
             </button>
 
             {/* Delivery Info */}
