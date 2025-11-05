@@ -64,6 +64,13 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     refetch();
   }
 
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat('uk-UA', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(price);
+  };
+
   if (!isOpen) return null;
 
   if (isLoading) {
@@ -132,10 +139,10 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                   <h4 className="text-sm mb-1 line-clamp-2">{item.product?.description ?? ''}</h4>
                   <div className="flex flex-col items-start gap-1">
                     <div className="text-red-600">
-                      price: {item.product?.price ?? ''} ₴
+                      price: {formatPrice(item.product?.price ?? 0)} ₴
                     </div>
                     <div className="text-red-600">
-                      total: {item.total} ₴
+                      total: {formatPrice(item.total)} ₴
                     </div>
                   </div>
                 </div>
@@ -173,7 +180,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
           <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-gray-500 text-sm mb-1">Загальна сума</p>
-              <p className="text-3xl">{subtotal} ₴</p>
+              <p className="text-3xl">{formatPrice(subtotal)} ₴</p>
             </div>
             <button
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-xl"
