@@ -144,12 +144,6 @@ const ProductDetail = () => {
                 </span>
             </div>
 
-            {/* Product attributes (clickable multi-select pills) */}
-            <ProductAttributes
-              categoryId={product.category?.id ?? 0}
-              productId={product.id}
-              onSelectionChange={(sel) => console.log('Attribute selection:', sel)}
-            />
 
             <div className="flex items-center gap-2">
               <div
@@ -234,6 +228,14 @@ const ProductDetail = () => {
             {product.description}
           </p>
         </div>
+
+                    {/* Product attributes (clickable multi-select pills) */}
+            <ProductAttributes
+              categoryId={product.category?.id ?? 0}
+              productId={product.id}
+              onSelectionChange={(sel) => console.log('Attribute selection:', sel)}
+            />
+            
       </div>
     </div>
   );
