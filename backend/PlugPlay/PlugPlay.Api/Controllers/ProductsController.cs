@@ -1,7 +1,6 @@
 using System.Net;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;

@@ -1,10 +1,9 @@
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
-using PlugPlay.Domain.Extensions;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
 using Attribute = PlugPlay.Domain.Entities.Attribute;
@@ -207,42 +206,42 @@ public class ProductsService : IProductsService
 
         return Result.Success<IEnumerable<Attribute>>(attributes);
     }
-    
-        public async Task<Result<IEnumerable<Product>>> SearchProductsAsync(ProductSearchRequest req)
+
+    public async Task<Result<IEnumerable<Product>>> SearchProductsAsync(ProductSearchRequest req)
+    {
+        _logger.LogInformation("Fetching available products");
+
+        try
         {
-            _logger.LogInformation("Fetching available products");
+            var query = _context.Products.AsNoTracking().AsQueryable();
 
-            try
+            if (!string.IsNullOrWhiteSpace(req.Query))
             {
-                var query = _context.Products.AsNoTracking().AsQueryable();
-
-                if (!string.IsNullOrWhiteSpace(req.Query))
-                {
-                    var pattern = $"%{req.Query}%";
-                    query = query.Where(p =>
+                var pattern = $"%{req.Query}%";
+                query = query.Where(p =>
                         EF.Functions.ILike(p.Name, pattern) ||
                         EF.Functions.ILike(p.Description, pattern))
-                        .Include(p => p.ProductImages);
-                }
-
-                var pageSize = Math.Clamp(req.PageSize, 1, 100);
-                var page = Math.Max(1, req.Page);
-                var skip = (page - 1) * pageSize;
-
-                var products = await query
-                    .Skip(skip)
-                    .Take(pageSize)
-                    .ToListAsync();
-
-                _logger.LogInformation("Successfully retrieved {Count} products", products.Count);
-
-                return Result.Success<IEnumerable<Product>>(products);
+                    .Include(p => p.ProductImages);
             }
-            catch (Exception e)
-            {
-                return Result.Fail<IEnumerable<Product>>($"Error searching products: {e.Message}");
-            }
+
+            var pageSize = Math.Clamp(req.PageSize, 1, 100);
+            var page = Math.Max(1, req.Page);
+            var skip = (page - 1) * pageSize;
+
+            var products = await query
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            _logger.LogInformation("Successfully retrieved {Count} products", products.Count);
+
+            return Result.Success<IEnumerable<Product>>(products);
         }
+        catch (Exception e)
+        {
+            return Result.Fail<IEnumerable<Product>>($"Error searching products: {e.Message}");
+        }
+    }
 
     public async Task<Result<Category>> GetCategoryAsync(int categoryId)
     {
