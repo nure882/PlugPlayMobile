@@ -17,9 +17,15 @@ const ProductImageGallery: React.FC<Props> = ({ images, initialIndex = 0, classN
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') next();
-      if (e.key === 'ArrowLeft') prev();
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === 'ArrowRight') {
+        next();
+      }
+      if (e.key === 'ArrowLeft') {
+        prev();
+      }
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
