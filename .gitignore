@@ -487,3 +487,4 @@ google-services.json
 *.hprof
 
 .DS_Store
+/frontend/.vscode/settings.json
