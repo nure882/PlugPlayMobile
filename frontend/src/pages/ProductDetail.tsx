@@ -3,6 +3,7 @@ import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
+import ProductAttributes from "../components/products/ProductAttributes.tsx";
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
@@ -142,6 +143,13 @@ const ProductDetail = () => {
                   {formatPrice(product.price)} ₴
                 </span>
             </div>
+
+            {/* Product attributes (clickable multi-select pills) */}
+            <ProductAttributes
+              categoryId={product.category?.id ?? 0}
+              productId={product.id}
+              onSelectionChange={(sel) => console.log('Attribute selection:', sel)}
+            />
 
             <div className="flex items-center gap-2">
               <div
