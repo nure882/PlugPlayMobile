@@ -1,60 +1,98 @@
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { CartItem } from '../../models/CartItem';
+import {useGetAllProductsQuery} from '../../api/productsApi.ts';
+import {
+  useGetCartQuery, 
+  useUpdateQuantityMutation, 
+  useDeleteCartItemMutation,
+  useClearCartMutation
+} from '../../api/cartApi.ts';
+import LoadingMessage from '../common/LoadingMessage.tsx';
+import ErrorMessage from '../common/ErrorMessage.tsx';
+import {Product} from "../../models/Product.ts";
 
 interface ShoppingCartProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-interface CartItem {
-  id: number;
-  name: string;
-  brand: string;
-  price: number;
-  oldPrice?: number;
-  quantity: number;
-  image: string;
-}
+// interface CartItem {
+//   id: number;
+//   name: string;
+//   brand: string;
+//   price: number;
+//   oldPrice?: number;
+//   quantity: number;
+//   image: string;
+// }
 
 export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: 1,
-      name: 'Мишка Attack Shark X11 Black',
-      brand: 'Oasis trade',
-      price: 1240,
-      oldPrice: 2000,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1658070429427-d46fbd8c20b5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxnYW1pbmclMjBtb3VzZSUyMGJsYWNrfGVufDF8fHx8MTc2MTY3OTUzNHww&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-    {
-      id: 2,
-      name: 'Клавіатура бездротова Hator (Kefal) PRO Wireless/Bluetooth/USB Black (HTK-900UA)',
-      brand: 'Rozetka',
-      price: 2599,
-      oldPrice: 3500,
-      quantity: 1,
-      image: 'https://images.unsplash.com/photo-1694405156884-dea1ffb40ede?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHx3aXJlbGVzcyUyMGtleWJvYXJkfGVufDF8fHx8MTc2MTcyMDQ4NHww&ixlib=rb-4.1.0&q=80&w=1080',
-    },
-  ]);
+  const {data: cartItems, isLoading, isError, refetch} = useGetCartQuery(1);
+  const { data: products } = useGetAllProductsQuery();
 
-  const updateQuantity = (id: number, delta: number) => {
-    setCartItems(items =>
-      items.map(item =>
-        item.id === id
-          ? { ...item, quantity: Math.max(1, item.quantity + delta) }
-          : item
-      )
-    );
+  const sortedItems = React.useMemo(
+    () => [...(cartItems ?? [])].sort((a, b) => a.id - b.id),
+    [cartItems]
+  );
+
+  //cartItems with mapped data from products
+  const enrichedItems = useMemo(() =>
+  sortedItems.map(item => ({
+    ...item,
+    product: products?.find(p => p.id === item.productId),
+  })),
+  [sortedItems, products]
+);
+
+  const [updateQuantity] = useUpdateQuantityMutation();
+  const [deleteCartItem] = useDeleteCartItemMutation();
+  const [clearCart] = useClearCartMutation();
+
+  const handleUpdateQuantity = async (id: number, newQuantity: number) => {
+    await updateQuantity({cartItemId: id, newQuantity: newQuantity});
+    refetch();
+  }
+
+  const handleDelete = async (id: number) => {
+    await deleteCartItem(id);
+    refetch();
   };
 
-  const removeItem = (id: number) => {
-    setCartItems(items => items.filter(item => item.id !== id));
-  };
-
-  const subtotal = cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const handleClear = async () => {
+    await clearCart(1);
+    refetch();
+  }
 
   if (!isOpen) return null;
+
+  if (isLoading) {
+    return LoadingMessage("shopping cart");
+  } 
+  
+  if(isError) {
+    return(  
+    <>
+    <div
+        className="fixed inset-0 bg-black/50 z-50"
+        onClick={onClose}
+      />
+    {ErrorMessage("Error loading cart", "failed to retrieve products")}
+    </>)
+  }
+
+  if(!cartItems){
+    return(  
+    <>
+    <div
+        className="fixed inset-0 bg-black/50 z-50"
+        onClick={onClose}
+      />
+    {ErrorMessage("your cart is empty", "add products to cart to see them here")}
+    </>)
+  }
+
+  const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
 
   return (
     <>
@@ -76,38 +114,35 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
         <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: 'calc(90vh - 220px)' }}>
           <div className="space-y-4">
-            {cartItems.map((item) => (
+            {enrichedItems.map((item) => (
               <div
                 key={item.id}
                 className="flex gap-4 p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-shadow"
               >
                 <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                  <img
-                    src={item.image}
-                    alt={item.name}
+                  { <img
+                    src={item.product?.pictureUrls[0] ?? ''}
+                    alt={item.product?.name ?? 'product'}
                     className="w-full h-full object-cover"
-                  />
+                  /> }
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <h3 className="mb-1 line-clamp-2">{item.name}</h3>
-                  <p className="text-gray-500 text-sm mb-2">Продавець: {item.brand}</p>
-                  
-                  <div className="flex items-center gap-2">
-                    {item.oldPrice && (
-                      <span className="text-gray-400 line-through text-sm">
-                        {item.oldPrice} ₴
-                      </span>
-                    )}
-                    <span className="text-red-600">
-                      {item.price} ₴
-                    </span>
+                  <h3 className="mb-1 line-clamp-2"><b>{item.product?.name ?? ''}</b></h3>
+                  <h4 className="text-sm mb-1 line-clamp-2">{item.product?.description ?? ''}</h4>
+                  <div className="flex flex-col items-start gap-1">
+                    <div className="text-red-600">
+                      price: {item.product?.price ?? ''} ₴
+                    </div>
+                    <div className="text-red-600">
+                      total: {item.total} ₴
+                    </div>
                   </div>
                 </div>
 
                 <div className="flex flex-col items-end justify-between">
                   <button
-                    onClick={() => removeItem(item.id)}
+                    onClick={() => handleDelete(item.id)}
                     className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                   >
                     <Trash2 className="w-5 h-5 text-gray-400" />
@@ -115,14 +150,14 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
                   <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
                     <button
-                      onClick={() => updateQuantity(item.id, -1)}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
                       className="p-2 hover:bg-gray-100 transition-colors"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
                     <span className="w-8 text-center">{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.id, 1)}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
                       className="p-2 hover:bg-gray-100 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
