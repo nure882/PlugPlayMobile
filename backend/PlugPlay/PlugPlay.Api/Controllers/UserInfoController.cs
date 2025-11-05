@@ -86,6 +86,7 @@ public class UserInfoController : ControllerBase
     [HttpPut("{token}")]
     public async Task<IActionResult> UpdateUserByToken(string token, [FromBody] UserInfoDto dto)
     {
+        _logger.LogInformation("Received update for token {Token} with data: {@Dto}", token, dto);
         _logger.LogInformation("Getting user by token");
 
         var userResult = await _userInfoService.GetUserByTokenAsync(token);
@@ -125,6 +126,7 @@ public class UserInfoController : ControllerBase
         {
             Id = user.Id,
             Email = user.Email,
+            PhoneNumber = user.PhoneNumber,
             FirstName = user.FirstName,
             LastName = user.LastName,
             Addresses = user.UserAddresses

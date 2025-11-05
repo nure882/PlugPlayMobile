@@ -73,6 +73,7 @@ namespace PlugPlay.Services.Profile
 
             user.FirstName = dto.FirstName ?? user.FirstName;
             user.LastName = dto.LastName ?? user.LastName;
+            user.PhoneNumber = dto.PhoneNumber ?? user.PhoneNumber;
 
             var dtoAddressIds = dto.Addresses.Where(a => a.Id.HasValue).Select(a => a.Id.Value).ToList();
             var addressesToRemove = user.UserAddresses.Where(a => !dtoAddressIds.Contains(a.Id)).ToList();
