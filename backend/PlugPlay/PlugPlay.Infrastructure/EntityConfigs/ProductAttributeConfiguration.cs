@@ -10,7 +10,7 @@ public class ProductAttributeConfiguration : IEntityTypeConfiguration<ProductAtt
     {
         builder.ToTable("product_attribute");
 
-        builder.HasKey(pa => new { pa.ProductId, pa.AttributeId });
+        builder.HasKey(pa => pa.Id);
 
         builder.Property(pa => pa.Value)
             .HasMaxLength(500);

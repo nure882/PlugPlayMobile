@@ -1,6 +1,6 @@
-using PlugPlay.Domain.Entities;
+using Attribute = PlugPlay.Domain.Entities.Attribute;
 
-namespace PlugPlay.Api.Dto;
+namespace PlugPlay.Api.Dto.Product;
 
 public record ProductDto(
     int Id,
@@ -12,4 +12,5 @@ public record ProductDto(
     CategoryDto? Category,
     IEnumerable<string> PictureUrls,
     IEnumerable<ReviewDto> Reviews,
-    IEnumerable<AttributeDto> Attributes);
+    IEnumerable<Attribute> Attributes,
+    IEnumerable<ProductAttributeDto> ProductAttributeDtos);

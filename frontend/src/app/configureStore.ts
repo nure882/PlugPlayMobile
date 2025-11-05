@@ -1,38 +1,32 @@
-import { configureStore, combineReducers } from '@reduxjs/toolkit'
+import { configureStore } from '@reduxjs/toolkit'
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
 import { persistStore, persistReducer } from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
-
 import { baseApi } from '../api/baseApi.ts'
-
-const rootReducer = combineReducers({
-  
-  [baseApi.reducerPath]: baseApi.reducer,
-  
-});
+import { combineReducers } from '@reduxjs/toolkit'
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: [], 
+  whitelist: [],
 };
 
-const persistedReducer = persistReducer(persistConfig, rootReducer);
+const rootReducer = combineReducers({
+  [baseApi.reducerPath]: baseApi.reducer,
+});
 
 export const store = configureStore({
-  reducer: persistedReducer,
+  reducer: persistReducer(persistConfig, rootReducer),
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: {
         ignoredActions: ['persist/PERSIST', 'persist/REHYDRATE'],
       },
-    })
-    
-    .concat(baseApi.middleware),
+    }).concat(baseApi.middleware),
+  devTools: true,
 });
 
 export const persistor = persistStore(store);
-
 
 export type RootState = ReturnType<typeof store.getState>
 export type AppDispatch = typeof store.dispatch
