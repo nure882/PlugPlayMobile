@@ -8,8 +8,8 @@ interface Props {
   onSelectionChange?: (selection: Record<number, string[]>) => void;
 }
 
-const pillBase = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm';
-const pillSelected = 'bg-blue-600 text-white border-blue-600';
+const pillBase = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg border cursor-pointer text-sm transition-colors focus:outline-none';
+const pillSelected = 'bg-white text-blue-600 border-blue-600 font-medium';
 const pillUnselected = 'bg-white text-gray-700 border-gray-200 hover:border-gray-300';
 
 const ProductAttributes: React.FC<Props> = ({categoryId, productId, onSelectionChange}) => {
@@ -17,18 +17,15 @@ const ProductAttributes: React.FC<Props> = ({categoryId, productId, onSelectionC
 
   useEffect(() => {
     if (categoryId && productId) {
-      // API expects productIds array in body
       void getAttributeGroups({categoryId, productIds: [productId]});
     }
   }, [categoryId, productId, getAttributeGroups]);
 
   const groups: AttributeGroup[] = (data ?? []) as AttributeGroup[];
 
-  // selections keyed by attributeGroup.id -> array of selected option strings
   const [selections, setSelections] = useState<Record<number, Set<string>>>({});
 
   useEffect(() => {
-    // initialize empty sets for groups when data arrives
     if (groups && groups.length) {
       setSelections(prev => {
         const next = {...prev};
@@ -53,9 +50,11 @@ const ProductAttributes: React.FC<Props> = ({categoryId, productId, onSelectionC
   const toggleOption = (groupId: number, option: string) => {
     setSelections(prev => {
       const next = {...prev};
-      if (!next[groupId]) next[groupId] = new Set<string>();
-      if (next[groupId].has(option)) next[groupId].delete(option);
-      else next[groupId].add(option);
+      const prevSet = prev[groupId] ?? new Set<string>();
+      const newSet = new Set<string>(prevSet);
+      if (newSet.has(option)) newSet.delete(option);
+      else newSet.add(option);
+      next[groupId] = newSet;
       notifyChange(next);
       return next;
     });
@@ -67,13 +66,11 @@ const ProductAttributes: React.FC<Props> = ({categoryId, productId, onSelectionC
       return v === undefined || v === null ? '' : `${v}${g.unit ? ' ' + g.unit : ''}`;
     }
 
-    // default to string value
     const s = dto.strValue ?? dto.numValue;
     return s === undefined || s === null ? '' : `${s}${g.unit ? ' ' + g.unit : ''}`;
   };
 
   const renderGroup = (g: AttributeGroup) => {
-    // collect unique options by label (no hooks inside loop)
     const set = new Map<string, any>();
     for (const dto of g.productAttributeDtos ?? []) {
       const label = getOptionLabel(g, dto);
