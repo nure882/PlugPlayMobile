@@ -3,12 +3,13 @@ import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
-import {useAddToCartMutation, useIsInCartQuery} from '../api/cartApi.ts';
+import {useGetCartQuery, useAddToCartMutation, useIsInCartQuery} from '../api/cartApi.ts';
 import { skipToken } from '@reduxjs/toolkit/query';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
+  const userId = 1;
 
   const {
     data : product,
@@ -19,9 +20,11 @@ const ProductDetail = () => {
     skip: !productId || isNaN(productId)
   });
 
-const { data: isInCart = false, refetch: recheckInCart } = useIsInCartQuery(
-  product ? { userId: 1, productId: product.id } : skipToken
-);
+  const { data: isInCart = false, refetch: recheckInCart } = useIsInCartQuery(
+    product ? { userId: 1, productId: product.id } : skipToken
+  );
+
+  const {refetch : updateCart} = useGetCartQuery(userId);
 
   const [addToCart] = useAddToCartMutation(); 
 
@@ -81,6 +84,7 @@ const { data: isInCart = false, refetch: recheckInCart } = useIsInCartQuery(
 
     await addToCart({userId : 1, productId : product.id, quantity : 1});
     recheckInCart();
+    updateCart();
   };
 
   // Mock delivery options
@@ -116,8 +120,6 @@ const { data: isInCart = false, refetch: recheckInCart } = useIsInCartQuery(
 
   return (
     <div className="min-h-screen bg-gray-50">
-      
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Product Image Gallery */}

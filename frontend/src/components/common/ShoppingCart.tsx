@@ -1,16 +1,14 @@
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
-import { CartItem } from '../../models/CartItem';
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
-import {
-  useGetCartQuery, 
+import { 
+  useGetCartQuery,
   useUpdateQuantityMutation, 
   useDeleteCartItemMutation,
   useClearCartMutation
 } from '../../api/cartApi.ts';
 import LoadingMessage from '../common/LoadingMessage.tsx';
 import ErrorMessage from '../common/ErrorMessage.tsx';
-import {Product} from "../../models/Product.ts";
 
 interface ShoppingCartProps {
   isOpen: boolean;
@@ -28,8 +26,8 @@ interface ShoppingCartProps {
 // }
 
 export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
-  const {data: cartItems, isLoading, isError, refetch} = useGetCartQuery(1);
-  const { data: products } = useGetAllProductsQuery();
+  const {data: cartItems, isLoading, isError, refetch: updateCart} = useGetCartQuery(1);
+  const {data: products } = useGetAllProductsQuery();
 
   const sortedItems = React.useMemo(
     () => [...(cartItems ?? [])].sort((a, b) => a.id - b.id),
@@ -51,17 +49,17 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
   const handleUpdateQuantity = async (id: number, newQuantity: number) => {
     await updateQuantity({cartItemId: id, newQuantity: newQuantity});
-    refetch();
+    updateCart();
   }
 
   const handleDelete = async (id: number) => {
     await deleteCartItem(id);
-    refetch();
+    updateCart();
   };
 
   const handleClear = async () => {
     await clearCart(1);
-    refetch();
+    updateCart();
   }
 
   const formatPrice = (price: number) => {
