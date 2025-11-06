@@ -43,24 +43,6 @@ public class ProductAttribute
             return (null, type);
         }
 
-        if (type == typeof(bool))
-        {
-            if (bool.TryParse(Value, out var b))
-                return (b, type);
-
-            if (Value == "0")
-            {
-                return (false, type);
-            }
-
-            if (Value == "1")
-            {
-                return (true, type);
-            }
-
-            return (null, type);
-        }
-
         if (type == typeof(string))
         {
             return (Value, type);
@@ -89,8 +71,6 @@ public class ProductAttribute
                 return typeof(int);
             case "string":
                 return typeof(string);
-            case "bool":
-                return typeof(bool);
             case "":
                 break;
         }
