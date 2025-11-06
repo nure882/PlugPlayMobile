@@ -1,5 +1,5 @@
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
-import React, { useState, useMemo } from 'react';
+import React, {useMemo } from 'react';
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
 import { 
   useGetCartQuery,
@@ -9,24 +9,15 @@ import {
 } from '../../api/cartApi.ts';
 import {storage} from '../../utils/StorageService';
 import { useGetUserByTokenQuery } from '../../api/userInfoApi.ts';
+import { skipToken } from '@reduxjs/toolkit/query';
 import LoadingMessage from '../common/LoadingMessage.tsx';
 import ErrorMessage from '../common/ErrorMessage.tsx';
-import { skipToken } from '@reduxjs/toolkit/query';
+import Modal from '../common/Modal.tsx';
 
 interface ShoppingCartProps {
   isOpen: boolean;
   onClose: () => void;
 }
-
-// interface CartItem {
-//   id: number;
-//   name: string;
-//   brand: string;
-//   price: number;
-//   oldPrice?: number;
-//   quantity: number;
-//   image: string;
-// }
 
 export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   const token = storage.getAccessToken();
@@ -82,18 +73,19 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   if (!isOpen) return null;
 
   if (isLoading || isLoadingUser) {
-    return LoadingMessage("shopping cart");
+     return (
+      <Modal title="Shopping Cart" isOpen={isOpen} onClose={onClose}>
+        {LoadingMessage("shopping cart")}
+      </Modal>
+    );
   } 
   
   if(isError || isUserError || !cartItems) {
-    return(  
-    <>
-    <div
-        className="fixed inset-0 bg-black/50 z-50"
-        onClick={onClose}
-      />
-    {ErrorMessage("Error loading cart", "failed to retrieve products")}
-    </>)
+    return (
+      <Modal title="Shopping Cart" isOpen={isOpen} onClose={onClose}>
+        {ErrorMessage("Error loading cart","Failed to retrieve products.")}
+      </Modal>
+    );
   }
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
