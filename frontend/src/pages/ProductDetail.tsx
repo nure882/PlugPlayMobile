@@ -4,6 +4,7 @@ import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'l
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 import ProductAttributes from "../components/products/ProductAttributes.tsx";
+import ReviewList from "../components/products/ReviewList";
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
@@ -235,6 +236,8 @@ const ProductDetail = () => {
               productId={product.id}
               onSelectionChange={(sel) => console.log('Attribute selection:', sel)}
             />
+
+            <ReviewList reviews={product.reviews ?? []} />
             
       </div>
     </div>
