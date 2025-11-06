@@ -75,7 +75,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     return LoadingMessage("shopping cart");
   } 
   
-  if(isError) {
+  if(isError || !cartItems) {
     return(  
     <>
     <div
@@ -83,17 +83,6 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
         onClick={onClose}
       />
     {ErrorMessage("Error loading cart", "failed to retrieve products")}
-    </>)
-  }
-
-  if(!cartItems){
-    return(  
-    <>
-    <div
-        className="fixed inset-0 bg-black/50 z-50"
-        onClick={onClose}
-      />
-    {ErrorMessage("your cart is empty", "add products to cart to see them here")}
     </>)
   }
 
@@ -177,13 +166,22 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
           <div className="flex items-center justify-between mb-4">
             <div>
-              <p className="text-gray-500 text-sm mb-1">Загальна сума</p>
+              <p className="text-gray-500 text-sm mb-1">Total sum</p>
               <p className="text-3xl">{formatPrice(subtotal)} ₴</p>
             </div>
             <button
-              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-xl"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
+              disabled={cartItems.length === 0}
             >
-              Оформити замовлення
+              Order now
+            </button>
+            <button
+              onClick={handleClear}
+              disabled={cartItems.length === 0}
+              className="flex items-center gap-2 bg-red-100 text-red-700 px-5 py-3 rounded-xl hover:bg-red-200 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            >
+              <Trash2 className="w-5 h-5" />
+              Clear
             </button>
           </div>
         </div>
