@@ -5,11 +5,15 @@ import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 import {useGetCartQuery, useAddToCartMutation, useIsInCartQuery} from '../api/cartApi.ts';
 import { skipToken } from '@reduxjs/toolkit/query';
+import { useGetUserByTokenQuery } from '../api/userInfoApi.ts';
+import {storage} from '../utils/StorageService';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
-  const userId = 1;
+
+  const token = storage.getAccessToken();
+  const {data: user, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
 
   const {
     data : product,
@@ -21,16 +25,16 @@ const ProductDetail = () => {
   });
 
   const { data: isInCart = false, refetch: recheckInCart } = useIsInCartQuery(
-    product ? { userId: 1, productId: product.id } : skipToken
+    product && user ? { userId: user.id, productId: product.id } : skipToken
   );
 
-  const {refetch : updateCart} = useGetCartQuery(userId);
+  const {refetch : updateCart} = useGetCartQuery(user?.id ?? skipToken);
 
   const [addToCart] = useAddToCartMutation(); 
 
   const [isFavorite, setIsFavorite] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || isLoadingUser) {
     return (
       <div className="min-h-screen bg-gray-50">        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -45,7 +49,7 @@ const ProductDetail = () => {
     );
   }
 
-  if (isError || !product) {
+  if (isError || isUserError || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
         
@@ -78,14 +82,20 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = async () => {
+    if(!user?.id) {
+      return;
+    }
+
     console.log('Add to cart:', {
       productId: product.id,
     });
 
-    await addToCart({userId : 1, productId : product.id, quantity : 1});
+    await addToCart({userId : user.id, productId : product.id, quantity : 1});
     recheckInCart();
     updateCart();
   };
+
+  const purchaseUnavailable = product.stockQuantity === 0 || isInCart || !user;
 
   // Mock delivery options
   const deliveryOptions = [
@@ -163,7 +173,7 @@ const ProductDetail = () => {
             <div className="flex gap-3">
               <button
                 onClick={handleBuy}
-                disabled={product.stockQuantity === 0}
+                disabled={purchaseUnavailable}
                 className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <ShoppingCart className="w-5 h-5"/>
@@ -187,7 +197,7 @@ const ProductDetail = () => {
 
             <button
               onClick={handleAddToCart}
-              disabled={(product.stockQuantity === 0 || isInCart)}
+              disabled={purchaseUnavailable}
               className="w-full bg-white text-gray-900 px-6 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors font-semibold disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
               {isInCart ? "Already in cart" : "Add to cart"}

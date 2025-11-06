@@ -7,8 +7,11 @@ import {
   useDeleteCartItemMutation,
   useClearCartMutation
 } from '../../api/cartApi.ts';
+import {storage} from '../../utils/StorageService';
+import { useGetUserByTokenQuery } from '../../api/userInfoApi.ts';
 import LoadingMessage from '../common/LoadingMessage.tsx';
 import ErrorMessage from '../common/ErrorMessage.tsx';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 interface ShoppingCartProps {
   isOpen: boolean;
@@ -26,7 +29,10 @@ interface ShoppingCartProps {
 // }
 
 export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
-  const {data: cartItems, isLoading, isError, refetch: updateCart} = useGetCartQuery(1);
+  const token = storage.getAccessToken();
+  const {data: user, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
+
+  const {data: cartItems, isLoading, isError, refetch: updateCart} = useGetCartQuery(user?.id ?? skipToken);
   const {data: products } = useGetAllProductsQuery();
 
   const sortedItems = React.useMemo(
@@ -58,7 +64,11 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   };
 
   const handleClear = async () => {
-    await clearCart(1);
+    if(!user) {
+      return;
+    }
+      
+    await clearCart(user.id);
     updateCart();
   }
 
@@ -71,11 +81,11 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
   if (!isOpen) return null;
 
-  if (isLoading) {
+  if (isLoading || isLoadingUser) {
     return LoadingMessage("shopping cart");
   } 
   
-  if(isError || !cartItems) {
+  if(isError || isUserError || !cartItems) {
     return(  
     <>
     <div
@@ -97,7 +107,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-2xl">Кошик</h2>
+          <h2 className="text-2xl">Shopping cart</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
