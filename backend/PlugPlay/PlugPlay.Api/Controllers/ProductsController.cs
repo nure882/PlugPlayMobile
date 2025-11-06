@@ -114,7 +114,7 @@ public class ProductsController : ControllerBase
             }
         }
 
-        var predicate = await AttributeHelper.BuildPredicate(
+        var predicate = AttributeHelper.BuildPredicate(
             filter, categoryResult.Value, minPrice, maxPrice);
         var includes = new List<Func<IQueryable<Product>, IIncludableQueryable<Product, object>>>
         {

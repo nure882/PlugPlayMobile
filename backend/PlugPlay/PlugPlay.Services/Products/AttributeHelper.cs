@@ -37,7 +37,7 @@ public static class AttributeHelper
         return orderBy;
     }
 
-    public async static Task<ExpressionStarter<Product>> BuildPredicate(
+    public static ExpressionStarter<Product> BuildPredicate(
         string filter, Category category, decimal? minPrice = null, decimal? maxPrice = null)
     {
         var predicate = PredicateBuilder.New<Product>(true);
