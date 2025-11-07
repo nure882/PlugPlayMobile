@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import {useParams} from 'react-router-dom';
-import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
+import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw, Star} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 import ProductAttributes from "../components/products/ProductAttributes.tsx";
@@ -137,6 +137,32 @@ const ProductDetail = () => {
                   Category: {product.category.name}
                 </p>
               )}
+
+              {/* Rating stars and review count */}
+              {
+                (() => {
+                  const reviews = product.reviews ?? [];
+                  const count = reviews.length;
+                  const avg = count > 0 ? reviews.reduce((s, r) => s + (r.rating ?? 0), 0) / count : 0;
+                  const rounded = Math.round(avg);
+
+                  return (
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-0.5">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            size={18}
+                            className={i < rounded ? 'text-yellow-400 fill-current' : 'text-gray-300'}
+                            aria-hidden
+                          />
+                        ))}
+                      </div>
+                      <span className="text-sm text-gray-600">({count})</span>
+                    </div>
+                  );
+                })()
+              }
             </div>
 
             <div className="flex items-baseline gap-3">
