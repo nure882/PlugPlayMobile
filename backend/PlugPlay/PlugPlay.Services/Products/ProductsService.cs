@@ -32,6 +32,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ProductImages)
             .Include(p => p.Category)
             .Include(p => p.Reviews)
+            .ThenInclude(r => r.User)
             .AsQueryable();
 
         var products = await query.ToListAsync();
@@ -50,11 +51,12 @@ public class ProductsService : IProductsService
             .ThenInclude(pa => pa.Attribute)
             .Include(p => p.ProductImages)
             .Include(p => p.Category)
-            .Include(p => p.Reviews);
+            .Include(p => p.Reviews)
+            .ThenInclude(r => r.User);
 
         _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
 
-        return Result.Success<IEnumerable<Product>>(products);
+        return Result.Success<IEnumerable<Product>>(await products.ToListAsync());
     }
 
     public async Task<Result> AddImageAsync(int productId, string uploadResultUrl)
@@ -232,6 +234,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ProductImages)
             .Include(p => p.Category)
             .Include(p => p.Reviews)
+            .ThenInclude(r => r.User)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (product == null)

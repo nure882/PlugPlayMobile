@@ -6,5 +6,6 @@ public record ReviewDto(
     int? UserId,
     int Rating,
     string Comment,
+    UserDto UserDto,
     DateTime CreatedAt,
     DateTime? UpdatedAt);

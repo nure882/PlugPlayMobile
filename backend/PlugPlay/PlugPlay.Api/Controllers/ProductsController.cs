@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
+using PlugPlay.Api.Dto;
 using PlugPlay.Api.Dto.Product;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
@@ -55,7 +56,7 @@ public class ProductsController : ControllerBase
         result.OnSuccess(() =>
             _logger.LogInformation("Successfully retrieved {Count} products", result.Value.Count()));
 
-        var productDtos = result.Value.Select(MapProduct);
+        var productDtos = result.Value.Select(MapProduct).ToList();
 
         return Ok(productDtos);
     }
@@ -122,6 +123,8 @@ public class ProductsController : ControllerBase
                 .Include(p => p.ProductAttributes).ThenInclude(av => av.Attribute)
                 .Include(p => p.Category).ThenInclude(c => c.ParentCategory)
                 .Include(p => p.ProductImages)
+                .Include(p => p.Reviews)
+                .ThenInclude(r => r.User)
         };
         var orderBy = AttributeHelper.BuildOrderByDelegate(sort);
         var skipCount = (page - 1) * pageSize;
@@ -287,8 +290,19 @@ public class ProductsController : ControllerBase
             review.UserId,
             review.Rating,
             review.Comment,
+            MapUser(review.User),
             review.CreatedAt,
             review.UpdatedAt);
+    }
+
+    private UserDto MapUser(Domain.Entities.User user)
+    {
+        return new UserDto
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+        };
     }
 
     private AttributeDto MapAttribute(Attribute attribute)

@@ -15,7 +15,7 @@ const ReviewItem = ({ review }: ReviewItemProps) => {
     <li className="border-b last:border-b-0 py-6">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-3">
-          <div className="font-medium text-gray-900 text-base">{review.userId ? `User #${review.userId}` : 'User'}</div>
+          <div className="font-medium text-gray-900 text-base">{review.userId ? `${review.userDto?.firstName} ${review.userDto?.lastName}` : 'User'}</div>
           <div className="text-sm text-gray-500">{date}</div>
         </div>
         <div className="flex items-center gap-0.5">
