@@ -1,7 +1,6 @@
 using System.Net;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
@@ -188,7 +187,44 @@ public class ProductsController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [HttpGet("search/{query}")]
+    public async Task<IActionResult> SearchProducts(
+        string query,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _logger.LogWarning("No search query provided");
+
+            return StatusCode(400, "No search query provided");
+        }
+
+        if (page <= 0 || pageSize <= 0)
+        {
+            _logger.LogWarning("Invalid paging parameters: page={Page}, pageSize={PageSize}", page, pageSize);
+
+            return StatusCode(400, "page and pageSize must be positive integers");
+        }
+
+        var result = await _productsService.SearchProductsAsync(new ProductSearchRequest
+            { Query = query, Page = page, PageSize = pageSize });
+        result.OnSuccess(()
+                => _logger.LogInformation("Successfully found {Count} products", result.Value.Count()))
+            .OnFailure(()
+                => _logger.LogError($"{result.Error}"));
+
+        if (result.Failure)
+        {
+            return StatusCode(500, new ProblemDetails { Detail = "Search failed" });
+        }
+
+        var productsDtos = result.Value.Select(MapProduct);
+
+        return Ok(productsDtos);
+    }
+
+    // todo: [Authorize(Roles = "Admin")]
     [HttpPost("image/{productId:int}")]
     public async Task<IActionResult> UploadImage(int productId, IFormFile file)
     {
