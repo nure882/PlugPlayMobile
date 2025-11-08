@@ -35,16 +35,22 @@ class ProductsService {
       return undefined;
     }
 
-    const filterParts: string[] = [];
+    const parts: string[] = [];
+
     Object.entries(attributeFilters).forEach(([attrId, values]) => {
-      if (values.length > 0) {
-        values.forEach((value) => {
-          filterParts.push(`${attrId}:${value}`);
-        });
-      }
+      if (!values || values.length === 0) return;
+
+      const safe = values
+        .map(v => v.trim())
+        .filter(v => v.length > 0)
+        .map(v => v.replace(/[,;:]/g, ''));
+
+      if (safe.length === 0) return;
+
+      parts.push(`${attrId}:${safe.join(',')}`);
     });
 
-    return filterParts.length > 0 ? filterParts.join(',') : undefined;
+    return parts.length > 0 ? parts.join(',') : undefined;
   }
 
   /**

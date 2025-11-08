@@ -77,6 +77,7 @@ public static class AttributeHelper
                     {
                         catPred = catPred.Or(p => p.CategoryId == sc.Id);
                     }
+
                     predicate = predicate.And(catPred);
                 }
             }
@@ -101,44 +102,34 @@ public static class AttributeHelper
 
         ExpressionStarter<Product> AddParsedProductAttributesFilters()
         {
-            var filterParts = decodedFilter.Split(',');
-            foreach (var part in filterParts)
+            var parts = decodedFilter.Split(':', 2);
+            if (parts.Length < 2 || !int.TryParse(parts[0].Trim(), out int attrId))
             {
-                var kvp = part.Split(':');
-                if (kvp.Length != 2)
-                {
-                    continue;
-                }
-
-                var key = kvp[0].Trim();
-                var valueStr = kvp[1].Trim();
-                int attrId;
-                if (!int.TryParse(key, out attrId))
-                {
-                    continue;
-                }
-
-                var values = valueStr
-                    .Split(',')
-                    .Select(v => v.Trim())
-                    .Where(v => !string.IsNullOrEmpty(v))
-                    .ToList();
-
-                if (values.Count == 0)
-                {
-                    continue;
-                }
-
-                var allNumeric = values.All(v => double.TryParse(v,
-                    System.Globalization.NumberStyles.Any,
-                    System.Globalization.CultureInfo.InvariantCulture,
-                    out _));
-
-                var attrFilter = allNumeric
-                    ? AddNumericAttribute(attrId, values)
-                    : AddStringAttribute(attrId, values);
-                predicate = predicate.And(attrFilter);
+                return predicate;
             }
+
+            var values = parts[1]
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(v => v.Trim())
+                .Where(v => v.Length > 0)
+                .ToList();
+
+            if (values.Count == 0)
+            {
+                return predicate;
+            }
+
+            var allNumeric = values.All(v => double.TryParse(
+                v,
+                System.Globalization.NumberStyles.Any,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out _));
+
+            var attrFilter = allNumeric
+                ? AddNumericAttribute(attrId, values)
+                : AddStringAttribute(attrId, values);
+
+            predicate = predicate.And(attrFilter);
 
             return predicate;
         }
