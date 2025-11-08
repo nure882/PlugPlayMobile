@@ -1,4 +1,4 @@
-import {useNavigate, useOutletContext, useSearchParams} from 'react-router-dom';
+import {useNavigate} from 'react-router-dom';
 import {useState, useEffect} from 'react';
 import ProductCard from '../components/products/ProductCard';
 import DynamicFiltersSidebar, {
@@ -8,49 +8,30 @@ import DynamicFiltersSidebar, {
 } from '../components/products/DynamicFilterSidebar';
 import {Loader2} from 'lucide-react';
 import {useProductsService} from '../features/products/ProductsService.ts';
+import { useAppDispatch, useAppSelector } from '../app/configureStore.ts';
+import { setAttributeFilters, setPriceRange, setSortOption } from '../app/slices/filterSlice.ts';
 
-type OutletContextType = {
-  selectedCategory: number | null;
-};
 
 const Catalog = () => {
   const navigate = useNavigate();
-  const {selectedCategory} = useOutletContext<OutletContextType>();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const dispatch = useAppDispatch();
+  
+  // Get filter state from Redux
+  const {
+    selectedCategory,
+    priceRange = { min: 0, max: 5000 },
+    attributeFilters = {},
+    sortOption = { value: 'price-asc', label: 'Price (Low to High)' },
+  } = useAppSelector((state) => state.filter || {});
 
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [visibleCount, setVisibleCount] = useState(20);
-
-  const [dynamicFilters, setDynamicFilters] = useState<DynamicFilters>(() => {
-    const filtersParam = searchParams.get('filters');
-
-    return filtersParam ? JSON.parse(filtersParam) : {};
-  });
-
-  const [sortOption, setSortOption] = useState<SortOption>(() => {
-    const sortValue = searchParams.get('sort') || 'price-asc';
-    const sortLabels: Record<string, string> = {
-      'price-asc': 'Price (Low to High)',
-      'price-desc': 'Price (High to Low)',
-      'newest': 'Newest',
-    };
-
-    return {
-      value: sortValue,
-      label: sortLabels[sortValue] || 'Price (Low to High)',
-    };
-  });
-
-  const [priceRange, setPriceRange] = useState<PriceRange>(() => ({
-    min: 0,
-    max: 5000,
-  }));
 
   const {products, attributeGroups, isLoading, isError, refetch} = useProductsService({
     categoryId: selectedCategory,
     minPrice: priceRange.min,
     maxPrice: priceRange.max,
-    attributeFilters: dynamicFilters,
+    attributeFilters: attributeFilters,
     sort: sortOption.value,
     page: 1,
     pageSize: 100,
@@ -60,58 +41,36 @@ const Catalog = () => {
     if (typeof refetch === 'function') {
       refetch();
     }
-  }, [sortOption.value, refetch]);
+  }, [sortOption.value, attributeFilters, priceRange, refetch]);
   
-  useEffect(() => {
-    if (products && products.length > 0) {
-      const sortedProducts = [...products].sort((a, b) => a.price - b.price);
-      setPriceRange({
-        min: sortedProducts[0]?.price || 0,
-        max: sortedProducts[sortedProducts.length - 1]?.price || 5000
-      });
-    }
-  }, [products]);
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-
-    if (priceRange.min > 0) {
-      params.set('minPrice', priceRange.min.toString());
-    } else {
-      params.delete('minPrice');
-    }
-
-    if (priceRange.max < 5000) {
-      params.set('maxPrice', priceRange.max.toString());
-    } else {
-      params.delete('maxPrice');
-    }
-
-    if (Object.keys(dynamicFilters).length > 0) {
-      params.set('filters', JSON.stringify(dynamicFilters));
-    } else {
-      params.delete('filters');
-    }
-
-    if (sortOption.value !== 'price-asc') {
-      params.set('sort', sortOption.value);
-    } else {
-      params.delete('sort');
-    }
-
-    setSearchParams(params, { replace: true });
-  }, [priceRange, dynamicFilters, sortOption]);
+  // useEffect(() => {
+  //   if (products && products.length > 0) {
+  //     const sortedProducts = [...products].sort((a, b) => a.price - b.price);
+  //     const newMin = sortedProducts[0]?.price || 0;
+  //     const newMax = sortedProducts[sortedProducts.length - 1]?.price || 5000;
+      
+  //     // Only update if significantly different to avoid infinite loops
+  //     if (Math.abs(priceRange.min - newMin) > 0.01 || Math.abs(priceRange.max - newMax) > 0.01) {
+  //       dispatch(setPriceRange({ min: newMin, max: newMax }));
+  //     }
+  //   }
+  // }, [products]);
 
   useEffect(() => {
     setVisibleCount(20);
-    setDynamicFilters({});
-    setPriceRange({min: 0, max: 5000});
-    setSortOption({
-      value: 'price-asc',
-      label: 'Price (Low to High)',
-    });
   }, [selectedCategory]);
 
+  const handleSetFilters = (filters: DynamicFilters) => {
+    dispatch(setAttributeFilters(filters));
+  };
+
+  const handleSetPriceRange = (range: PriceRange) => {
+    dispatch(setPriceRange(range));
+  };
+
+  const handleSetSortOption = (option: SortOption) => {
+    dispatch(setSortOption(option));
+  };
 
   if (isLoading) {
     return (
@@ -170,12 +129,12 @@ const Catalog = () => {
           <DynamicFiltersSidebar
             isOpen={true}
             onClose={() => {}}
-            filters={dynamicFilters}
-            setFilters={setDynamicFilters}
+            filters={attributeFilters}
+            setFilters={handleSetFilters}
             priceRange={priceRange}
-            setPriceRange={setPriceRange}
+            setPriceRange={handleSetPriceRange}
             sortOption={sortOption}
-            setSortOption={setSortOption}
+            setSortOption={handleSetSortOption}
             attributeGroups={attributeGroups}
           />
         </aside>

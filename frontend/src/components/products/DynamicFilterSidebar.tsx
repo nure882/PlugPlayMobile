@@ -1,6 +1,8 @@
 import {ChevronDown, ChevronUp} from 'lucide-react';
 import {useState, useEffect} from 'react';
 import AttributeGroup from "../../models/AttributeGroup.ts";
+import { resetFilters } from '../../app/slices/filterSlice.ts';
+import { useDispatch } from 'react-redux';
 
 export interface DynamicFilters {
   [attributeId: string]: string[];
@@ -43,6 +45,8 @@ export default function DynamicFiltersSidebar({
                                                 setSortOption,
                                                 attributeGroups,
                                               }: DynamicFiltersSidebarProps) {
+
+  const dispatch = useDispatch();
   const [expandedSections, setExpandedSections] = useState<Set<number>>(new Set());
   const [minInput, setMinInput] = useState<string>(priceRange.min?.toString() ?? '0');
   const [maxInput, setMaxInput] = useState<string>(priceRange.max?.toString() ?? '5000');
@@ -55,7 +59,7 @@ export default function DynamicFiltersSidebar({
   const commitPriceRange = () => {
     const min = Number(minInput) || 0;
     const max = Number(maxInput) || 0;
-    setPriceRange(prev => (prev.min === min && prev.max === max) ? prev : { min, max });
+    setPriceRange({ min, max });
   };
 
   const hasProducts = attributeGroups.length > 0;
@@ -90,9 +94,7 @@ export default function DynamicFiltersSidebar({
   };
 
   const clearAllFilters = () => {
-    setFilters({});
-    setPriceRange({min: 0, max: 5000});
-    setSortOption(sortOptions[0]);
+    dispatch(resetFilters());
   };
 
   const hasActiveFilters =

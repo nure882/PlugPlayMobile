@@ -1,5 +1,5 @@
-import {BrowserRouter, Routes, Route, Outlet, useSearchParams} from 'react-router-dom';
-import {useState, useEffect} from 'react';
+import {BrowserRouter, Routes, Route, Outlet} from 'react-router-dom';
+import {useState} from 'react';
 import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Catalog from './pages/Catalog';
@@ -10,36 +10,22 @@ import { GoogleOAuthProvider } from "@react-oauth/google";
 import ProtectedRoute from './components/common/ProtectedRoute.tsx';
 import Header from './components/common/Header.tsx';
 import {ShoppingCart} from './components/common/ShoppingCart.tsx';
+import { useAppDispatch } from './app/configureStore';
+import { setSelectedCategory } from './app/slices/filterSlice';
+
 
 const MainLayout = ({onCartClick}: { onCartClick: () => void }) => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  const categoryParam = searchParams.get('category');
-  const [selectedCategory, setSelectedCategory] = useState<number | null>(
-    categoryParam ? parseInt(categoryParam, 10) : null
-  );
-
-  useEffect(() => {
-    const params = new URLSearchParams(searchParams);
-    
-    if (selectedCategory !== null) {
-      params.set('category', selectedCategory.toString());
-    } else {
-      params.delete('category');
-    }
-    
-    setSearchParams(params, { replace: true });
-  }, [selectedCategory]);
+  const dispatch = useAppDispatch();
 
   const handleCategorySelect = (categoryId: number | null) => {
-    setSelectedCategory(prev => prev === categoryId ? null : categoryId);
+    dispatch(setSelectedCategory(categoryId));
   };
 
   return (
     <>
       <Header onCartClick={onCartClick} onCategorySelect={handleCategorySelect}/>
       <main>
-        <Outlet context={{selectedCategory, onCategorySelect: handleCategorySelect}}/>
+        <Outlet />
       </main>
     </>
   );

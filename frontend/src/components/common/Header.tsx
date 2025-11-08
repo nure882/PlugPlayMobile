@@ -44,7 +44,7 @@ export default function Header({ onCartClick, onCategorySelect }: HeaderProps) {
                 onClose={() => setIsCategoriesOpen(false)}
                 onCategorySelect={onCategorySelect}
               />
-              <Link to="/" className="flex items-center gap-2">
+              <Link to="/" onClick={() => onCategorySelect(null)} className="flex items-center gap-2">
                 <img src={logoUrl} alt="Plug&Play logo" className="h-8 w-8" />
                 <span className="text-2xl font-bold text-black">Plug&Play</span>
               </Link>
