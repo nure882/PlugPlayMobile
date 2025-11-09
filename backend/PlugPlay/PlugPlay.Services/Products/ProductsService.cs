@@ -128,6 +128,8 @@ public class ProductsService : IProductsService
         int[] productIds = null)
     {
         List<int> categoryIds;
+        int[] targetProductIds = null;
+
         // all available
         if (categoryId == int.MaxValue)
         {
@@ -141,10 +143,17 @@ public class ProductsService : IProductsService
                 .Select(c => c.Id)
                 .ToListAsync();
 
-            productIds = await _context.Products
-                .Where(p => p.StockQuantity != 0)
-                .Select(p => p.Id)
-                .ToArrayAsync();
+            if (productIds != null && productIds.Length > 0)
+            {
+                targetProductIds = productIds;
+            }
+            else
+            {
+                targetProductIds = await _context.Products
+                    .Where(p => p.StockQuantity != 0)
+                    .Select(p => p.Id)
+                    .ToArrayAsync();
+            }
         }
         // category specified
         else
@@ -170,18 +179,29 @@ public class ProductsService : IProductsService
             }
 
             categoryIds = descendantCategories.Select(c => c.Id).ToList();
+
+            if (productIds != null && productIds.Length > 0)
+            {
+                targetProductIds = productIds;
+            }
         }
 
-        var productIdsLength = productIds?.Length ?? 0;
-        var productPredicate = productIds != null || productIdsLength != 0
-            ? new Func<Product, bool>(p => productIds!.Contains(p.Id))
-            : _ => true;
+        IQueryable<int> productsQuery;
 
-        var productsQuery = _context.Products
-            .AsNoTracking()
-            .Where(p => categoryIds.Contains(p.CategoryId))
-            .Where(productPredicate)
-            .Select(p => p.Id);
+        if (targetProductIds != null && targetProductIds.Length > 0)
+        {
+            productsQuery = _context.Products
+                .AsNoTracking()
+                .Where(p => categoryIds.Contains(p.CategoryId) && targetProductIds.Contains(p.Id))
+                .Select(p => p.Id);
+        }
+        else
+        {
+            productsQuery = _context.Products
+                .AsNoTracking()
+                .Where(p => categoryIds.Contains(p.CategoryId))
+                .Select(p => p.Id);
+        }
 
         var attributeCounts = await _context.ProductAttributes
             .AsNoTracking()
@@ -200,8 +220,8 @@ public class ProductsService : IProductsService
         var attributes = await _context.Attributes
             .AsNoTracking()
             .Where(a => attributeIds.Contains(a.Id))
-            .Include(a => a.ProductAttributes
-                .Where(pa => productIds.Contains(pa.ProductId)))
+            .Include(a => a.ProductAttributes.Where(pa =>
+                targetProductIds == null || targetProductIds.Contains(pa.ProductId)))
             .ToListAsync();
 
         return Result.Success<IEnumerable<Attribute>>(attributes);
