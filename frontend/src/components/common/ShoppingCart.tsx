@@ -1,12 +1,7 @@
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
 import React, {useMemo } from 'react';
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
-import { 
-  useGetCartQuery,
-  useUpdateQuantityMutation, 
-  useDeleteCartItemMutation,
-  useClearCartMutation
-} from '../../api/cartApi.ts';
+import { cartService } from '../../features/cart/CartService.ts';
 import {storage} from '../../utils/StorageService';
 import { useGetUserByTokenQuery } from '../../api/userInfoApi.ts';
 import { skipToken } from '@reduxjs/toolkit/query';
@@ -23,7 +18,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   const token = storage.getAccessToken();
   const {data: user, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
 
-  const {data: cartItems, isLoading, isError, refetch: updateCart} = useGetCartQuery(user?.id ?? skipToken);
+  const {cartItems, isLoading, isError, refetch: updateCart} = cartService.useCart(user?.id);
   const {data: products } = useGetAllProductsQuery();
 
   const sortedItems = React.useMemo(
@@ -40,12 +35,12 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   [sortedItems, products]
 );
 
-  const [updateQuantity] = useUpdateQuantityMutation();
-  const [deleteCartItem] = useDeleteCartItemMutation();
-  const [clearCart] = useClearCartMutation();
+  const updateQuantity = cartService.useUpdateQuantity(user?.id);
+  const deleteCartItem =  cartService.useDeleteCartItem(user?.id);
+  const clearCart = cartService.useClearCart(user?.id);
 
   const handleUpdateQuantity = async (id: number, newQuantity: number) => {
-    await updateQuantity({cartItemId: id, newQuantity: newQuantity});
+    await updateQuantity(id, newQuantity);
     updateCart();
   }
 
@@ -59,7 +54,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
       return;
     }
       
-    await clearCart(user.id);
+    await clearCart();
     updateCart();
   }
 

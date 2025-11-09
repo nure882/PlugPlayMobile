@@ -12,10 +12,11 @@ import {
   useGetProductByIdQuery,
 } from "../../api/productsApi.ts";
 import { useMemo } from "react";
+import { skipToken } from '@reduxjs/toolkit/query';
 
 class CartService {
   useCart(userId?: number): { cartItems: CartItem[], isLoading: boolean, isError: boolean, refetch: () => void } {
-    const { data: cartItemsFromApi = [], isLoading, isError, refetch } = useGetCartQuery(userId ?? 0, { skip: !userId });
+    const { data: cartItemsFromApi = [], isLoading, isError, refetch } = useGetCartQuery(userId ?? skipToken);
 
     const cartItems = useMemo(() => {
       if (userId) return cartItemsFromApi;
@@ -24,7 +25,9 @@ class CartService {
     }, [cartItemsFromApi, userId]);
 
     const refetchCart = () => {
-      if (userId) refetch();
+      if (userId) {
+        refetch();
+      }
       else {
         // For guest, maybe trigger state update manually
       }
@@ -56,7 +59,9 @@ class CartService {
   useUpdateQuantity(userId?: number) {
     const [updateQuantityMutation] = useUpdateQuantityMutation();
     return async (cartItemId: number, quantity: number) => {
-      if (userId) await updateQuantityMutation({ cartItemId, newQuantity: quantity });
+      if (userId) {
+        await updateQuantityMutation({ cartItemId, newQuantity: quantity });
+      } 
       else {
         const cart = storage.getGuestCart() ?? [];
         const item = cart.find(ci => ci.id === cartItemId);
@@ -73,7 +78,9 @@ class CartService {
   useDeleteCartItem(userId?: number) {
     const [deleteMutation] = useDeleteCartItemMutation();
     return async (cartItemId: number) => {
-      if (userId) await deleteMutation(cartItemId);
+      if (userId) {
+        await deleteMutation(cartItemId);
+      } 
       else {
         const cart = storage.getGuestCart() ?? [];
         storage.setGuestCart(cart.filter(ci => ci.id !== cartItemId));
