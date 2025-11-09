@@ -1,10 +1,10 @@
 using System.Net;
 using CloudinaryDotNet;
 using CloudinaryDotNet.Actions;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Query;
+using PlugPlay.Api.Dto;
 using PlugPlay.Api.Dto.Product;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
@@ -55,7 +55,7 @@ public class ProductsController : ControllerBase
         result.OnSuccess(() =>
             _logger.LogInformation("Successfully retrieved {Count} products", result.Value.Count()));
 
-        var productDtos = result.Value.Select(MapProduct);
+        var productDtos = result.Value.Select(MapProduct).ToList();
 
         return Ok(productDtos);
     }
@@ -122,6 +122,8 @@ public class ProductsController : ControllerBase
                 .Include(p => p.ProductAttributes).ThenInclude(av => av.Attribute)
                 .Include(p => p.Category).ThenInclude(c => c.ParentCategory)
                 .Include(p => p.ProductImages)
+                .Include(p => p.Reviews)
+                .ThenInclude(r => r.User)
         };
         var orderBy = AttributeHelper.BuildOrderByDelegate(sort);
         var skipCount = (page - 1) * pageSize;
@@ -188,7 +190,44 @@ public class ProductsController : ControllerBase
         }
     }
 
-    [Authorize(Roles = "Admin")]
+    [HttpGet("search/{query}")]
+    public async Task<IActionResult> SearchProducts(
+        string query,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+        {
+            _logger.LogWarning("No search query provided");
+
+            return StatusCode(400, "No search query provided");
+        }
+
+        if (page <= 0 || pageSize <= 0)
+        {
+            _logger.LogWarning("Invalid paging parameters: page={Page}, pageSize={PageSize}", page, pageSize);
+
+            return StatusCode(400, "page and pageSize must be positive integers");
+        }
+
+        var result = await _productsService.SearchProductsAsync(new ProductSearchRequest
+            { Query = query, Page = page, PageSize = pageSize });
+        result.OnSuccess(()
+                => _logger.LogInformation("Successfully found {Count} products", result.Value.Count()))
+            .OnFailure(()
+                => _logger.LogError($"{result.Error}"));
+
+        if (result.Failure)
+        {
+            return StatusCode(500, new ProblemDetails { Detail = "Search failed" });
+        }
+
+        var productsDtos = result.Value.Select(MapProduct);
+
+        return Ok(productsDtos);
+    }
+
+    // todo: [Authorize(Roles = "Admin")]
     [HttpPost("image/{productId:int}")]
     public async Task<IActionResult> UploadImage(int productId, IFormFile file)
     {
@@ -287,8 +326,19 @@ public class ProductsController : ControllerBase
             review.UserId,
             review.Rating,
             review.Comment,
+            MapUser(review.User),
             review.CreatedAt,
             review.UpdatedAt);
+    }
+
+    private UserDto MapUser(Domain.Entities.User user)
+    {
+        return new UserDto
+        {
+            Id = user.Id,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+        };
     }
 
     private AttributeDto MapAttribute(Attribute attribute)
