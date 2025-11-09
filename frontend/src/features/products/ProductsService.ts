@@ -1,9 +1,9 @@
-import { Product } from "../../models/Product.ts";
+import {Product} from "../../models/Product.ts";
 import {
   useFilterProductsQuery,
   useGetAttributeGroupsMutation,
 } from "../../api/productsApi.ts";
-import { useEffect } from "react";
+import {useEffect, useMemo} from "react";
 import AttributeGroup from "../../models/AttributeGroup.ts";
 
 export interface FilterOptions {
@@ -30,27 +30,31 @@ class ProductsService {
   /**
    * Build filter string from attribute filters
    */
+  // ...existing code...
   buildFilterString(attributeFilters?: Record<string, string[]>): string | undefined {
     if (!attributeFilters || Object.keys(attributeFilters).length === 0) {
       return undefined;
     }
-
     const parts: string[] = [];
 
     Object.entries(attributeFilters).forEach(([attrId, values]) => {
-      if (!values || values.length === 0) return;
+      if (!values || values.length === 0) {
+        return;
+      }
 
       const safe = values
         .map(v => v.trim())
         .filter(v => v.length > 0)
         .map(v => v.replace(/[,;:]/g, ''));
 
-      if (safe.length === 0) return;
+      if (safe.length === 0) {
+        return;
+      }
 
       parts.push(`${attrId}:${safe.join(',')}`);
     });
 
-    return parts.length > 0 ? parts.join(',') : undefined;
+    return parts.length > 0 ? parts.join(';') : undefined;
   }
 
   /**
@@ -91,7 +95,8 @@ class ProductsService {
       refetch: refetchFiltered,
     } = useFilterProductsQuery(filterParams);
 
-    const productIds = (filteredResponse?.products ?? []).map((p: Product) => p.id) as number[];
+    const products = filteredResponse?.products || [];
+    const productIds = products.map((p: Product) => p.id);
 
     const [fetchAttributeGroups, {
       data: attributeGroups = [],
@@ -99,18 +104,21 @@ class ProductsService {
       isError: isErrorAttributes,
     }] = useGetAttributeGroupsMutation();
 
+    const productIdsKey = useMemo(() => {
+      return productIds.length > 0 ? productIds.sort((a, b) => a - b).join(',') : '';
+    }, [productIds.length, products.length]);
+
     useEffect(() => {
       fetchAttributeGroups({
         categoryId: actualCategoryId,
-        productIds: productIds.length ? productIds : undefined
+        productIds: productIds.length > 0 ? productIds : undefined
       }).then((result) => {
         console.log("fetchAttributeGroups resolved:", result);
       }).catch((error) => {
         console.error("fetchAttributeGroups rejected:", error);
       });
-    }, [categoryId, fetchAttributeGroups, productIds.length]);
+    }, [actualCategoryId, productIdsKey, fetchAttributeGroups]);
 
-    const products = filteredResponse?.products || [];
     const isLoading = isLoadingFiltered || isLoadingAttributes;
     const isError = isErrorFiltered || isErrorAttributes;
 
@@ -119,7 +127,7 @@ class ProductsService {
       isLoading,
       isError,
       attributeGroupsCount: attributeGroups.length,
-      products
+      productIdsKey,
     });
 
     return {

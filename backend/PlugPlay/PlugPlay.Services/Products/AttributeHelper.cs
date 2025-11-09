@@ -55,7 +55,12 @@ public static class AttributeHelper
             return predicate;
         }
 
-        predicate = AddParsedProductAttributesFilters();
+        var splitBySemicolons = decodedFilter.Split(";");
+
+        foreach (var str in splitBySemicolons)
+        {
+            predicate = AddParsedProductAttributesFilters(str);
+        }
 
         return predicate;
 
@@ -100,9 +105,9 @@ public static class AttributeHelper
             return predicate;
         }
 
-        ExpressionStarter<Product> AddParsedProductAttributesFilters()
+        ExpressionStarter<Product> AddParsedProductAttributesFilters(string str)
         {
-            var parts = decodedFilter.Split(':', 2);
+            var parts = str.Split(':', 2);
             if (parts.Length < 2 || !int.TryParse(parts[0].Trim(), out int attrId))
             {
                 return predicate;
