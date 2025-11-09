@@ -3,7 +3,7 @@ import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
-import {useGetCartQuery, useAddToCartMutation, useIsInCartQuery} from '../api/cartApi.ts';
+import { cartService } from '../features/cart/CartService.ts';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { useGetUserByTokenQuery } from '../api/userInfoApi.ts';
 import {storage} from '../utils/StorageService';
@@ -24,13 +24,11 @@ const ProductDetail = () => {
     skip: !productId || isNaN(productId)
   });
 
-  const { data: isInCart = false, refetch: recheckInCart } = useIsInCartQuery(
-    product && user ? { userId: user.id, productId: product.id } : skipToken
-  );
+  const { isInCart = false, refetch: recheckInCart } = cartService.useIsInCart(productId, user?.id);
 
-  const {refetch : updateCart} = useGetCartQuery(user?.id ?? skipToken);
+  const {refetch : updateCart} = cartService.useCart(user?.id);
 
-  const [addToCart] = useAddToCartMutation(); 
+  const addToCart = cartService.useAddToCart(user?.id); 
 
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -82,20 +80,16 @@ const ProductDetail = () => {
   };
 
   const handleAddToCart = async () => {
-    if(!user?.id) {
-      return;
-    }
-
     console.log('Add to cart:', {
       productId: product.id,
     });
 
-    await addToCart({userId : user.id, productId : product.id, quantity : 1});
+    await addToCart({productId : product.id, quantity : 1});
     recheckInCart();
     updateCart();
   };
 
-  const purchaseUnavailable = product.stockQuantity === 0 || isInCart || !user;
+  const purchaseUnavailable = product.stockQuantity === 0 || isInCart;
 
   // Mock delivery options
   const deliveryOptions = [

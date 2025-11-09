@@ -45,15 +45,12 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   }
 
   const handleDelete = async (id: number) => {
+
     await deleteCartItem(id);
     updateCart();
   };
 
   const handleClear = async () => {
-    if(!user) {
-      return;
-    }
-      
     await clearCart();
     updateCart();
   }
