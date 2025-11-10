@@ -27,6 +27,11 @@ export default function Header({ onCartClick, onCategorySelect }: HeaderProps) {
     console.log('Search query:', searchQuery);
   };
 
+  const handleCategorySelect = (categoryId: number | null) => {
+    onCategorySelect(categoryId);
+    navigate('/');
+  };
+
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -42,9 +47,9 @@ export default function Header({ onCartClick, onCategorySelect }: HeaderProps) {
               <CategoriesSidebar
                 isOpen={isCategoriesOpen}
                 onClose={() => setIsCategoriesOpen(false)}
-                onCategorySelect={onCategorySelect}
+                onCategorySelect={handleCategorySelect}
               />
-              <Link to="/" className="flex items-center gap-2">
+              <Link to="/" onClick={() => handleCategorySelect(null)} className="flex items-center gap-2">
                 <img src={logoUrl} alt="Plug&Play logo" className="h-8 w-8" />
                 <span className="text-2xl font-bold text-black">Plug&Play</span>
               </Link>
