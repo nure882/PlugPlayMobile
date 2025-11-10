@@ -1,4 +1,4 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
@@ -7,6 +7,7 @@ import { cartService } from '../features/cart/CartService.ts';
 import { skipToken } from '@reduxjs/toolkit/query';
 import { useGetUserByTokenQuery } from '../api/userInfoApi.ts';
 import {storage} from '../utils/StorageService';
+import { useCartContext } from '../context/CartContext.tsx';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
@@ -25,10 +26,15 @@ const ProductDetail = () => {
   });
 
   const { isInCart = false, refetch: recheckInCart } = cartService.useIsInCart(productId, user?.id);
-
   const {refetch : updateCart} = cartService.useCart(user?.id);
-
   const addToCart = cartService.useAddToCart(user?.id); 
+  const { isCartOpen, openCart } = useCartContext();
+
+  useEffect(() => {
+    if (!isCartOpen) {
+      recheckInCart();
+    }
+  }, [isCartOpen]);
 
   const [isFavorite, setIsFavorite] = useState(false);
 
@@ -77,6 +83,7 @@ const ProductDetail = () => {
 
   const handleBuy = () => {
     handleAddToCart();
+    openCart();
   };
 
   const handleAddToCart = async () => {
