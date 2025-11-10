@@ -5,20 +5,24 @@ import { useState } from 'react';
 import { useAuth } from '../../context/AuthContext.tsx';
 import { Menu } from 'lucide-react';
 import CategoriesSidebar from "../products/CategoriesSidebar.tsx";
+import { useCartContext } from '../../context/CartContext.tsx';
 
 interface HeaderProps {
-  onCartClick: () => void;
   onCategorySelect: (categoryId: number | null) => void;
 }
 
-export default function Header({ onCartClick, onCategorySelect }: HeaderProps) {
+export default function Header({onCategorySelect }: HeaderProps) {
   const navigate = useNavigate();
   const { user, logout, isLoggingOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
 
+  const {openCart, closeCart} = useCartContext();
+
   const handleSignOut = async () => {
     await logout();
+    closeCart();
+
     navigate('/signin');
   };
 
@@ -26,6 +30,7 @@ export default function Header({ onCartClick, onCategorySelect }: HeaderProps) {
     e.preventDefault();
     console.log('Search query:', searchQuery);
   };
+  
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -65,7 +70,7 @@ export default function Header({ onCartClick, onCategorySelect }: HeaderProps) {
 
           <div className="flex items-center space-x-4">
             <button 
-              onClick={onCartClick} 
+              onClick={openCart} 
               className="p-2 text-gray-700 hover:text-black transition-colors"
             >
               <ShoppingCart className="w-6 h-6" />

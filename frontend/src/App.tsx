@@ -9,9 +9,9 @@ import NotFound from './pages/NotFound';
 import { GoogleOAuthProvider } from "@react-oauth/google";
 import ProtectedRoute from './components/common/ProtectedRoute.tsx';
 import Header from './components/common/Header.tsx';
-import {ShoppingCart} from './components/common/ShoppingCart.tsx';
+import {ShoppingCartWrapper} from './components/common/ShoppingCartWrapper.tsx';
 
-const MainLayout = ({onCartClick}: { onCartClick: () => void }) => {
+const MainLayout = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   
   const categoryParam = searchParams.get('category');
@@ -37,7 +37,7 @@ const MainLayout = ({onCartClick}: { onCartClick: () => void }) => {
 
   return (
     <>
-      <Header onCartClick={onCartClick} onCategorySelect={handleCategorySelect}/>
+      <Header onCategorySelect={handleCategorySelect}/>
       <main>
         <Outlet context={{selectedCategory, onCategorySelect: handleCategorySelect}}/>
       </main>
@@ -46,18 +46,13 @@ const MainLayout = ({onCartClick}: { onCartClick: () => void }) => {
 };
 
 function App() {
-  const [isCartOpen, setIsCartOpen] = useState(false);
-
-  const openCart = () => setIsCartOpen(true);
-  const closeCart = () => setIsCartOpen(false);
-
   return (
     <GoogleOAuthProvider clientId="103104858818-t81fh5qs9t74135p630o4kkd7nbkiaj4.apps.googleusercontent.com">
       <BrowserRouter>
-        <ShoppingCart isOpen={isCartOpen} onClose={closeCart}/>
+        <ShoppingCartWrapper/>
 
         <Routes>
-          <Route element={<MainLayout onCartClick={openCart}/>}>
+          <Route element={<MainLayout/>}>
             <Route path="/" element={<Catalog/>}/>
             <Route path="/product/:id" element={<ProductDetail/>}/>
             <Route path="/profile" element={
