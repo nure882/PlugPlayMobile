@@ -84,7 +84,7 @@ const ProductDetail = () => {
       productId: product.id,
     });
 
-    await addToCart({productId : product.id, quantity : 1});
+    await addToCart(product, 1);
     recheckInCart();
     updateCart();
   };

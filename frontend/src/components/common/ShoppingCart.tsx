@@ -19,7 +19,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   const {data: user, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
 
   const {cartItems, isLoading, isError, refetch: updateCart} = cartService.useCart(user?.id);
-  const {data: products } = useGetAllProductsQuery();
+  const {data: products, isLoading : isLoadingProducts, isError : isProductsError} = useGetAllProductsQuery();
 
   const sortedItems = React.useMemo(
     () => [...(cartItems ?? [])].sort((a, b) => a.id - b.id),
@@ -33,14 +33,14 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     product: products?.find(p => p.id === item.productId),
   })),
   [sortedItems, products]
-);
+  );
 
   const updateQuantity = cartService.useUpdateQuantity(user?.id);
   const deleteCartItem =  cartService.useDeleteCartItem(user?.id);
   const clearCart = cartService.useClearCart(user?.id);
 
-  const handleUpdateQuantity = async (id: number, newQuantity: number) => {
-    await updateQuantity(id, newQuantity);
+  const handleUpdateQuantity = async (id: number, newQuantity: number, price: number) => {
+    await updateQuantity(id, newQuantity, price);
     updateCart();
   }
 
@@ -62,9 +62,11 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     }).format(price);
   };
 
-  if (!isOpen) return null;
+  if (!isOpen){
+    return null;
+  } 
 
-  if (isLoading || isLoadingUser) {
+  if (isLoading || isLoadingUser || isLoadingProducts) {
      return (
       <Modal title="Shopping Cart" isOpen={isOpen} onClose={onClose}>
         {LoadingMessage("shopping cart")}
@@ -72,7 +74,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     );
   } 
   
-  if(isError || isUserError || !cartItems) {
+  if(isError || isUserError || isProductsError || !cartItems) {
     return (
       <Modal title="Shopping Cart" isOpen={isOpen} onClose={onClose}>
         {ErrorMessage("Error loading cart","Failed to retrieve products.")}
@@ -138,14 +140,14 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
                   <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
                     <button
-                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1)}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1, item.product?.price ?? 0)}
                       className="p-2 hover:bg-gray-100 transition-colors"
                     >
                       <Minus className="w-4 h-4" />
                     </button>
                     <span className="w-8 text-center">{item.quantity}</span>
                     <button
-                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1)}
+                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1, item.product?.price ?? 0)}
                       className="p-2 hover:bg-gray-100 transition-colors"
                     >
                       <Plus className="w-4 h-4" />
