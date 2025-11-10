@@ -1,5 +1,6 @@
 import { X, Minus, Plus, Trash2 } from 'lucide-react';
 import React, {useMemo } from 'react';
+import {useNavigate} from 'react-router-dom';
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
 import { cartService } from '../../features/cart/CartService.ts';
 import {storage} from '../../utils/StorageService';
@@ -15,6 +16,8 @@ interface ShoppingCartProps {
 }
 
 export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
+  const navigate = useNavigate();
+
   const token = storage.getAccessToken();
   const {data: user, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
 
@@ -45,7 +48,6 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   }
 
   const handleDelete = async (id: number) => {
-
     await deleteCartItem(id);
     updateCart();
   };
@@ -54,6 +56,15 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     await clearCart();
     updateCart();
   }
+
+  const handleImageClick = (productId?: number) => {
+    if(!productId) {
+      return;
+    }
+
+    navigate(`/product/${productId}`);
+    onClose();
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('uk-UA', {
@@ -103,60 +114,69 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
         </div>
 
         <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: 'calc(90vh - 220px)' }}>
-          <div className="space-y-4">
-            {enrichedItems.map((item) => (
-              <div
-                key={item.id}
-                className="flex gap-4 p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-shadow"
-              >
-                <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                  { <img
-                    src={item.product?.pictureUrls[0] ?? ''}
-                    alt={item.product?.name ?? 'product'}
-                    className="w-full h-full object-cover"
-                  /> }
-                </div>
+           {enrichedItems.length === 0 ? (
+            <div className="flex flex-col items-center justify-center text-gray-500 py-20">
+              <p className="text-lg font-medium">Your cart is empty</p>
+              <p className="text-sm text-gray-400">Start adding some products!</p>
+            </div>
+            ) : (
+            <div className="space-y-4">
+              {enrichedItems.map((item) => (
+                <div
+                  key={item.id}
+                  className="flex gap-4 p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-shadow"
+                >
+                  <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
+                    { <img
+                      src={item.product?.pictureUrls[0] ?? ''}
+                      alt={item.product?.name ?? 'product'}
+                      className="w-full h-full object-cover"
+                      onClick={() => {handleImageClick(item.product?.id)}}
+                    /> }
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <h3 className="mb-1 line-clamp-2"><b>{item.product?.name ?? ''}</b></h3>
-                  <h4 className="text-sm mb-1 line-clamp-2">{item.product?.description ?? ''}</h4>
-                  <div className="flex flex-col items-start gap-1">
-                    <div className="text-red-600">
-                      price: {formatPrice(item.product?.price ?? 0)} ₴
+                  <div className="flex-1 min-w-0">
+                    <h3 className="mb-1 line-clamp-2"><b>{item.product?.name ?? ''}</b></h3>
+                    <h4 className="text-sm mb-1 line-clamp-2">{item.product?.description ?? ''}</h4>
+                    <div className="flex flex-col items-start gap-1">
+                      <div className="text-red-600">
+                        price: {formatPrice(item.product?.price ?? 0)} ₴
+                      </div>
+                      <div className="text-red-600">
+                        total: {formatPrice(item.total)} ₴
+                      </div>
                     </div>
-                    <div className="text-red-600">
-                      total: {formatPrice(item.total)} ₴
+                  </div>
+
+                  <div className="flex flex-col items-end justify-between">
+                    <button
+                      onClick={() => handleDelete(item.id)}
+                      className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+                    >
+                      <Trash2 className="w-5 h-5 text-gray-400" />
+                    </button>
+
+                    <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
+                      <button
+                        onClick={() => handleUpdateQuantity(item.id, item.quantity - 1, item.product?.price ?? 0)}
+                        className="p-2 hover:bg-gray-100 transition-colors"
+                      >
+                        <Minus className="w-4 h-4" />
+                      </button>
+                      <span className="w-8 text-center">{item.quantity}</span>
+                      <button
+                        onClick={() => handleUpdateQuantity(item.id, item.quantity + 1, item.product?.price ?? 0)}
+                        className="p-2 hover:bg-gray-100 transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                      </button>
                     </div>
                   </div>
                 </div>
-
-                <div className="flex flex-col items-end justify-between">
-                  <button
-                    onClick={() => handleDelete(item.id)}
-                    className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-                  >
-                    <Trash2 className="w-5 h-5 text-gray-400" />
-                  </button>
-
-                  <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
-                    <button
-                      onClick={() => handleUpdateQuantity(item.id, item.quantity - 1, item.product?.price ?? 0)}
-                      className="p-2 hover:bg-gray-100 transition-colors"
-                    >
-                      <Minus className="w-4 h-4" />
-                    </button>
-                    <span className="w-8 text-center">{item.quantity}</span>
-                    <button
-                      onClick={() => handleUpdateQuantity(item.id, item.quantity + 1, item.product?.price ?? 0)}
-                      className="p-2 hover:bg-gray-100 transition-colors"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )
+        }
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">

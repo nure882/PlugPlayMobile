@@ -15,7 +15,6 @@ import { useState, useEffect } from "react";
 
 class CartService {
   useCart(userId?: number): { cartItems: CartItem[], isLoading: boolean, isError: boolean, refetch: () => void } {
-    //this.mergeGuestCart();
     const [addToCartMutation] = useAddToCartMutation();
     const {
       data: cartItemsFromApi = [],
@@ -37,7 +36,7 @@ class CartService {
       return stored;
     }, [cartItemsFromApi, userId]);
 
-    //merge guest cart
+    // merge guest cart
     useEffect(() => {
       if (!userId) {
         return;
@@ -75,7 +74,6 @@ class CartService {
     return { cartItems, isLoading, isError, refetch: refetchCart };
   }
 
-  //TODO: more elegant way to get product price
   useAddToCart(userId?: number) {
     const [addToCartMutation] = useAddToCartMutation();
 
@@ -99,7 +97,6 @@ class CartService {
     };
   }
 
-  //TODO: more elegant way to get product price
   useUpdateQuantity(userId?: number) {
     const [updateQuantityMutation] = useUpdateQuantityMutation();
 
