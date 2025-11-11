@@ -1,11 +1,10 @@
-import { X, Minus, Plus, Trash2 } from 'lucide-react';
-import React, {useMemo } from 'react';
+import { X, Minus, Plus, Trash2, ArrowRight } from 'lucide-react';
+import React, {useMemo} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
 import { cartService } from '../../features/cart/CartService.ts';
 import {storage} from '../../utils/StorageService';
 import { useGetUserByTokenQuery } from '../../api/userInfoApi.ts';
-import { useAuth } from "../../context/AuthContext.tsx";
 import { skipToken } from '@reduxjs/toolkit/query';
 import LoadingMessage from '../common/LoadingMessage.tsx';
 import ErrorMessage from '../common/ErrorMessage.tsx';
@@ -19,9 +18,9 @@ interface ShoppingCartProps {
 export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   const navigate = useNavigate();
 
-  const token = storage.getAccessToken();
-  const {data: user2, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
-  const {user} = useAuth();
+  const token = storage.useAccessToken();
+  const {data: fetchedUser, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken );
+  const user = token ? fetchedUser : undefined;
 
   const {cartItems, isLoading, isError, refetch: updateCart} = cartService.useCart(user?.id);
   const {data: products, isLoading : isLoadingProducts, isError : isProductsError} = useGetAllProductsQuery();
@@ -43,10 +42,13 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   const updateQuantity = cartService.useUpdateQuantity(user?.id);
   const deleteCartItem =  cartService.useDeleteCartItem(user?.id);
   const clearCart = cartService.useClearCart(user?.id);
+  const mergeGuestCart = cartService.useMergeGuestCart(user?.id);
 
   const handleUpdateQuantity = async (id: number, newQuantity: number, price: number) => {
     await updateQuantity(id, newQuantity, price);
     updateCart();
+    console.log(token);
+    console.log(user ? "user" : "no user")
   }
 
   const handleDelete = async (id: number) => {
@@ -67,6 +69,11 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     navigate(`/product/${productId}`);
     onClose();
   };
+
+  const handleMergeGuestCart = async() => {
+    await mergeGuestCart();
+    updateCart();
+  }
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('uk-UA', {
@@ -99,10 +106,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
   return (
     <>
-      <div
-        className="fixed inset-0 bg-black/50 z-50"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
 
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
@@ -115,13 +119,18 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
           </button>
         </div>
 
-        <div className="overflow-y-auto px-6 py-4" style={{ maxHeight: 'calc(90vh - 220px)' }}>
-           {enrichedItems.length === 0 ? (
+        <div
+          className="overflow-y-auto px-6 py-4"
+          style={{ maxHeight: "calc(90vh - 220px)" }}
+        >
+          {enrichedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-gray-500 py-20">
               <p className="text-lg font-medium">Your cart is empty</p>
-              <p className="text-sm text-gray-400">Start adding some products!</p>
+              <p className="text-sm text-gray-400">
+                Start adding some products!
+              </p>
             </div>
-            ) : (
+          ) : (
             <div className="space-y-4">
               {enrichedItems.map((item) => (
                 <div
@@ -129,17 +138,25 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                   className="flex gap-4 p-4 bg-white border border-gray-200 rounded-xl hover:shadow-md transition-shadow"
                 >
                   <div className="w-24 h-24 flex-shrink-0 bg-gray-100 rounded-lg overflow-hidden">
-                    { <img
-                      src={item.product?.pictureUrls[0] ?? ''}
-                      alt={item.product?.name ?? 'product'}
-                      className="w-full h-full object-cover"
-                      onClick={() => {handleImageClick(item.product?.id)}}
-                    /> }
+                    {
+                      <img
+                        src={item.product?.pictureUrls[0] ?? ""}
+                        alt={item.product?.name ?? "product"}
+                        className="w-full h-full object-cover"
+                        onClick={() => {
+                          handleImageClick(item.product?.id);
+                        }}
+                      />
+                    }
                   </div>
 
                   <div className="flex-1 min-w-0">
-                    <h3 className="mb-1 line-clamp-2"><b>{item.product?.name ?? ''}</b></h3>
-                    <h4 className="text-sm mb-1 line-clamp-2">{item.product?.description ?? ''}</h4>
+                    <h3 className="mb-1 line-clamp-2">
+                      <b>{item.product?.name ?? ""}</b>
+                    </h3>
+                    <h4 className="text-sm mb-1 line-clamp-2">
+                      {item.product?.description ?? ""}
+                    </h4>
                     <div className="flex flex-col items-start gap-1">
                       <div className="text-red-600">
                         price: {formatPrice(item.product?.price ?? 0)} ₴
@@ -160,14 +177,26 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
                     <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
                       <button
-                        onClick={() => handleUpdateQuantity(item.id, item.quantity - 1, item.product?.price ?? 0)}
+                        onClick={() =>
+                          handleUpdateQuantity(
+                            item.id,
+                            item.quantity - 1,
+                            item.product?.price ?? 0
+                          )
+                        }
                         className="p-2 hover:bg-gray-100 transition-colors"
                       >
                         <Minus className="w-4 h-4" />
                       </button>
                       <span className="w-8 text-center">{item.quantity}</span>
                       <button
-                        onClick={() => handleUpdateQuantity(item.id, item.quantity + 1, item.product?.price ?? 0)}
+                        onClick={() =>
+                          handleUpdateQuantity(
+                            item.id,
+                            item.quantity + 1,
+                            item.product?.price ?? 0
+                          )
+                        }
                         className="p-2 hover:bg-gray-100 transition-colors"
                       >
                         <Plus className="w-4 h-4" />
@@ -177,8 +206,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                 </div>
               ))}
             </div>
-          )
-        }
+          )}
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
@@ -193,14 +221,27 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
             >
               Order now
             </button>
-            <button
-              onClick={handleClear}
-              disabled={cartItems.length === 0}
-              className="flex items-center gap-2 bg-red-100 text-red-700 px-5 py-3 rounded-xl hover:bg-red-200 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-            >
-              <Trash2 className="w-5 h-5" />
-              Clear
-            </button>
+            <div className="flex flex-col gap-2">
+              {user && (
+                <button
+                  onClick={handleMergeGuestCart}
+                  className="flex items-center gap-2 bg-green-100 text-green-700 px-5 py-3 rounded-xl hover:bg-green-200 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  disabled={!user || storage.getGuestCart().length === 0}
+                >
+                  <ArrowRight className="w-5 h-5" />
+                  Merge guest cart
+                </button>
+              )}
+
+              <button
+                onClick={handleClear}
+                disabled={cartItems.length === 0}
+                className="flex items-center gap-2 bg-red-100 text-red-700 px-5 py-3 rounded-xl hover:bg-red-200 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                <Trash2 className="w-5 h-5" />
+                Clear
+              </button>
+            </div>
           </div>
         </div>
       </div>

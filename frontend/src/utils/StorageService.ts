@@ -1,4 +1,5 @@
 import { CartItem } from "../models/CartItem";
+import { useState, useEffect } from "react";
 
 class StorageService {
     private tokenKey: string;
@@ -18,11 +19,33 @@ class StorageService {
         } catch (error) {
             console.error('Error saving tokens:', error);
         }
+        window.dispatchEvent(new Event('tokenChanged'));
     }
 
     getAccessToken() {
         return localStorage.getItem(this.tokenKey);
     }
+
+    useAccessToken() {
+    const [token, setToken] = useState<string | null>(storage.getAccessToken());
+
+    useEffect(() => {
+      const handleChange = () => {
+        setToken(storage.getAccessToken());
+      };
+
+      // react to storage changes (cross-tab) and same-tab custom events
+      window.addEventListener('storage', handleChange);
+      window.addEventListener('tokenChanged', handleChange);
+
+      return () => {
+        window.removeEventListener('storage', handleChange);
+        window.removeEventListener('tokenChanged', handleChange);
+      };
+    }, []);
+
+    return token;
+  }
 
     getRefreshToken() {
         return localStorage.getItem(this.refreshTokenKey);
@@ -31,6 +54,7 @@ class StorageService {
     clearTokens() {
         localStorage.removeItem(this.tokenKey);
         localStorage.removeItem(this.refreshTokenKey);
+         window.dispatchEvent(new Event('tokenChanged'));
     }
 
     hasValidToken() {
@@ -65,21 +89,24 @@ class StorageService {
         }
     }
 
-  setGuestCart(cart: CartItem[]): void {
+    setGuestCart(cart: CartItem[]): void {
         try {
             localStorage.setItem(this.guestCartKey, JSON.stringify(cart));
         } catch (error) {
             console.error('Error saving guest cart:', error);
         }
-  }
+    }
+    
 
-  clearGuestCart(): void {
+    clearGuestCart(): void {
         try {
             localStorage.removeItem(this.guestCartKey);
         } catch (error) {
             console.error('Error clearing guest cart:', error);
         }
+        window.dispatchEvent(new StorageEvent('storage', { key: this.guestCartKey, newValue: null }));
     }
+
 }
 
 export const storage = new StorageService();

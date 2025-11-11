@@ -11,65 +11,49 @@ import {
 import { storage } from "../../utils/StorageService.ts";
 import { useMemo } from "react";
 import { skipToken } from '@reduxjs/toolkit/query';
-import { useState, useEffect } from "react";
+import { useState} from "react";
 
 class CartService {
   useCart(userId?: number): { cartItems: CartItem[], isLoading: boolean, isError: boolean, refetch: () => void } {
-    const [addToCartMutation] = useAddToCartMutation();
     const {
       data: cartItemsFromApi = [],
       isLoading,
       isError,
       refetch: refetchApiCart,
-      isUninitialized,
     } = useGetCartQuery(userId as number, {
       skip: !userId,
     });
    
+    const stored = storage.getGuestCart();
     const cartItems = useMemo(() => {
-      const stored = storage.getGuestCart();
-
       if (userId) {
+        console.log(`[CartService] getting items from api for user/${userId}`)
         return cartItemsFromApi;
       } 
 
       return stored;
-    }, [cartItemsFromApi, userId]);
-
-    // merge guest cart
-    useEffect(() => {
-      if (!userId) {
-        return;
-      }
-
-      const stored = storage.getGuestCart();
-        for (const item of stored) {
-           addToCartMutation({
-            userId,
-            productId: item.productId,
-            quantity: item.quantity,
-          });
-        }
-
-        storage.clearGuestCart();
-
-        // wait for RTK Query to actually start before refetching
-        if (!isUninitialized) {
-          refetchApiCart();
-        }
-    });
+    }, [cartItemsFromApi, stored, userId]);
 
     //temporary solution for rerendering guest cart
     const [version, setVersion] = useState(0);
 
     const refetchCart = () => {
       if (userId) {
+        console.log("[CartService] refetch api cart")
         refetchApiCart();
       }
       else {
+        console.log("[CartService] refetch cart with version")
         setVersion((v) => v + 1);
       }
     };
+
+    console.log('[CartService] Results:', {
+      cartItemsCount: cartItems.length,
+      isLoading,
+      isError,
+      cartItems,
+    });
 
     return { cartItems, isLoading, isError, refetch: refetchCart };
   }
@@ -97,6 +81,29 @@ class CartService {
     };
   }
 
+  useMergeGuestCart(userId?: number) {
+    const stored = storage.getGuestCart();
+    const [addToCartMutation] = useAddToCartMutation();
+
+    return async () => {
+      if (!userId || storage.getGuestCart().length === 0) {
+        return;
+      }
+
+      console.log(`[CartService] merging items from api for user/${userId}`)
+
+      for (const item of stored) {
+        await addToCartMutation({
+          userId,
+          productId: item.productId,
+          quantity: item.quantity,
+        });
+      }
+
+      storage.clearGuestCart();
+    }
+  }
+
   useUpdateQuantity(userId?: number) {
     const [updateQuantityMutation] = useUpdateQuantityMutation();
 
@@ -109,7 +116,7 @@ class CartService {
             return;
         }
 
-        const cart = storage.getGuestCart() ?? [];
+        const cart = storage.getGuestCart();
         const item = cart.find(ci => ci.id === cartItemId);
        
         if (item) {
@@ -128,7 +135,7 @@ class CartService {
         await deleteMutation(cartItemId);
       } 
       else {
-        const cart = storage.getGuestCart() ?? [];
+        const cart = storage.getGuestCart();
         storage.setGuestCart(cart.filter(ci => ci.id !== cartItemId));
       }
     };

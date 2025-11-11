@@ -5,13 +5,17 @@ import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 import { cartService } from '../features/cart/CartService.ts';
 import { useCartContext } from '../context/CartContext.tsx';
-import { useAuth } from '../context/AuthContext.tsx';
+import { storage } from '../utils/StorageService.ts';
+import { useGetUserByTokenQuery } from '../api/userInfoApi.ts';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
 
-  const {user} = useAuth();
+  const token = storage.useAccessToken();
+  const {data: fetchedUser, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken );
+  const user = token ? fetchedUser : undefined;
 
   const {
     data : product,
@@ -35,7 +39,7 @@ const ProductDetail = () => {
 
   const [isFavorite, setIsFavorite] = useState(false);
 
-  if (isLoading) {
+  if (isLoading || isLoadingUser) {
     return (
       <div className="min-h-screen bg-gray-50">        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -50,7 +54,7 @@ const ProductDetail = () => {
     );
   }
 
-  if (isError || !product) {
+  if (isError || isUserError || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
         
