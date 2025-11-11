@@ -1,5 +1,5 @@
 import React from "react";
-import { X } from "lucide-react";
+import {X} from "lucide-react";
 
 interface ModalProps {
   title: string;
@@ -8,8 +8,10 @@ interface ModalProps {
   children: React.ReactNode;
 }
 
-export default function Modal({ title, isOpen, onClose, children }: ModalProps) {
-  if (!isOpen) return null;
+export default function Modal({title, isOpen, onClose, children}: ModalProps) {
+  if (!isOpen) {
+    return null;
+  }
 
   return (
     <>
@@ -27,7 +29,7 @@ export default function Modal({ title, isOpen, onClose, children }: ModalProps) 
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6"/>
           </button>
         </div>
 

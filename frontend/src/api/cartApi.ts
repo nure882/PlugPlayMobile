@@ -24,7 +24,7 @@ export const cartApi = baseApi.injectEndpoints({
       query: (userId) => `cart/total/${userId}`,
     }),
     isInCart: builder.query<boolean, { productId: number; userId: number }>({
-      query: ({ productId, userId }) => `cart/isincart/${productId}/${userId}`
+      query: ({productId, userId}) => `cart/isincart/${productId}/${userId}`
     }),
     addToCart: builder.mutation<{ cartItemId: number }, CreateCartItemDto>({
       query: (dto) => ({

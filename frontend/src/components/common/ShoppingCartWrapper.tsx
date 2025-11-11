@@ -1,8 +1,8 @@
-import { useCartContext } from "../../context/CartContext";
-import { ShoppingCart } from "./ShoppingCart";
+import {useCartContext} from "../../context/CartContext";
+import {ShoppingCart} from "./ShoppingCart";
 
 export const ShoppingCartWrapper = () => {
-  const { isCartOpen, closeCart } = useCartContext();
+  const {isCartOpen, closeCart} = useCartContext();
 
-  return <ShoppingCart isOpen={isCartOpen} onClose={closeCart} />;
+  return <ShoppingCart isOpen={isCartOpen} onClose={closeCart}/>;
 };

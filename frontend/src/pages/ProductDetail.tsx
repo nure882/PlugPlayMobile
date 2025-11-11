@@ -3,22 +3,26 @@ import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
-import { cartService } from '../features/cart/CartService.ts';
-import { useCartContext } from '../context/CartContext.tsx';
-import { storage } from '../utils/StorageService.ts';
-import { useGetUserByTokenQuery } from '../api/userInfoApi.ts';
-import { skipToken } from '@reduxjs/toolkit/query';
+import {cartService} from '../features/cart/CartService.ts';
+import {useCartContext} from '../context/CartContext.tsx';
+import {storage} from '../utils/StorageService.ts';
+import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
+import {skipToken} from '@reduxjs/toolkit/query';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
 
   const token = storage.useAccessToken();
-  const {data: fetchedUser, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken );
+  const {
+    data: fetchedUser,
+    isLoading: isLoadingUser,
+    isError: isUserError
+  } = useGetUserByTokenQuery(token ?? skipToken);
   const user = token ? fetchedUser : undefined;
 
   const {
-    data : product,
+    data: product,
     isLoading,
     error,
     isError
@@ -26,10 +30,10 @@ const ProductDetail = () => {
     skip: !productId || isNaN(productId)
   });
 
-  const { isInCart = false, refetch: recheckInCart } = cartService.useIsInCart(productId, user?.id);
-  const {refetch : updateCart} = cartService.useCart(user?.id);
-  const addToCart = cartService.useAddToCart(user?.id); 
-  const { isCartOpen, openCart } = useCartContext();
+  const {isInCart = false, refetch: recheckInCart} = cartService.useIsInCart(productId, user?.id);
+  const {refetch: updateCart} = cartService.useCart(user?.id);
+  const addToCart = cartService.useAddToCart(user?.id);
+  const {isCartOpen, openCart} = useCartContext();
 
   useEffect(() => {
     if (!isCartOpen) {
@@ -41,7 +45,7 @@ const ProductDetail = () => {
 
   if (isLoading || isLoadingUser) {
     return (
-      <div className="min-h-screen bg-gray-50">        
+      <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex flex-col items-center gap-4">
@@ -57,7 +61,7 @@ const ProductDetail = () => {
   if (isError || isUserError || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
-        
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">

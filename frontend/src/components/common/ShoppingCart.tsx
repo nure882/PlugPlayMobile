@@ -1,11 +1,11 @@
-import { X, Minus, Plus, Trash2, ArrowRight } from 'lucide-react';
+import {X, Minus, Plus, Trash2, ArrowRight} from 'lucide-react';
 import React, {useMemo} from 'react';
 import {useNavigate} from 'react-router-dom';
 import {useGetAllProductsQuery} from '../../api/productsApi.ts';
-import { cartService } from '../../features/cart/CartService.ts';
+import {cartService} from '../../features/cart/CartService.ts';
 import {storage} from '../../utils/StorageService';
-import { useGetUserByTokenQuery } from '../../api/userInfoApi.ts';
-import { skipToken } from '@reduxjs/toolkit/query';
+import {useGetUserByTokenQuery} from '../../api/userInfoApi.ts';
+import {skipToken} from '@reduxjs/toolkit/query';
 import LoadingMessage from '../common/LoadingMessage.tsx';
 import ErrorMessage from '../common/ErrorMessage.tsx';
 import Modal from '../common/Modal.tsx';
@@ -15,15 +15,19 @@ interface ShoppingCartProps {
   onClose: () => void;
 }
 
-export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
+export function ShoppingCart({isOpen, onClose}: ShoppingCartProps) {
   const navigate = useNavigate();
 
   const token = storage.useAccessToken();
-  const {data: fetchedUser, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken );
+  const {
+    data: fetchedUser,
+    isLoading: isLoadingUser,
+    isError: isUserError
+  } = useGetUserByTokenQuery(token ?? skipToken);
   const user = token ? fetchedUser : undefined;
 
   const {cartItems, isLoading, isError, refetch: updateCart} = cartService.useCart(user?.id);
-  const {data: products, isLoading : isLoadingProducts, isError : isProductsError} = useGetAllProductsQuery();
+  const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
 
   const sortedItems = React.useMemo(
     () => [...(cartItems ?? [])].sort((a, b) => a.id - b.id),
@@ -32,15 +36,15 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
   //cartItems with mapped data from products
   const enrichedItems = useMemo(() =>
-  sortedItems.map(item => ({
-    ...item,
-    product: products?.find(p => p.id === item.productId),
-  })),
-  [sortedItems, products]
+      sortedItems.map(item => ({
+        ...item,
+        product: products?.find(p => p.id === item.productId),
+      })),
+    [sortedItems, products]
   );
 
   const updateQuantity = cartService.useUpdateQuantity(user?.id);
-  const deleteCartItem =  cartService.useDeleteCartItem(user?.id);
+  const deleteCartItem = cartService.useDeleteCartItem(user?.id);
   const clearCart = cartService.useClearCart(user?.id);
   const mergeGuestCart = cartService.useMergeGuestCart(user?.id);
 
@@ -62,7 +66,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   }
 
   const handleImageClick = (productId?: number) => {
-    if(!productId) {
+    if (!productId) {
       return;
     }
 
@@ -70,7 +74,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     onClose();
   };
 
-  const handleMergeGuestCart = async() => {
+  const handleMergeGuestCart = async () => {
     await mergeGuestCart();
     updateCart();
   }
@@ -82,22 +86,22 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
     }).format(price);
   };
 
-  if (!isOpen){
+  if (!isOpen) {
     return null;
-  } 
+  }
 
   if (isLoading || isLoadingUser || isLoadingProducts) {
-     return (
+    return (
       <Modal title="Shopping Cart" isOpen={isOpen} onClose={onClose}>
         {LoadingMessage("shopping cart")}
       </Modal>
     );
-  } 
-  
-  if(isError || isUserError || isProductsError || !cartItems) {
+  }
+
+  if (isError || isUserError || isProductsError || !cartItems) {
     return (
       <Modal title="Shopping Cart" isOpen={isOpen} onClose={onClose}>
-        {ErrorMessage("Error loading cart","Failed to retrieve products.")}
+        {ErrorMessage("Error loading cart", "Failed to retrieve products.")}
       </Modal>
     );
   }
@@ -106,22 +110,23 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
 
   return (
     <>
-      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose} />
+      <div className="fixed inset-0 bg-black/50 z-50" onClick={onClose}/>
 
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
+      <div
+        className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-2xl max-h-[90vh] bg-white rounded-2xl shadow-2xl z-50 overflow-hidden">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-2xl">Shopping cart</h2>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
           >
-            <X className="w-6 h-6" />
+            <X className="w-6 h-6"/>
           </button>
         </div>
 
         <div
           className="overflow-y-auto px-6 py-4"
-          style={{ maxHeight: "calc(90vh - 220px)" }}
+          style={{maxHeight: "calc(90vh - 220px)"}}
         >
           {enrichedItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center text-gray-500 py-20">
@@ -172,7 +177,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                       onClick={() => handleDelete(item.id)}
                       className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
                     >
-                      <Trash2 className="w-5 h-5 text-gray-400" />
+                      <Trash2 className="w-5 h-5 text-gray-400"/>
                     </button>
 
                     <div className="flex items-center gap-2 border border-gray-300 rounded-lg">
@@ -186,7 +191,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                         }
                         className="p-2 hover:bg-gray-100 transition-colors"
                       >
-                        <Minus className="w-4 h-4" />
+                        <Minus className="w-4 h-4"/>
                       </button>
                       <span className="w-8 text-center">{item.quantity}</span>
                       <button
@@ -199,7 +204,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                         }
                         className="p-2 hover:bg-gray-100 transition-colors"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-4 h-4"/>
                       </button>
                     </div>
                   </div>
@@ -228,7 +233,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                   className="flex items-center gap-2 bg-green-100 text-green-700 px-5 py-3 rounded-xl hover:bg-green-200 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
                   disabled={!user || storage.getGuestCart().length === 0}
                 >
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-5 h-5"/>
                   Merge guest cart
                 </button>
               )}
@@ -238,7 +243,7 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
                 disabled={cartItems.length === 0}
                 className="flex items-center gap-2 bg-red-100 text-red-700 px-5 py-3 rounded-xl hover:bg-red-200 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                <Trash2 className="w-5 h-5" />
+                <Trash2 className="w-5 h-5"/>
                 Clear
               </button>
             </div>

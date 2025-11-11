@@ -1,8 +1,6 @@
+import {Loader2} from 'lucide-react';
 
-import { Loader2 } from 'lucide-react';
-
-export default function LoadingMessage(loadingItemName: string)
-{
+export default function LoadingMessage(loadingItemName: string) {
   return (
     <div className="bg-gray-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
