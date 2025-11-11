@@ -5,6 +5,7 @@ import {useGetAllProductsQuery} from '../../api/productsApi.ts';
 import { cartService } from '../../features/cart/CartService.ts';
 import {storage} from '../../utils/StorageService';
 import { useGetUserByTokenQuery } from '../../api/userInfoApi.ts';
+import { useAuth } from "../../context/AuthContext.tsx";
 import { skipToken } from '@reduxjs/toolkit/query';
 import LoadingMessage from '../common/LoadingMessage.tsx';
 import ErrorMessage from '../common/ErrorMessage.tsx';
@@ -19,7 +20,8 @@ export function ShoppingCart({ isOpen, onClose }: ShoppingCartProps) {
   const navigate = useNavigate();
 
   const token = storage.getAccessToken();
-  const {data: user, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
+  const {data: user2, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
+  const {user} = useAuth();
 
   const {cartItems, isLoading, isError, refetch: updateCart} = cartService.useCart(user?.id);
   const {data: products, isLoading : isLoadingProducts, isError : isProductsError} = useGetAllProductsQuery();

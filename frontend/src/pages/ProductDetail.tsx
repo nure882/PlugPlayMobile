@@ -4,17 +4,14 @@ import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw} from 'l
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 import { cartService } from '../features/cart/CartService.ts';
-import { skipToken } from '@reduxjs/toolkit/query';
-import { useGetUserByTokenQuery } from '../api/userInfoApi.ts';
-import {storage} from '../utils/StorageService';
 import { useCartContext } from '../context/CartContext.tsx';
+import { useAuth } from '../context/AuthContext.tsx';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
 
-  const token = storage.getAccessToken();
-  const {data: user, isLoading: isLoadingUser, isError: isUserError} = useGetUserByTokenQuery(token ?? skipToken);
+  const {user} = useAuth();
 
   const {
     data : product,
@@ -38,7 +35,7 @@ const ProductDetail = () => {
 
   const [isFavorite, setIsFavorite] = useState(false);
 
-  if (isLoading || isLoadingUser) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50">        
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -53,7 +50,7 @@ const ProductDetail = () => {
     );
   }
 
-  if (isError || isUserError || !product) {
+  if (isError || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
         
