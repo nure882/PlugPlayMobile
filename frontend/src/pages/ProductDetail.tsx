@@ -1,17 +1,30 @@
-import {useState} from 'react';
+import {useState, useEffect} from 'react';
 import {useParams} from 'react-router-dom';
 import {Heart, ShoppingCart, Loader2, Package, Truck, Shield, RotateCcw, Star} from 'lucide-react';
 import {useGetProductByIdQuery} from '../api/productsApi.ts';
 import ProductImageGallery from "../components/products/ProductImageGallery.tsx";
 import ProductAttributes from "../components/products/ProductAttributes.tsx";
 import ReviewList from "../components/products/ReviewList";
+import {cartService} from '../features/cart/CartService.ts';
+import {useCartContext} from '../context/CartContext.tsx';
+import {storage} from '../utils/StorageService.ts';
+import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
+import {skipToken} from '@reduxjs/toolkit/query';
 
 const ProductDetail = () => {
   const {id} = useParams<{ id: string }>();
   const productId = id ? parseInt(id, 10) : 0;
 
+  const token = storage.useAccessToken();
   const {
-    data,
+    data: fetchedUser,
+    isLoading: isLoadingUser,
+    isError: isUserError
+  } = useGetUserByTokenQuery(token ?? skipToken);
+  const user = token ? fetchedUser : undefined;
+
+  const {
+    data: product,
     isLoading,
     error,
     isError
@@ -19,13 +32,22 @@ const ProductDetail = () => {
     skip: !productId || isNaN(productId)
   });
 
+  const {isInCart = false, refetch: recheckInCart} = cartService.useIsInCart(productId, user?.id);
+  const {refetch: updateCart} = cartService.useCart(user?.id);
+  const addToCart = cartService.useAddToCart(user?.id);
+  const {isCartOpen, openCart} = useCartContext();
+
+  useEffect(() => {
+    if (!isCartOpen) {
+      recheckInCart();
+    }
+  }, [isCartOpen]);
+
   const [isFavorite, setIsFavorite] = useState(false);
 
-  const product = data;
-
-  if (isLoading) {
+  if (isLoading || isLoadingUser) {
     return (
-      <div className="min-h-screen bg-gray-50">        
+      <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="flex flex-col items-center gap-4">
@@ -38,10 +60,10 @@ const ProductDetail = () => {
     );
   }
 
-  if (isError || !product) {
+  if (isError || isUserError || !product) {
     return (
       <div className="min-h-screen bg-gray-50">
-        
+
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-center min-h-[400px]">
             <div className="text-center">
@@ -67,16 +89,21 @@ const ProductDetail = () => {
   };
 
   const handleBuy = () => {
-    console.log('Buy product:', {
-      productId: product.id,
-    });
+    handleAddToCart();
+    openCart();
   };
 
-  const handleAddToCart = () => {
+  const handleAddToCart = async () => {
     console.log('Add to cart:', {
       productId: product.id,
     });
+
+    await addToCart(product, 1);
+    recheckInCart();
+    updateCart();
   };
+
+  const purchaseUnavailable = product.stockQuantity === 0 || isInCart;
 
   // Mock delivery options
   const deliveryOptions = [
@@ -111,8 +138,6 @@ const ProductDetail = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      
-
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
           {/* Product Image Gallery */}
@@ -171,7 +196,6 @@ const ProductDetail = () => {
                 </span>
             </div>
 
-
             <div className="flex items-center gap-2">
               <div
                 className={`w-2 h-2 rounded-full ${product.stockQuantity > 0 ? 'bg-green-500' : 'bg-red-500'}`}></div>
@@ -183,7 +207,7 @@ const ProductDetail = () => {
             <div className="flex gap-3">
               <button
                 onClick={handleBuy}
-                disabled={product.stockQuantity === 0}
+                disabled={purchaseUnavailable}
                 className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-semibold flex items-center justify-center gap-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
                 <ShoppingCart className="w-5 h-5"/>
@@ -207,10 +231,10 @@ const ProductDetail = () => {
 
             <button
               onClick={handleAddToCart}
-              disabled={product.stockQuantity === 0}
+              disabled={purchaseUnavailable}
               className="w-full bg-white text-gray-900 px-6 py-3 rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors font-semibold disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
             >
-              Add to cart
+              {isInCart ? "Already in cart" : "Add to cart"}
             </button>
 
             {/* Delivery Info */}
@@ -256,7 +280,7 @@ const ProductDetail = () => {
           </p>
         </div>
 
-                    {/* Product attributes (clickable multi-select pills) */}
+            {/* Product attributes (clickable multi-select pills) */}
             <ProductAttributes
               categoryId={product.category?.id ?? 0}
               productId={product.id}
@@ -264,7 +288,7 @@ const ProductDetail = () => {
             />
 
             <ReviewList reviews={product.reviews ?? []} />
-            
+
       </div>
     </div>
   );
