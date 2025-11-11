@@ -1,5 +1,5 @@
-import {Link, useNavigate} from 'react-router-dom';
-import {ShoppingCart, User, Search, LogOut} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, User, Search, LogOut } from 'lucide-react';
 import logoUrl from '../../../assets/logo.svg';
 import {useState} from 'react';
 import {useAuth} from '../../context/AuthContext.tsx';
@@ -8,12 +8,13 @@ import CategoriesSidebar from "../products/CategoriesSidebar.tsx";
 import {useCartContext} from '../../context/CartContext.tsx';
 
 interface HeaderProps {
+  onCartClick: () => void;
   onCategorySelect: (categoryId: number | null) => void;
 }
 
 export default function Header({onCategorySelect}: HeaderProps) {
   const navigate = useNavigate();
-  const {user, logout, isLoggingOut} = useAuth();
+  const { user, logout, isLoggingOut } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
 
@@ -31,29 +32,33 @@ export default function Header({onCategorySelect}: HeaderProps) {
     console.log('Search query:', searchQuery);
   };
 
+  const handleCategorySelect = (categoryId: number | null) => {
+    onCategorySelect(categoryId);
+    navigate('/');
+  };
 
   return (
     <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
-          <div className="flex items-center">
-            <button
-              onClick={() => setIsCategoriesOpen(true)}
-              className="flex items-center gap-2 px-3 py-2 mr-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-              <Menu className="w-5 h-5"/>
-              <span className="font-medium">Categories</span>
-            </button>
-            <CategoriesSidebar
-              isOpen={isCategoriesOpen}
-              onClose={() => setIsCategoriesOpen(false)}
-              onCategorySelect={onCategorySelect}
-            />
-            <Link to="/" className="flex items-center gap-2">
-              <img src={logoUrl} alt="Plug&Play logo" className="h-8 w-8"/>
-              <span className="text-2xl font-bold text-black">Plug&Play</span>
-            </Link>
-          </div>
+          <div className="flex items-center justify-between h-16">
+            <div className="flex items-center">
+              <button
+                onClick={() => setIsCategoriesOpen(true)}
+                className="flex items-center gap-2 px-3 py-2 mr-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                <Menu className="w-5 h-5" />
+                <span className="font-medium">Categories</span>
+              </button>
+              <CategoriesSidebar
+                isOpen={isCategoriesOpen}
+                onClose={() => setIsCategoriesOpen(false)}
+                onCategorySelect={handleCategorySelect}
+              />
+              <Link to="/" onClick={() => handleCategorySelect(null)} className="flex items-center gap-2">
+                <img src={logoUrl} alt="Plug&Play logo" className="h-8 w-8" />
+                <span className="text-2xl font-bold text-black">Plug&Play</span>
+              </Link>
+            </div>
 
           <div className="flex-1 max-w-2xl px-8">
             <form onSubmit={handleSearch} className="relative">
@@ -79,7 +84,7 @@ export default function Header({onCategorySelect}: HeaderProps) {
             {user ? (
               <>
                 <Link to="/profile" className="p-2 text-gray-700 hover:text-black transition-colors">
-                  <User className="w-6 h-6"/>
+                  <User className="w-6 h-6" />
                 </Link>
                 <button
                   onClick={handleSignOut}
@@ -87,7 +92,7 @@ export default function Header({onCategorySelect}: HeaderProps) {
                   className="flex items-center gap-2 bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
                   {isLoggingOut ? 'Signing out...' : 'Sign Out'}
-                  <LogOut className="w-4 h-4"/>
+                  <LogOut className="w-4 h-4" />
                 </button>
               </>
             ) : (

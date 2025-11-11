@@ -32,6 +32,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ProductImages)
             .Include(p => p.Category)
             .Include(p => p.Reviews)
+            .ThenInclude(r => r.User)
             .AsQueryable();
 
         var products = await query.ToListAsync();
@@ -50,11 +51,12 @@ public class ProductsService : IProductsService
             .ThenInclude(pa => pa.Attribute)
             .Include(p => p.ProductImages)
             .Include(p => p.Category)
-            .Include(p => p.Reviews);
+            .Include(p => p.Reviews)
+            .ThenInclude(r => r.User);
 
         _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
 
-        return Result.Success<IEnumerable<Product>>(products);
+        return Result.Success<IEnumerable<Product>>(await products.ToListAsync());
     }
 
     public async Task<Result> AddImageAsync(int productId, string uploadResultUrl)
@@ -128,6 +130,8 @@ public class ProductsService : IProductsService
         int[] productIds = null)
     {
         List<int> categoryIds;
+        int[] targetProductIds = null;
+
         // all available
         if (categoryId == int.MaxValue)
         {
@@ -141,10 +145,17 @@ public class ProductsService : IProductsService
                 .Select(c => c.Id)
                 .ToListAsync();
 
-            productIds = await _context.Products
-                .Where(p => p.StockQuantity != 0)
-                .Select(p => p.Id)
-                .ToArrayAsync();
+            if (productIds != null && productIds.Length > 0)
+            {
+                targetProductIds = productIds;
+            }
+            else
+            {
+                targetProductIds = await _context.Products
+                    .Where(p => p.StockQuantity != 0)
+                    .Select(p => p.Id)
+                    .ToArrayAsync();
+            }
         }
         // category specified
         else
@@ -170,18 +181,29 @@ public class ProductsService : IProductsService
             }
 
             categoryIds = descendantCategories.Select(c => c.Id).ToList();
+
+            if (productIds != null && productIds.Length > 0)
+            {
+                targetProductIds = productIds;
+            }
         }
 
-        var productIdsLength = productIds?.Length ?? 0;
-        var productPredicate = productIds != null || productIdsLength != 0
-            ? new Func<Product, bool>(p => productIds!.Contains(p.Id))
-            : _ => true;
+        IQueryable<int> productsQuery;
 
-        var productsQuery = _context.Products
-            .AsNoTracking()
-            .Where(p => categoryIds.Contains(p.CategoryId))
-            .Where(productPredicate)
-            .Select(p => p.Id);
+        if (targetProductIds != null && targetProductIds.Length > 0)
+        {
+            productsQuery = _context.Products
+                .AsNoTracking()
+                .Where(p => categoryIds.Contains(p.CategoryId) && targetProductIds.Contains(p.Id))
+                .Select(p => p.Id);
+        }
+        else
+        {
+            productsQuery = _context.Products
+                .AsNoTracking()
+                .Where(p => categoryIds.Contains(p.CategoryId))
+                .Select(p => p.Id);
+        }
 
         var attributeCounts = await _context.ProductAttributes
             .AsNoTracking()
@@ -200,11 +222,47 @@ public class ProductsService : IProductsService
         var attributes = await _context.Attributes
             .AsNoTracking()
             .Where(a => attributeIds.Contains(a.Id))
-            .Include(a => a.ProductAttributes
-                .Where(pa => productIds.Contains(pa.ProductId)))
+            .Include(a => a.ProductAttributes.Where(pa =>
+                targetProductIds == null || targetProductIds.Contains(pa.ProductId)))
             .ToListAsync();
 
         return Result.Success<IEnumerable<Attribute>>(attributes);
+    }
+
+    public async Task<Result<IEnumerable<Product>>> SearchProductsAsync(ProductSearchRequest req)
+    {
+        _logger.LogInformation("Fetching available products");
+
+        try
+        {
+            var query = _context.Products.AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(req.Query))
+            {
+                var pattern = $"%{req.Query}%";
+                query = query.Where(p =>
+                        EF.Functions.ILike(p.Name, pattern) ||
+                        EF.Functions.ILike(p.Description, pattern))
+                    .Include(p => p.ProductImages);
+            }
+
+            var pageSize = Math.Clamp(req.PageSize, 1, 100);
+            var page = Math.Max(1, req.Page);
+            var skip = (page - 1) * pageSize;
+
+            var products = await query
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync();
+
+            _logger.LogInformation("Successfully retrieved {Count} products", products.Count);
+
+            return Result.Success<IEnumerable<Product>>(products);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<IEnumerable<Product>>($"Error searching products: {e.Message}");
+        }
     }
 
     public async Task<Result<Category>> GetCategoryAsync(int categoryId)
@@ -232,6 +290,7 @@ public class ProductsService : IProductsService
             .Include(p => p.ProductImages)
             .Include(p => p.Category)
             .Include(p => p.Reviews)
+            .ThenInclude(r => r.User)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (product == null)
