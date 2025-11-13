@@ -41,7 +41,7 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
-          failedQueue.push({ resolve, reject });
+          failedQueue.push({resolve, reject});
         }).then(token => {
           originalRequest.headers.Authorization = `Bearer ${token}`;
           return api(originalRequest);
@@ -55,10 +55,10 @@ api.interceptors.response.use(
 
       try {
         const refreshToken = storage.getRefreshToken();
-        
-        const response = await api.post('/auth/refresh', { refreshToken });
-        
-        const { token, refreshToken: newRefreshToken } = response.data;
+
+        const response = await api.post('/auth/refresh', {refreshToken});
+
+        const {token, refreshToken: newRefreshToken} = response.data;
 
         storage.setTokens(token, newRefreshToken || refreshToken);
         api.defaults.headers.Authorization = `Bearer ${token}`;

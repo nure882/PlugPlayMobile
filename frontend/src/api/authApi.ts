@@ -1,4 +1,4 @@
-import { baseApi } from './baseApi.ts';
+import {baseApi} from './baseApi.ts';
 import {User} from "../models/User.ts";
 
 export interface LoginRequest {
@@ -38,10 +38,10 @@ export const authApi = baseApi.injectEndpoints({
       }),
     }),
     logout: builder.mutation<void, { refreshToken: string }>({
-      query: ({ refreshToken }) => ({
+      query: ({refreshToken}) => ({
         url: 'auth/logout',
         method: 'POST',
-        body: { refreshToken },
+        body: {refreshToken},
       }),
     }),
     verify: builder.query<User, void>({
@@ -51,10 +51,10 @@ export const authApi = baseApi.injectEndpoints({
       }),
     }),
     refreshToken: builder.mutation<LoginResponse, { refreshToken: string }>({
-      query: ({ refreshToken }) => ({
+      query: ({refreshToken}) => ({
         url: 'auth/refresh',
         method: 'POST',
-        body: { refreshToken },
+        body: {refreshToken},
       }),
     }),
     createAdmin: builder.mutation<void, RegisterRequest>({
@@ -72,6 +72,4 @@ export const {
   useRegisterMutation,
   useLogoutMutation,
   useVerifyQuery,
-  useRefreshTokenMutation,
-  useCreateAdminMutation
 } = authApi;

@@ -8,7 +8,6 @@ import CategoriesSidebar from "../products/CategoriesSidebar.tsx";
 import {useCartContext} from '../../context/CartContext.tsx';
 
 interface HeaderProps {
-  onCartClick: () => void;
   onCategorySelect: (categoryId: number | null) => void;
 }
 
