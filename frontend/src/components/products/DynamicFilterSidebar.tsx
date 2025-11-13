@@ -160,7 +160,6 @@ export default function DynamicFiltersSidebar({
         <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 z-10">
           <h2 className="text-lg font-semibold text-gray-900 mb-3">Filters</h2>
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-{/*
             <select
               value={sortOption.value}
               onChange={(e) => setSortOption(sortOptions.find((o) => o.value === e.target.value) || sortOptions[0])}
@@ -172,7 +171,6 @@ export default function DynamicFiltersSidebar({
                 </option>
               ))}
             </select>
-*/}
             {hasActiveFilters && (
               <button
                 onClick={clearAllFilters}
