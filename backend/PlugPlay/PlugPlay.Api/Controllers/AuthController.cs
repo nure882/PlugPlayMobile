@@ -47,7 +47,8 @@ public class AuthController : ControllerBase
 
         var payload = validationResult.Value;
 
-        var userResult = await _authService.GetOrCreateUser(payload.Email, payload.Name, payload.Subject);
+        var userResult = await _authService.GetOrCreateUser(
+            payload.Email, payload.GivenName ?? "", payload.FamilyName ?? "", payload.Subject);
         userResult.OnFailure(() =>
             _logger.LogWarning("Failed to get or create user for Google email: {Email}. " +
                                "Error: {Error}", payload.Email, userResult.Error));
