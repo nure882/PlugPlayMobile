@@ -31,6 +31,9 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.DeliveryAddress)
             .HasMaxLength(500);
 
+        builder.Property(o => o.PaymentStatus)
+            .IsRequired();
+
         builder.Property(o => o.TransactionId)
             .IsRequired();
 

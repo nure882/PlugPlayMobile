@@ -1,5 +1,3 @@
-using System.Diagnostics;
-using System.Reflection;
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -7,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PlugPlay.Api;
+using PlugPlay.Api.Dto;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services;
@@ -124,7 +123,7 @@ builder.WebHost.ConfigureKestrel(options => { options.AddServerHeader = false; }
 builder.Services.AddAuthorization();
 builder.Services.RegisterServices();
 builder.Services.RegisterAutomapper();
-// builder.Services.Configure<LiqPaySettings>(builder.Configuration.GetSection("LiqPay"));
+builder.Services.Configure<LiqPaySettings>(builder.Configuration.GetSection("LiqPay"));
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

@@ -20,6 +20,8 @@ public class Order
 
     public string DeliveryAddress { get; set; }
 
+    public PaymentStatus PaymentStatus { get; set; }
+
     public long TransactionId { get; set; }
 
     public DateTime? PaymentCreated { get; set; }
