@@ -1,15 +1,15 @@
 import React from 'react';
 import {Navigate} from 'react-router-dom';
 import {Role} from "../../models/Role.ts";
-import { useAuth } from "../../context/AuthContext.tsx";
+import {useAuth} from "../../context/AuthContext.tsx";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   requiredRole?: Role;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, requiredRole }) => {
-  const { user } = useAuth();
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({children, requiredRole}) => {
+  const {user} = useAuth();
 
   if (!user) {
     return <Navigate to="/signin" replace/>;

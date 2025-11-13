@@ -1,4 +1,4 @@
-import { Heart } from 'lucide-react';
+import {Heart} from 'lucide-react';
 
 interface ProductCardProps {
   id: number;
@@ -15,32 +15,19 @@ interface ProductCardProps {
 }
 
 const ProductCard = ({
-  id,
-  name,
-  price,
-  originalPrice,
-  image,
-  badge,
-  isFavorite,
-  onToggleFavorite,
-  onClick
-}: ProductCardProps) => {
+                       id,
+                       name,
+                       price,
+                       originalPrice,
+                       image,
+                       badge,
+                       isFavorite,
+                       onToggleFavorite,
+                       onClick
+                     }: ProductCardProps) => {
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('uk-UA').format(price);
   };
-
-  // const renderStars = (rating: number) => {
-  //   return Array.from({ length: 5 }, (_, i) => (
-  //     <span
-  //       key={i}
-  //       className={`text-sm ${
-  //         i < Math.floor(rating) ? 'text-yellow-400' : 'text-gray-300'
-  //       }`}
-  //     >
-  //       ★
-  //     </span>
-  //   ));
-  // };
 
   const getBadgeColor = (badge: string) => {
     switch (badge) {
@@ -63,7 +50,7 @@ const ProductCard = ({
   };
 
   return (
-    <div 
+    <div
       className="bg-white rounded-lg shadow-lg border-2 border-gray-200 overflow-hidden hover:shadow-xl hover:border-gray-300 transition-all duration-300 cursor-pointer group"
       onClick={handleCardClick}
     >
@@ -73,13 +60,14 @@ const ProductCard = ({
           alt={name}
           className="w-full h-full object-cover"
         />
-        
+
         {badge && (
-          <div className={`absolute top-2 left-2 px-3 py-1 rounded-md text-white text-xs font-bold shadow-md ${getBadgeColor(badge)}`}>
+          <div
+            className={`absolute top-2 left-2 px-3 py-1 rounded-md text-white text-xs font-bold shadow-md ${getBadgeColor(badge)}`}>
             {badge}
           </div>
         )}
-        
+
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -91,19 +79,19 @@ const ProductCard = ({
               : 'bg-white text-gray-600 hover:bg-gray-50 border border-gray-200'
           }`}
         >
-          <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'} />
+          <Heart size={16} fill={isFavorite ? 'currentColor' : 'none'}/>
         </button>
       </div>
-      
+
       <div className="p-4">
         <h3 className="font-medium text-gray-900 mb-2 line-clamp-2">
           {name}
         </h3>
-        
+
         <div className="flex items-center gap-1 mb-2">
 
         </div>
-        
+
         <div className="flex items-center gap-2">
           <span className="text-lg font-bold text-gray-900">
             {formatPrice(price)} ₴

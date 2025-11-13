@@ -1,4 +1,4 @@
-import { User } from "./User";
+import {User} from "./User";
 
 export interface Review {
   id: number;
@@ -8,5 +8,5 @@ export interface Review {
   comment?: string | null;
   createdAt: string;
   updatedAt?: string | null;
-  userDto: User | null; 
+  userDto: User | null;
 }

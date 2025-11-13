@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, {useEffect, useState} from 'react';
 
 type Props = {
   images: string[];
@@ -7,7 +7,12 @@ type Props = {
   altPrefix?: string;
 };
 
-const ProductImageGallery: React.FC<Props> = ({ images, initialIndex = 0, className = '', altPrefix = 'Product image' }) => {
+const ProductImageGallery: React.FC<Props> = ({
+                                                images,
+                                                initialIndex = 0,
+                                                className = '',
+                                                altPrefix = 'Product image'
+                                              }) => {
   const [current, setCurrent] = useState<number>(Math.min(Math.max(0, initialIndex), Math.max(0, images.length - 1)));
   const [isOpen, setIsOpen] = useState(false);
 
@@ -28,6 +33,7 @@ const ProductImageGallery: React.FC<Props> = ({ images, initialIndex = 0, classN
       }
     };
     window.addEventListener('keydown', onKey);
+
     return () => window.removeEventListener('keydown', onKey);
   }, [current, images.length]);
 
@@ -38,15 +44,16 @@ const ProductImageGallery: React.FC<Props> = ({ images, initialIndex = 0, classN
     setIsOpen(true);
   };
 
-if (!images || images.length === 0) {
-  return (
-    <div className={`w-full ${className}`}>
-      <div className="relative bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center min-h-[520px] text-gray-500 w-full">
-        No images available
+  if (!images || images.length === 0) {
+    return (
+      <div className={`w-full ${className}`}>
+        <div
+          className="relative bg-gray-100 rounded-lg overflow-hidden flex items-center justify-center min-h-[520px] text-gray-500 w-full">
+          No images available
+        </div>
       </div>
-    </div>
-  );
-}
+    );
+  }
 
   return (
     <div className={`w-full ${className}`}>
@@ -91,7 +98,7 @@ if (!images || images.length === 0) {
             }`}
             aria-label={`Show image ${idx + 1}`}
           >
-            <img src={src} alt={`${altPrefix} thumb ${idx + 1}`} className="w-full h-full object-cover" />
+            <img src={src} alt={`${altPrefix} thumb ${idx + 1}`} className="w-full h-full object-cover"/>
           </button>
         ))}
       </div>
@@ -121,7 +128,8 @@ if (!images || images.length === 0) {
               ‹
             </button>
 
-            <img src={images[current]} alt={`${altPrefix} fullscreen ${current + 1}`} className="w-full h-auto max-h-[90vh] object-contain" />
+            <img src={images[current]} alt={`${altPrefix} fullscreen ${current + 1}`}
+                 className="w-full h-auto max-h-[90vh] object-contain"/>
 
             <button
               aria-label="Next"

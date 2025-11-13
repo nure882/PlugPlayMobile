@@ -3,7 +3,7 @@ import AccordionSection from '../components/profile/AccordionSection.tsx';
 import {PlusCircle, Trash2, Pencil, Check, X} from 'lucide-react';
 import {Address} from '../models/Address.ts';
 import {validateName, validateEmail, validatePhone} from '../utils/validation.ts';
-import {useGetUserByTokenQuery,  useUpdateUserByTokenMutation} from '../api/userInfoApi.ts';
+import {useGetUserByTokenQuery, useUpdateUserByTokenMutation} from '../api/userInfoApi.ts';
 import {storage} from '../utils/StorageService';
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
@@ -26,7 +26,6 @@ const initialErrors: Errors = {
 };
 
 export default function Profile() {
-  // initialize empty; will be populated from token endpoint if available
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
@@ -51,13 +50,11 @@ export default function Profile() {
 
   const token = storage.getAccessToken();
 
-  const {data: tokenUser, isLoading, isError, refetch}  = useGetUserByTokenQuery(token ?? '', {skip: !token});
+  const {data: tokenUser, isLoading, isError, refetch} = useGetUserByTokenQuery(token ?? '', {skip: !token});
   const [updateUserByToken] = useUpdateUserByTokenMutation();
 
 
-  // o(tokenUser as object);
   useEffect(() => {
-    // populate first/last from token endpoint on load, but don't overwrite while editing
     if (tokenUser && !isEditing) {
       console.log(tokenUser);
 
@@ -116,17 +113,17 @@ export default function Profile() {
   const handleSave = async () => {
     if (!validateForm()) return;
 
-    if(addressEditIndex !== null || editedAddress) return;
+    if (addressEditIndex !== null || editedAddress) return;
 
     setIsSaving(true);
     try {
       await updateUserByToken({
-        token : token ?? '',
-        firstName : firstName,
-        lastName : lastName,
-        email : email,
-        phoneNumber : phone,
-        addresses : addresses
+        token: token ?? '',
+        firstName: firstName,
+        lastName: lastName,
+        email: email,
+        phoneNumber: phone,
+        addresses: addresses
       })
       setIsEditing(false);
       setErrors(initialErrors);
@@ -182,23 +179,23 @@ export default function Profile() {
     setAddresses(prev => prev.filter((_, i) => i !== index));
   };
 
-   const handleEditAddress = (index: number) => {
+  const handleEditAddress = (index: number) => {
     setEditIndex(index);
-    setEditedAddress({ ...addresses[index] }); 
+    setEditedAddress({...addresses[index]});
     setAddressEditErrors({});
   };
 
-   const handleAddressCancelEdit = () => {
+  const handleAddressCancelEdit = () => {
     setEditIndex(null);
     setEditedAddress(null);
-     setAddressEditErrors({});
+    setAddressEditErrors({});
   };
 
   const handleAddressSaveEdit = () => {
-    if (addressEditIndex === null || !editedAddress) return; 
-    
+    if (addressEditIndex === null || !editedAddress) return;
+
     if (!validateAddress(editedAddress)) return;
-    
+
     const updated = [...addresses];
     updated[addressEditIndex] = editedAddress;
     setAddresses(updated);
@@ -219,15 +216,15 @@ export default function Profile() {
 
   if (isLoading) {
     return LoadingMessage("profile page");
-  } 
+  }
 
-  if(isError) {
+  if (isError) {
     return ErrorMessage("error loading personal page", "couldn't retrieve data from the database")
   }
 
   return (
     <div className="min-h-screen bg-gray-50">
-      
+
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm mb-6">
           <h1 className="text-xl font-semibold text-black">Personal Information</h1>
@@ -288,7 +285,7 @@ export default function Profile() {
 
           <AccordionSection title="Delivery Addresses" subtitle="Saved delivery addresses">
             <div className="space-y-6">
-               <div className="space-y-6">
+              <div className="space-y-6">
                 {(addresses ?? []).map((address, index) => (
                   <div key={index} className="p-4 border border-gray-200 rounded-lg">
                     {addressEditIndex === index && editedAddress ? (
@@ -387,14 +384,14 @@ export default function Profile() {
                             className="text-green-600 hover:text-green-700"
                             aria-label="Save address"
                           >
-                            <Check className="w-4 h-4 inline-block mr-1" /> Save
+                            <Check className="w-4 h-4 inline-block mr-1"/> Save
                           </button>
                           <button
                             onClick={handleAddressCancelEdit}
                             className="text-gray-600 hover:text-gray-700"
                             aria-label="Cancel editing"
                           >
-                            <X className="w-4 h-4 inline-block mr-1" /> Cancel
+                            <X className="w-4 h-4 inline-block mr-1"/> Cancel
                           </button>
                         </div>
                       </>
@@ -415,14 +412,14 @@ export default function Profile() {
                               className="text-blue-600 hover:text-blue-700"
                               aria-label="Edit address"
                             >
-                              <Pencil className="w-4 h-4" />
+                              <Pencil className="w-4 h-4"/>
                             </button>
                             <button
                               onClick={() => handleDeleteAddress(index)}
                               className="text-red-600 hover:text-red-700"
                               aria-label="Delete address"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4"/>
                             </button>
                           </div>
                         )}
@@ -431,60 +428,60 @@ export default function Profile() {
                   </div>
                 ))}
               </div>
-            {isEditing && (
-              <div className="mt-4 p-4 border border-gray-200 rounded-lg">
-                <h4 className="text-sm font-medium text-black mb-4">Add New Address</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-black mb-1">City</label>
-                    <input
-                      value={newAddress.city}
-                      onChange={e => setNewAddress(prev => ({...prev, city: e.target.value}))}
-                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                      placeholder="Enter city"
-                    />
-                    {errors.address.city && <p className="text-red-500 text-xs mt-1">{errors.address.city}</p>}
+              {isEditing && (
+                <div className="mt-4 p-4 border border-gray-200 rounded-lg">
+                  <h4 className="text-sm font-medium text-black mb-4">Add New Address</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">City</label>
+                      <input
+                        value={newAddress.city}
+                        onChange={e => setNewAddress(prev => ({...prev, city: e.target.value}))}
+                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                        placeholder="Enter city"
+                      />
+                      {errors.address.city && <p className="text-red-500 text-xs mt-1">{errors.address.city}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">Street</label>
+                      <input
+                        value={newAddress.street}
+                        onChange={e => setNewAddress(prev => ({...prev, street: e.target.value}))}
+                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                        placeholder="Enter street"
+                      />
+                      {errors.address.street && <p className="text-red-500 text-xs mt-1">{errors.address.street}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">House</label>
+                      <input
+                        value={newAddress.house}
+                        onChange={e => setNewAddress(prev => ({...prev, house: e.target.value}))}
+                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                        placeholder="Enter house number"
+                      />
+                      {errors.address.house && <p className="text-red-500 text-xs mt-1">{errors.address.house}</p>}
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-black mb-1">Apartment (optional)</label>
+                      <input
+                        value={newAddress.apartments}
+                        onChange={e => setNewAddress(prev => ({...prev, apartments: e.target.value}))}
+                        className="w-full px-3 py-2 border rounded-lg border-gray-300"
+                        placeholder="Enter apartment number"
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-sm font-medium text-black mb-1">Street</label>
-                    <input
-                      value={newAddress.street}
-                      onChange={e => setNewAddress(prev => ({...prev, street: e.target.value}))}
-                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                      placeholder="Enter street"
-                    />
-                    {errors.address.street && <p className="text-red-500 text-xs mt-1">{errors.address.street}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-black mb-1">House</label>
-                    <input
-                      value={newAddress.house}
-                      onChange={e => setNewAddress(prev => ({...prev, house: e.target.value}))}
-                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                      placeholder="Enter house number"
-                    />
-                    {errors.address.house && <p className="text-red-500 text-xs mt-1">{errors.address.house}</p>}
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-black mb-1">Apartment (optional)</label>
-                    <input
-                      value={newAddress.apartments}
-                      onChange={e => setNewAddress(prev => ({...prev, apartments: e.target.value}))}
-                      className="w-full px-3 py-2 border rounded-lg border-gray-300"
-                      placeholder="Enter apartment number"
-                    />
-                  </div>
+                  <button
+                    onClick={handleAddAddress}
+                    className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
+                  >
+                    <PlusCircle className="w-4 h-4"/>
+                    <span>Add Address</span>
+                  </button>
                 </div>
-                <button
-                  onClick={handleAddAddress}
-                  className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
-                >
-                  <PlusCircle className="w-4 h-4"/>
-                  <span>Add Address</span>
-                </button>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
           </AccordionSection>
 
           <AccordionSection title="My Orders" subtitle="Your order history">
@@ -501,8 +498,8 @@ export default function Profile() {
               <button onClick={handleSave} disabled={isSaving}
                       className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 
                       ${addressEditIndex !== null || editedAddress
-                        ? 'bg-blue-900 hover:bg-blue-900 cursor-not-allowed'  
-                        : 'bg-blue-600 hover:bg-blue-700'  
+                        ? 'bg-blue-900 hover:bg-blue-900 cursor-not-allowed'
+                        : 'bg-blue-600 hover:bg-blue-700'
                       }`}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
