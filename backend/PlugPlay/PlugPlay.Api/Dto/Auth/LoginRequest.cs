@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace PlugPlay.Api.Dto;
+namespace PlugPlay.Api.Dto.Auth;
 
 public class LoginRequest
 {

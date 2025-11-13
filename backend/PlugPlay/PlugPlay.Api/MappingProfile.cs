@@ -1,5 +1,6 @@
 using AutoMapper;
 using PlugPlay.Api.Dto;
+using PlugPlay.Api.Dto.Auth;
 using PlugPlay.Domain.Entities;
 
 namespace PlugPlay.Api;

@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using PlugPlay.Api.Dto;
+using PlugPlay.Api.Dto.Cart;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
 
