@@ -4,6 +4,7 @@ using Google.Apis.Auth.OAuth2.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using PlugPlay.Api.Dto;
+using PlugPlay.Api.Dto.Auth;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Enums;
 using PlugPlay.Domain.Extensions;

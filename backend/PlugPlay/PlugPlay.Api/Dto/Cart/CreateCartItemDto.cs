@@ -1,4 +1,4 @@
-namespace PlugPlay.Api.Dto;
+namespace PlugPlay.Api.Dto.Cart;
 
 public record CreateCartItemDto
 {
