@@ -84,9 +84,13 @@ public class OrderService : IOrderService
 
             return Result.Success(new OrderResponse { });
         }
-        catch (Exception ex)
+        catch (InvalidOperationException e)
         {
-            return Result.Fail<OrderResponse>($"Failure placing order: {ex.Message}");
+            return Result.Fail<OrderResponse>($"One of product is not available: {e.Message}");
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<OrderResponse>($"Failure placing order: {e.Message}");
         }
 
         decimal CalcTotalWithDelivery(decimal totalAmount, DeliveryMethod deliveryMethod)
@@ -243,6 +247,11 @@ public class OrderService : IOrderService
             if (product == null)
             {
                 throw new InvalidOperationException($"Product not found: {dto.ProductId}");
+            }
+
+            if (product.StockQuantity == 0)
+            {
+                throw new InvalidOperationException($"Out of stock: {dto.ProductId}");
             }
 
             var price = product.Price;
