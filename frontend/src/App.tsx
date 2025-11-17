@@ -3,6 +3,7 @@ import SignIn from './pages/SignIn';
 import SignUp from './pages/SignUp';
 import Catalog from './pages/Catalog';
 import Profile from './pages/Profile';
+import Checkout from './pages/Checkout';
 import ProductDetail from './pages/ProductDetail';
 import NotFound from './pages/NotFound';
 import { GoogleOAuthProvider } from "@react-oauth/google";
@@ -39,6 +40,7 @@ function App() {
           <Route element={<MainLayout/>}>
             <Route path="/" element={<Catalog/>}/>
             <Route path="/product/:id" element={<ProductDetail/>}/>
+            <Route path="/checkout" element={<Checkout/>}/>
             <Route path="/profile" element={
               <ProtectedRoute>
                 <Profile/>

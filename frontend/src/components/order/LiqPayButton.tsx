@@ -58,21 +58,11 @@ const LiqPayButton = ({ amount, description, currency = 'UAH' }) => {
       <button
         onClick={handlePayment}
         disabled={loading}
-        style={{
-          backgroundColor: '#77CC5D',
-          color: 'white',
-          border: 'none',
-          padding: '12px 24px',
-          fontSize: '16px',
-          fontWeight: 'bold',
-          borderRadius: '4px',
-          cursor: loading ? 'not-allowed' : 'pointer',
-          opacity: loading ? 0.6 : 1
-        }}
+        className={`w-full py-3 rounded-lg text-lg font-semibold text-white ${loading ? 'bg-blue-400 cursor-not-allowed opacity-70' : 'bg-blue-600 hover:bg-blue-700'}`}
       >
-        {loading ? 'Processing...' : 'Pay'}
+        {loading ? 'Processing...' : 'Go to payment'}
       </button>
-      {error && <p style={{ color: 'red', marginTop: '10px' }}>{error}</p>}
+      {error && <p className="text-red-500 mt-2">{error}</p>}
     </div>
   );
 };

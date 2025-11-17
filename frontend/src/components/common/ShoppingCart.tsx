@@ -215,12 +215,13 @@ export function ShoppingCart({isOpen, onClose}: ShoppingCartProps) {
         </div>
 
         <div className="px-6 py-4 border-t border-gray-200 bg-gray-50">
-          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center justify-between mb-4">
             <div>
               <p className="text-gray-500 text-sm mb-1">Total sum</p>
               <p className="text-3xl">{formatPrice(subtotal)} ₴</p>
             </div>
             <button
+              onClick={() => { navigate('/checkout'); onClose(); }}
               className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-6 text-lg rounded-xl disabled:bg-gray-400 disabled:cursor-not-allowed"
               disabled={cartItems.length === 0}
             >
