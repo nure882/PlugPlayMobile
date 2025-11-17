@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Dto;
 using PlugPlay.Services.Interfaces;
@@ -57,31 +58,37 @@ public class UserInfoController : ControllerBase
 
         gettingUserInfo(_logger, id, null);
 
-        try
-        {
-            var user = await _userInfoService.GetUserInfoByIdAsync(id);
-            UserInfoDto userInfo = MapUser(user);
+        var result = await _userInfoService.GetUserInfoByIdAsync(id);
 
+        result.OnSuccess(() =>
+        {
             var userInfoRetrieved = LoggerMessage.Define<int>(
                 LogLevel.Information,
                 new EventId(3002, "UserInfoRetrieved"),
                 "Successfully retrieved user info for user ID: {UserId}");
 
             userInfoRetrieved(_logger, id, null);
+        });
 
-            return Ok(userInfo);
-        }
-        catch (KeyNotFoundException ex)
+        result.OnFailure(() =>
         {
             var userNotFound = LoggerMessage.Define<int>(
                 LogLevel.Warning,
                 new EventId(3001, "UserNotFound"),
                 "User with ID {UserId} not found");
 
-            userNotFound(_logger, id, ex);
+            userNotFound(_logger, id, null);
+        });
 
-            return NotFound(new { message = ex.Message });
+        if (result.Failure)
+        {
+            return NotFound(new { message = result.Error });
         }
+
+        User user = result.Value;
+        UserInfoDto userInfo = MapUser(user);
+
+        return Ok(userInfo);
     }
 
     [HttpPut("{id:int}")]
@@ -94,10 +101,9 @@ public class UserInfoController : ControllerBase
 
         updatingUser(_logger, id, null);
 
-        try
+        bool success = await _userInfoService.UpdateUserAsync(id, dto);
+        if(success)
         {
-            var result = await _userInfoService.UpdateUserAsync(id, dto);
-
             var userUpdated = LoggerMessage.Define<int>(
                 LogLevel.Information,
                 new EventId(3002, "UserUpdated"),
@@ -107,17 +113,15 @@ public class UserInfoController : ControllerBase
 
             return Ok("User updated successfully.");
         }
-        catch (Exception ex)
-        {
-            var errorUpdatingUser = LoggerMessage.Define<int>(
-                LogLevel.Error,
-                new EventId(3001, "ErrorUpdatingUser"),
-                "Error updating user with ID: {UserId}");
 
-            errorUpdatingUser(_logger, id, ex);
+        var errorUpdatingUser = LoggerMessage.Define<int>(
+            LogLevel.Error,
+            new EventId(3001, "ErrorUpdatingUser"),
+            "Error updating user with ID: {UserId}");
 
-            return BadRequest(new { message = ex.Message });
-        }
+        errorUpdatingUser(_logger, id, null);
+
+        return BadRequest(new { message = "Failed to update user" });
     }
 
     [HttpPut("{token}")]
@@ -145,17 +149,18 @@ public class UserInfoController : ControllerBase
         }
 
         int id = userResult.Value.Id;
-        try
-        {
-            var updatingUserByToken = LoggerMessage.Define<int>(
+
+        var updatingUserByToken = LoggerMessage.Define<int>(
                 LogLevel.Information,
                 new EventId(3000, "UpdatingUserByToken"),
                 "Updating user with ID: {UserId}");
 
-            updatingUserByToken(_logger, id, null);
+        updatingUserByToken(_logger, id, null);
 
-            var result = await _userInfoService.UpdateUserAsync(id, dto);
+        var success = await _userInfoService.UpdateUserAsync(id, dto);
 
+        if(success)
+        {
             var userUpdatedByToken = LoggerMessage.Define<int>(
                 LogLevel.Information,
                 new EventId(3002, "UserUpdatedByToken"),
@@ -165,17 +170,17 @@ public class UserInfoController : ControllerBase
 
             return Ok("User updated successfully.");
         }
-        catch (Exception ex)
-        {
-            var errorUpdatingUserByToken = LoggerMessage.Define<int>(
-                LogLevel.Error,
-                new EventId(3001, "ErrorUpdatingUserByToken"),
-                "Error updating user with ID: {UserId}");
+        
+        
+        var errorUpdatingUserByToken = LoggerMessage.Define<int>(
+            LogLevel.Error,
+            new EventId(3001, "ErrorUpdatingUserByToken"),
+            "Error updating user with ID: {UserId}");
 
-            errorUpdatingUserByToken(_logger, id, ex);
+        errorUpdatingUserByToken(_logger, id, null);
 
-            return BadRequest(new { message = ex.Message });
-        }
+        return BadRequest(new { message = "Failed to retrieve user by token" });
+        
     }
 
     #region Helpers

@@ -24,7 +24,7 @@ namespace PlugPlay.Services.Profile
             _logger = logger;
         }
 
-        public async Task<User> GetUserInfoByIdAsync(int id)
+        public async Task<Result<User>> GetUserInfoByIdAsync(int id)
         {
             _logger.LogInformation("Fetching user info for user ID: {UserId}", id);
             
@@ -35,12 +35,13 @@ namespace PlugPlay.Services.Profile
             if (userInfo == null)
             {
                 _logger.LogWarning("User with ID {UserId} not found", id);
-                throw new KeyNotFoundException($"User with ID {id} not found.");
+
+                return Result.Fail<User>("User not found"); 
             }
 
             _logger.LogInformation("Successfully retrieved user info for user ID: {UserId}", id);
             
-            return userInfo;
+            return Result.Success(userInfo);
         }
 
         public async Task<bool> UpdateUserAsync(int id, UserInfoDto dto)
@@ -67,7 +68,8 @@ namespace PlugPlay.Services.Profile
                 {
                     _logger.LogError("Failed to update email for user ID: {UserId}. Errors: {Errors}", 
                         id, string.Join(", ", setEmailResult.Errors.Select(e => e.Description)));
-                    throw new Exception("Failed to update user email.");
+
+                    return false;
                 }
             }
 
@@ -130,7 +132,8 @@ namespace PlugPlay.Services.Profile
             {
                 _logger.LogError("Failed to update user ID: {UserId}. Errors: {Errors}", 
                     id, string.Join(", ", identityResult.Errors.Select(e => e.Description)));
-                throw new Exception("Failed to update user info.");
+
+                return false;
             }
 
             await _context.SaveChangesAsync();
