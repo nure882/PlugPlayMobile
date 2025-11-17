@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using AutoMapper;
 using Google.Apis.Auth.OAuth2.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,17 +17,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
 
-    private readonly IMapper _mapper;
-
     private readonly IConfiguration _configuration;
 
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService, IMapper mapper, IConfiguration configuration,
-        ILogger<AuthController> logger)
+    public AuthController(IAuthService authService, IConfiguration configuration, ILogger<AuthController> logger)
     {
         _authService = authService;
-        _mapper = mapper;
         _configuration = configuration;
         _logger = logger;
     }
@@ -98,7 +93,7 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var user = _mapper.Map<User>(registerRequest);
+        var user = MapUserFromRequest(registerRequest);
         user.Role = Role.User;
         var result = await _authService.RegisterAsync(user, registerRequest.Password,
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
@@ -277,7 +272,7 @@ public class AuthController : ControllerBase
             return BadRequest(new ProblemDetails() { Title = "Invalid register data" });
         }
 
-        var user = _mapper.Map<User>(registerRequest);
+        var user = MapUserFromRequest(registerRequest);
         user.Role = Role.Admin;
         var result = await _authService.RegisterAsync(user, registerRequest.Password,
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
@@ -293,4 +288,19 @@ public class AuthController : ControllerBase
 
         return Ok();
     }
+
+    #region Helpers
+
+    User MapUserFromRequest(RegisterRequest request)
+    {
+        return new User
+        {
+            Email = request.Email,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            PhoneNumber = request.PhoneNumber
+        };
+    }
+    
+    #endregion
 }
