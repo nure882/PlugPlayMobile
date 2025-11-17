@@ -19,30 +19,6 @@ public class PaymentController : ControllerBase
         _paymentService = paymentService;
     }
 
-    [HttpPost("create")]
-    public IActionResult CreatePayment([FromBody] CreatePaymentRequest request)
-    {
-        try
-        {
-            var paymentData = _liqPayHelper.GeneratePaymentData(
-                request.Amount,
-                request.Currency ?? "UAH",
-                request.Description,
-                request.PaymentId
-            );
-
-            return Ok(new
-            {
-                data = paymentData.Data,
-                signature = paymentData.Signature
-            });
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, "Error creating payment");
-        }
-    }
-
     [HttpPost("callback")]
     [Consumes("application/x-www-form-urlencoded")]
     public async Task<IActionResult> PaymentCallback([FromForm] LiqPayCallback callback)
