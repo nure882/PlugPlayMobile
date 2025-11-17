@@ -199,6 +199,7 @@ public class OrderController : ControllerBase
     [HttpPut("cancel/{orderId:int}")]
     public async Task<IActionResult> CancelOrderAsync(int orderId)
     {
+        return StatusCode(StatusCodes.Status418ImATeapot);
         if (orderId < 1) return StatusCode(StatusCodes.Status400BadRequest, "Id is less than 1");
 
         var infoStartOrderCancellation = LoggerMessage.Define<int>(

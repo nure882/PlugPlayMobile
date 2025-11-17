@@ -11,14 +11,7 @@ namespace PlugPlay.Services.Ordering;
 
 public class OrderService : IOrderService
 {
-    public async Task<Result<Order>> PlaceOrderAsync(PlaceOrderRequest order)
-    {
-        throw new NotImplementedException();
-    private static readonly EventId GetUserOrdersEvent = new(2007, nameof(GetUserOrdersAsync));
-
-    private static readonly EventId GetOrderItemsEvent = new(2008, nameof(GetOrderItemsAsync));
-
-    private static readonly EventId GetOrderByIdEvent = new(2009, nameof(GetOrderAsync));
+    private static readonly EventId GetOrderByIdEvent = new(2006, nameof(GetOrderAsync));
 
     private readonly PlugPlayDbContext _context;
 
@@ -32,6 +25,101 @@ public class OrderService : IOrderService
         _paymentService = paymentService;
         _logger = logger;
     }
+
+    public async Task<Result<OrderResponse>> PlaceOrderAsync(PlaceOrderRequest orderReq)
+    {
+        using var scope = new TransactionScope(TransactionScopeAsyncFlowOption.Enabled);
+
+        try
+        {
+            var user = await _context.Users.FindAsync(orderReq.UserId);
+            if (user == null)
+            {
+                return Result.Fail<OrderResponse>($"No user {orderReq.UserId} specified in order request");
+            }
+
+            var newOrder = new Order
+            {
+                Status = OrderStatus.Created,
+                PaymentMethod = orderReq.PaymentMethod,
+                PaymentStatus = PaymentStatus.NotPaid,
+                DeliveryMethod = orderReq.DeliveryMethod,
+                DeliveryAddressId = orderReq.DeliveryAddressId,
+                UserId = orderReq.UserId,
+                OrderDate = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow,
+                OrderItems = new List<OrderItem>()
+            };
+
+            _context.Orders.Add(newOrder);
+            await _context.SaveChangesAsync();
+
+            var items = await CreateOrderItems(orderReq.OrderItems, newOrder.Id);
+            newOrder.OrderItems = items;
+            newOrder.TotalAmount = items.Sum(i => i.Quantity * i.UnitPrice);
+            await _context.SaveChangesAsync();
+
+            var totalWithDelivery = CalcTotalWithDelivery(newOrder.TotalAmount, orderReq.DeliveryMethod);
+            if (orderReq.PaymentMethod == PaymentMethod.Card)
+            {
+                var paymentDataResult = await _paymentService.CreatePayment(newOrder.Id, totalWithDelivery);
+                if (paymentDataResult.Failure)
+                {
+                    // _context.Remove(newOrder);
+                    // foreach (var item in items)
+                    // {
+                    //     item.Product.StockQuantity += orderReq.OrderItems
+                    //         .FirstOrDefault(oi => oi.ProductId == item.Product.Id)?.Quantity ?? 0;
+                    // }
+                    //
+                    // _context.RemoveRange(items);
+                    //
+                    // await _context.SaveChangesAsync();
+
+                    return Result.Fail<OrderResponse>($"{paymentDataResult.Error}");
+                }
+
+                scope.Complete();
+                return Result.Success(new OrderResponse
+                {
+                    PaymentData = paymentDataResult.Value
+                });
+            }
+            else if (orderReq.PaymentMethod == PaymentMethod.Cash)
+            {
+                newOrder.TotalAmount = totalWithDelivery;
+            }
+
+            await _context.SaveChangesAsync();
+            scope.Complete();
+
+            return Result.Success(new OrderResponse { });
+        }
+        catch (Exception ex)
+        {
+            return Result.Fail<OrderResponse>($"Failure placing order: {ex.Message}");
+        }
+
+        decimal CalcTotalWithDelivery(decimal totalAmount, DeliveryMethod deliveryMethod)
+        {
+            decimal totalWithDelivery = default;
+            switch (deliveryMethod)
+            {
+                case DeliveryMethod.Courier:
+                    totalWithDelivery += 100;
+                    break;
+                case DeliveryMethod.Post:
+                    totalWithDelivery += 80;
+                    break;
+                case DeliveryMethod.Premium:
+                    totalWithDelivery += 150;
+                    break;
+                case DeliveryMethod.Pickup:
+                    break;
+            }
+
+            return totalAmount + totalWithDelivery;
+        }
     }
 
     public async Task<Result<IEnumerable<Order>>> GetUserOrdersAsync(int userId)
@@ -126,7 +214,6 @@ public class OrderService : IOrderService
 
     public async Task<Result<IEnumerable<OrderItem>>> GetOrderItemsAsync(int orderId)
     {
-        throw new NotImplementedException();
         try
         {
             var order = await _context.Orders.FindAsync(orderId);
@@ -156,5 +243,37 @@ public class OrderService : IOrderService
                 $"Exception thrown retrieving order items for order with id {orderId}. Message: {e.Message}");
         }
     }
+
+    private async Task<List<OrderItem>> CreateOrderItems(IEnumerable<OrderItemDto> orderItemDtos, int orderId)
+    {
+        var items = new List<OrderItem>();
+
+        foreach (var dto in orderItemDtos)
+        {
+            var product = await _context.Products.FindAsync(dto.ProductId);
+            if (product == null)
+            {
+                throw new InvalidOperationException($"Product not found: {dto.ProductId}");
+            }
+
+            var price = product.Price;
+
+            var item = new OrderItem
+            {
+                OrderId = orderId,
+                ProductId = dto.ProductId,
+                Quantity = dto.Quantity,
+                UnitPrice = price,
+            };
+            product.StockQuantity -= dto.Quantity;
+
+            _context.OrderItems.Add(item);
+
+            items.Add(item);
+        }
+
+        await _context.SaveChangesAsync();
+
+        return items;
     }
 }

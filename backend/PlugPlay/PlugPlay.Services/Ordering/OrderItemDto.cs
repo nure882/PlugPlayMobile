@@ -1,9 +1,11 @@
+using System.Text.Json.Serialization;
 using PlugPlay.Domain.Entities;
 
 namespace PlugPlay.Services.Ordering;
 
 public class OrderItemDto
 {
+    [JsonIgnore]
     public int Id { get; set; }
 
     public int ProductId { get; set; }
