@@ -136,7 +136,12 @@ public class CartService : ICartService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error updating cart item {ItemId}", itemId);
+            var errorUpdatingCartItem = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(4002, "ErrorUpdatingCartItem"),
+                "Error updating cart item {ItemId}");
+
+            errorUpdatingCartItem(_logger, itemId, e);
 
             return Result.Fail($"Problem updating cart item {itemId}");
         }
@@ -165,7 +170,12 @@ public class CartService : ICartService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error deleting cart item {ItemId}", itemId);
+            var errorDeletingCartItem = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(4001, "ErrorDeletingCartItem"),
+                "Error deleting cart item {ItemId}");
+
+            errorDeletingCartItem(_logger, itemId, e);
 
             return Result.Fail($"Problem deleting cart item {itemId}");
         }
@@ -186,7 +196,12 @@ public class CartService : ICartService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error deleting cart of user {UserId}", userId);
+            var errorDeletingCart = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(4001, "ErrorDeletingCart"),
+                "Error deleting cart of user {UserId}");
+
+            errorDeletingCart(_logger, userId, e);
 
             return Result.Fail($"Problem deleting cart of user {userId}");
         }

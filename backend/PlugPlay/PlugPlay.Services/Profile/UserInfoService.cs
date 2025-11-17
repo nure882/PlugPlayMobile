@@ -26,48 +26,87 @@ namespace PlugPlay.Services.Profile
 
         public async Task<Result<User>> GetUserInfoByIdAsync(int id)
         {
-            _logger.LogInformation("Fetching user info for user ID: {UserId}", id);
-            
+            var fetchingUserInfo = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(3000, "FetchingUserInfo"),
+                "Fetching user info for user ID: {UserId}");
+
+            fetchingUserInfo(_logger, id, null);
+
             var userInfo = await _userManager.Users
                 .Include(u => u.UserAddresses)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (userInfo == null)
             {
-                _logger.LogWarning("User with ID {UserId} not found", id);
+                var userNotFoundWarningById = LoggerMessage.Define<int>(
+                    LogLevel.Warning,
+                    new EventId(3001, "UserNotFoundWarningById"),
+                    "User with ID {UserId} not found");
+
+                userNotFoundWarningById(_logger, id, null);
 
                 return Result.Fail<User>("User not found"); 
             }
 
-            _logger.LogInformation("Successfully retrieved user info for user ID: {UserId}", id);
-            
+            var userInfoRetrievedSuccess = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(3002, "UserInfoRetrievedSuccess"),
+                "Successfully retrieved user info for user ID: {UserId}");
+
+            userInfoRetrievedSuccess(_logger, id, null);
+
             return Result.Success(userInfo);
         }
 
         public async Task<bool> UpdateUserAsync(int id, UserInfoDto dto)
         {
-            _logger.LogInformation("Updating user with ID: {UserId}", id);
-            
+            var updatingUserInfo = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(3000, "UpdatingUserInfo"),
+                "Updating user with ID: {UserId}");
+
+            updatingUserInfo(_logger, id, null);
+
             var user = await _userManager.Users
                 .Include(u => u.UserAddresses)
                 .FirstOrDefaultAsync(u => u.Id == id);
 
             if (user == null || dto == null)
             {
-                _logger.LogWarning("Update failed: User with ID {UserId} not found or DTO is null", id);
-                
+                var updateUserFailed = LoggerMessage.Define<int>(
+                    LogLevel.Warning,
+                    new EventId(3001, "UpdateUserFailed"),
+                    "Update failed: User with ID {UserId} not found or DTO is null");
+
+                updateUserFailed(_logger, id, null);
+
                 return false;
             }
 
             if (!string.IsNullOrEmpty(dto.Email) && dto.Email != user.Email)
             {
-                _logger.LogInformation("Updating email for user ID: {UserId} from {OldEmail} to {NewEmail}", id, user.Email, dto.Email);
+                var updatingUserEmail = LoggerMessage.Define<int, string, string>(
+                    LogLevel.Information,
+                    new EventId(3000, "UpdatingUserEmail"),
+                    "Updating email for user ID: {UserId} from {OldEmail} to {NewEmail}");
+
+                updatingUserEmail(_logger, id, user.Email, dto.Email, null);
                 var setEmailResult = await _userManager.SetEmailAsync(user, dto.Email);
 
                 if (!setEmailResult.Succeeded)
                 {
-                    _logger.LogError("Failed to update email for user ID: {UserId}. Errors: {Errors}", 
-                        id, string.Join(", ", setEmailResult.Errors.Select(e => e.Description)));
+                    var failedToUpdateUserEmail = LoggerMessage.Define<int, string>(
+                        LogLevel.Error,
+                        new EventId(3001, "FailedToUpdateUserEmail"),
+                        "Failed to update email for user ID: {UserId}. Errors: {Errors}");
+
+                    failedToUpdateUserEmail(
+                        _logger,
+                        id,
+                        string.Join(", ", setEmailResult.Errors.Select(e => e.Description)),
+                        null
+                    );
 
                     return false;
                 }
@@ -79,8 +118,13 @@ namespace PlugPlay.Services.Profile
 
             var dtoAddressIds = dto.Addresses.Where(a => a.Id.HasValue).Select(a => a.Id.Value).ToList();
             var addressesToRemove = user.UserAddresses.Where(a => !dtoAddressIds.Contains(a.Id)).ToList();
-            
-            _logger.LogInformation("Removing {Count} addresses for user ID: {UserId}", addressesToRemove.Count, id);
+
+            var removingUserAddresses = LoggerMessage.Define<int, int>(
+                LogLevel.Information,
+                new EventId(3000, "RemovingUserAddresses"),
+                "Removing {Count} addresses for user ID: {UserId}");
+
+            removingUserAddresses(_logger, addressesToRemove.Count, id, null);
             foreach (var addr in addressesToRemove)
             {
                 _context.UserAddresses.Remove(addr);
@@ -88,13 +132,24 @@ namespace PlugPlay.Services.Profile
 
             foreach (var addrDto in dto.Addresses)
             {
+                var addingUserAddress = LoggerMessage.Define<int>(
+                      LogLevel.Debug,
+                      new EventId(3000, "AddingUserAddress"),
+                      "Adding new address for user ID: {UserId}");
+
                 if (addrDto.Id.HasValue)
                 {
                     var existing = user.UserAddresses.FirstOrDefault(a => a.Id == addrDto.Id);
 
                     if (existing != null)
                     {
-                        _logger.LogDebug("Updating address ID: {AddressId} for user ID: {UserId}", addrDto.Id, id);
+                        var updatingUserAddress = LoggerMessage.Define<int, int>(
+                            LogLevel.Debug,
+                            new EventId(3000, "UpdatingUserAddress"),
+                            "Updating address ID: {AddressId} for user ID: {UserId}");
+
+                        updatingUserAddress(_logger, addrDto.Id ?? 0, id, null);
+
                         existing.House = addrDto.House;
                         existing.Apartments = addrDto.Apartments;
                         existing.Street = addrDto.Street;
@@ -103,7 +158,8 @@ namespace PlugPlay.Services.Profile
                     }
                     else
                     {
-                        _logger.LogDebug("Adding new address for user ID: {UserId}", id);
+                        addingUserAddress(_logger, id, null);
+
                         user.UserAddresses.Add(new UserAddress
                         {
                             House = addrDto.House,
@@ -115,7 +171,10 @@ namespace PlugPlay.Services.Profile
                 }
                 else
                 {
-                    _logger.LogDebug("Adding new address for user ID: {UserId}", id);
+                  
+
+                    addingUserAddress(_logger, id, null);
+
                     user.UserAddresses.Add(new UserAddress
                     {
                         House = addrDto.House,
@@ -130,14 +189,29 @@ namespace PlugPlay.Services.Profile
 
             if (!identityResult.Succeeded)
             {
-                _logger.LogError("Failed to update user ID: {UserId}. Errors: {Errors}", 
-                    id, string.Join(", ", identityResult.Errors.Select(e => e.Description)));
+                var failedToUpdateUser = LoggerMessage.Define<int, string>(
+                    LogLevel.Error,
+                    new EventId(3001, "FailedToUpdateUser"),
+                    "Failed to update user ID: {UserId}. Errors: {Errors}");
+
+                failedToUpdateUser(
+                    _logger,
+                    id,
+                    string.Join(", ", identityResult.Errors.Select(e => e.Description)),
+                    null
+                );
 
                 return false;
             }
 
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Successfully updated user ID: {UserId}", id);
+
+            var userUpdateSuccess = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(3002, "UserUpdateSuccess"),
+                "Successfully updated user ID: {UserId}");
+
+            userUpdateSuccess(_logger, id, null);
 
             return true;
         }
@@ -170,20 +244,36 @@ namespace PlugPlay.Services.Profile
                     return Result.Fail<User>("Invalid token claims.");
                 }
 
-                _logger.LogInformation("Fetching user with ID: {UserId} from token", userId);
+                var fetchingUserFromToken = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(3000, "FetchingUserFromToken"),
+                    "Fetching user with ID: {UserId} from token");
+
+                fetchingUserFromToken(_logger, userId, null);
+
                 var user = await _userManager.Users
                     .Include(u => u.UserAddresses)
                     .FirstOrDefaultAsync(u => u.Id == userId);
 
                 if (user == null)
                 {
-                    _logger.LogWarning("User with ID {UserId} not found in database", userId);
-                 
+                    var userNotFoundInDb = LoggerMessage.Define<int>(
+                        LogLevel.Warning,
+                        new EventId(3001, "UserNotFoundInDb"),
+                        "User with ID {UserId} not found in database");
+
+                    userNotFoundInDb(_logger, userId, null);
+
                     return Result.Fail<User>($"User with ID {userId} not found.");
                 }
 
-                _logger.LogInformation("Successfully retrieved user ID: {UserId} from token", userId);
-              
+                var userRetrievedFromToken = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(3002, "UserRetrievedFromToken"),
+                    "Successfully retrieved user ID: {UserId} from token");
+
+                userRetrievedFromToken(_logger, userId, null);
+
                 return Result.Success(user);
             }
             catch (Exception ex)

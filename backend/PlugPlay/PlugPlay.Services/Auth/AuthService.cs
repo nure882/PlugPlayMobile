@@ -98,7 +98,12 @@ public class AuthService : IAuthService
 
     public async Task<(string token, string refreshToken)> GenerateTokens(User user)
     {
-        _logger.LogInformation("Generating tokens for user ID: {UserId}", user.Id);
+        var generatingTokens = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1000, "GeneratingTokens"),
+            "Generating tokens for user ID: {UserId}");
+
+        generatingTokens(_logger, user.Id, null);
 
         var token = _jwtService.GenerateToken(user);
         var refreshToken = _jwtService.GenerateRefreshToken();
@@ -110,7 +115,13 @@ public class AuthService : IAuthService
 
         if (activeTokens.Count >= 5)
         {
-            _logger.LogInformation("Removing oldest refresh token for user ID: {UserId}", user.Id);
+            var removingOldestRefreshToken = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(1000, "RemovingOldestRefreshToken"),
+                "Removing oldest refresh token for user ID: {UserId}");
+
+            removingOldestRefreshToken(_logger, user.Id, null);
+
             var oldestToken = activeTokens.First();
             _context.UserRefreshTokens.Remove(oldestToken);
         }
@@ -130,7 +141,12 @@ public class AuthService : IAuthService
         _context.UserRefreshTokens.RemoveRange(oldTokens);
 
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Successfully generated and saved tokens for user ID: {UserId}", user.Id);
+        var tokensGeneratedAndSaved = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1002, "TokensGeneratedAndSaved"),
+            "Successfully generated and saved tokens for user ID: {UserId}");
+
+        tokensGeneratedAndSaved(_logger, user.Id, null);
 
         return (token, refreshToken);
     }
@@ -272,7 +288,13 @@ public class AuthService : IAuthService
 
         if (storedRefreshToken.Revoked != null)
         {
-            _logger.LogWarning("Token theft detected for user ID: {UserId}", storedRefreshToken.UserId);
+            var tokenTheftDetected = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(1001, "TokenTheftDetected"),
+                "Token theft detected for user ID: {UserId}");
+
+            tokenTheftDetected(_logger, storedRefreshToken.UserId, null);
+
             await RevokeTokenChainAsync(storedRefreshToken);
             await tx.CommitAsync();
 
@@ -300,7 +322,12 @@ public class AuthService : IAuthService
         await _context.SaveChangesAsync();
         await tx.CommitAsync();
 
-        _logger.LogInformation("Successfully refreshed token for user ID: {UserId}", storedRefreshToken.UserId);
+        var tokenRefreshedSuccess = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1002, "TokenRefreshedSuccess"),
+            "Successfully refreshed token for user ID: {UserId}");
+
+        tokenRefreshedSuccess(_logger, storedRefreshToken.UserId, null);
 
         return Result.Success(new RefreshTokenResponse
         {
@@ -315,7 +342,12 @@ public class AuthService : IAuthService
 
     private async Task RevokeTokenChainAsync(UserRefreshToken startToken)
     {
-        _logger.LogInformation("Revoking token chain starting from token for user ID: {UserId}", startToken.UserId);
+        var revokingTokenChain = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1000, "RevokingTokenChain"),
+            "Revoking token chain starting from token for user ID: {UserId}");
+
+        revokingTokenChain(_logger, startToken.UserId, null);
 
         if (startToken.Revoked == null)
         {
@@ -344,7 +376,12 @@ public class AuthService : IAuthService
         }
 
         await _context.SaveChangesAsync();
-        _logger.LogInformation("Successfully revoked token chain for user ID: {UserId}", startToken.UserId);
+        var tokenChainRevoked = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1002, "TokenChainRevoked"),
+            "Successfully revoked token chain for user ID: {UserId}");
+
+        tokenChainRevoked(_logger, startToken.UserId, null);
     }
 
     public async Task<Result> LogoutAsync(string token)
@@ -359,7 +396,13 @@ public class AuthService : IAuthService
             refreshToken.Revoked = DateTime.UtcNow;
             refreshToken.RevokedByIp = GetIpAddress();
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Successfully logged out user ID: {UserId}", refreshToken.UserId);
+
+            var userLoggedOut = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(1001, "UserLoggedOut"),
+                "Successfully logged out user ID: {UserId}");
+
+            userLoggedOut(_logger, refreshToken.UserId, null);
         }
         else
         {
@@ -373,7 +416,12 @@ public class AuthService : IAuthService
 
     public async Task<Result<User>> GetUserAsync(int userId)
     {
-        _logger.LogInformation("Fetching user with ID: {UserId}", userId);
+        var fetchingUser = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1000, "FetchingUser"),
+            "Fetching user with ID: {UserId}");
+
+        fetchingUser(_logger, userId, null);
 
         var user = await _context.Users
             .Where(u => u.Id == userId)
@@ -381,12 +429,22 @@ public class AuthService : IAuthService
 
         if (user == null)
         {
-            _logger.LogWarning("User with ID {UserId} not found", userId);
+            var userNotFoundWarning = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(1001, "UserNotFoundWarning"),
+                "User with ID {UserId} not found");
+
+            userNotFoundWarning(_logger, userId, null);
 
             return Result.Fail<User>("User is not found");
         }
 
-        _logger.LogInformation("Successfully fetched user with ID: {UserId}", userId);
+        var userFetched = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1002, "UserFetched"),
+            "Successfully fetched user with ID: {UserId}");
+
+        userFetched(_logger, userId, null);
 
         return Result.Success(user);
     }

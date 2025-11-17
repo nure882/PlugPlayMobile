@@ -36,7 +36,12 @@ public class ProductsService : IProductsService
             .AsQueryable();
 
         var products = await query.ToListAsync();
-        _logger.LogInformation("Successfully retrieved {Count} products", products.Count);
+        var productsRetrievedCount = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(2002, "ProductsRetrievedCount"),
+            "Successfully retrieved {Count} products");
+
+        productsRetrievedCount(_logger, products.Count, null);
 
         return products;
     }
@@ -54,18 +59,33 @@ public class ProductsService : IProductsService
             .Include(p => p.Reviews)
             .ThenInclude(r => r.User);
 
-        _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
+        var productsRetrievedCountEnumerable = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(2002, "ProductsRetrievedCountEnumerable"),
+            "Successfully retrieved {Count} products");
+
+        productsRetrievedCountEnumerable(_logger, products.Count(), null);
 
         return Result.Success<IEnumerable<Product>>(await products.ToListAsync());
     }
 
     public async Task<Result> AddImageAsync(int productId, string uploadResultUrl)
     {
-        _logger.LogInformation("Adding image for product {ProductId}", productId);
+        var addingProductImage = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(2000, "AddingProductImage"),
+            "Adding image for product {ProductId}");
+
+        addingProductImage(_logger, productId, null);
         var product = await _context.Products.FindAsync(productId);
         if (product is null)
         {
-            _logger.LogWarning("Product with ID {ProductId} not found", productId);
+            var productNotFoundWarning = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(2001, "ProductNotFoundWarning"),
+                "Product with ID {ProductId} not found");
+
+            productNotFoundWarning(_logger, productId, null);
 
             return Result.Fail("No such product");
         }
@@ -79,11 +99,22 @@ public class ProductsService : IProductsService
             };
             _context.ProductImages.Add(image);
             await _context.SaveChangesAsync();
-            _logger.LogInformation("Successfully added image for product {ProductId}", productId);
+
+            var productImageAddedSuccess = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(2000, "ProductImageAddedSuccess"),
+                "Successfully added image for product {ProductId}");
+
+            productImageAddedSuccess(_logger, productId, null);
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Failed to add image for product {ProductId}", productId);
+            var failedToAddProductImageError = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(2001, "FailedToAddProductImageError"),
+                "Failed to add image for product {ProductId}");
+
+            failedToAddProductImageError(_logger, productId, e);
 
             return Result.Fail($"{e.Message}");
         }
@@ -255,7 +286,12 @@ public class ProductsService : IProductsService
                 .Take(pageSize)
                 .ToListAsync();
 
-            _logger.LogInformation("Successfully retrieved {Count} products", products.Count);
+            var productsRetrievedSuccess = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(2002, "ProductsRetrievedSuccess"),
+                "Successfully retrieved {Count} products");
+
+            productsRetrievedSuccess(_logger, products.Count, null);
 
             return Result.Success<IEnumerable<Product>>(products);
         }
@@ -282,7 +318,12 @@ public class ProductsService : IProductsService
 
     public async Task<Result<Product>> GetProductByIdAsync(int id)
     {
-        _logger.LogInformation("Fetching product with ID: {ProductId}", id);
+        var fetchingProduct = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(2000, "FetchingProduct"),
+            "Fetching product with ID: {ProductId}");
+
+        fetchingProduct(_logger, id, null);
 
         var product = await _context.Products
             .Include(p => p.ProductAttributes)
@@ -295,12 +336,22 @@ public class ProductsService : IProductsService
 
         if (product == null)
         {
-            _logger.LogWarning("Product with ID {ProductId} not found", id);
+            var productNotFoundWarningById = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(2001, "ProductNotFoundWarningById"),
+                "Product with ID {ProductId} not found");
+
+            productNotFoundWarningById(_logger, id, null);
 
             return Result.Fail<Product>($"Product with ID {id} not found.");
         }
 
-        _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
+        var productRetrievedSuccess = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(2002, "ProductRetrievedSuccess"),
+            "Successfully retrieved product with ID: {ProductId}");
+
+        productRetrievedSuccess(_logger, id, null);
 
         return Result.Success(product);
     }
