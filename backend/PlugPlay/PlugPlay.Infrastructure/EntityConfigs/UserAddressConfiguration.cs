@@ -8,9 +8,11 @@ public class UserAddressConfiguration : IEntityTypeConfiguration<UserAddress>
 {
     public void Configure(EntityTypeBuilder<UserAddress> builder)
     {
-        builder.ToTable("user_address");
-
         builder.HasKey(a => a.Id);
+        builder.Property(a => a.Id);
+
+        builder.Property(a => a.UserId)
+            .IsRequired();
 
         builder.Property(a => a.Apartments)
             .HasMaxLength(50);
@@ -28,5 +30,10 @@ public class UserAddressConfiguration : IEntityTypeConfiguration<UserAddress>
             .WithMany(u => u.UserAddresses)
             .HasForeignKey(a => a.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(ua => ua.Orders)
+            .WithOne(o => o.DeliveryAddress)
+            .HasForeignKey(o => o.DeliveryAddressId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }
