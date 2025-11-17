@@ -172,22 +172,27 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> GetProductById(int id)
     {
         _logger.LogInformation("Getting product by ID: {ProductId}", id);
+        var result = await _productsService.GetProductByIdAsync(id);
 
-        try
+        result.OnSuccess(() =>
         {
-            var product = await _productsService.GetProductByIdAsync(id);
-            var productDto = MapProduct(product);
-
             _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
+        });
 
-            return Ok(productDto);
-        }
-        catch (KeyNotFoundException ex)
+        result.OnFailure(() =>
         {
-            _logger.LogWarning(ex, "Product with ID {ProductId} not found", id);
+            _logger.LogWarning("Product with ID {ProductId} not found", id);
+        });
 
-            return NotFound(new { message = ex.Message });
+        if(result.Failure)
+        {
+            return NotFound(result.Error);
         }
+
+        var product = result.Value;
+        var productDto = MapProduct(product);
+
+        return Ok(productDto);
     }
 
     [HttpGet("search/{query}")]

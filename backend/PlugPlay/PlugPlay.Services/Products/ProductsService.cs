@@ -280,7 +280,7 @@ public class ProductsService : IProductsService
         return Result.Success(category);
     }
 
-    public async Task<Product> GetProductByIdAsync(int id)
+    public async Task<Result<Product>> GetProductByIdAsync(int id)
     {
         _logger.LogInformation("Fetching product with ID: {ProductId}", id);
 
@@ -296,11 +296,12 @@ public class ProductsService : IProductsService
         if (product == null)
         {
             _logger.LogWarning("Product with ID {ProductId} not found", id);
-            throw new KeyNotFoundException($"Product with ID {id} not found.");
+
+            return Result.Fail<Product>($"Product with ID {id} not found.");
         }
 
         _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
 
-        return product;
+        return Result.Success(product);
     }
 }
