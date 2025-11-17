@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using PlugPlay.Api.Dto.Ordering;
 using PlugPlay.Services.Interfaces;
 using PlugPlay.Services.Payment;
 
@@ -14,9 +13,10 @@ public class PaymentController : ControllerBase
 
     private readonly IPaymentService _paymentService;
 
-    public PaymentController(IPaymentService paymentService)
+    public PaymentController(IPaymentService paymentService, LiqPayHelper liqPayHelper)
     {
         _paymentService = paymentService;
+        _liqPayHelper = liqPayHelper;
     }
 
     [HttpPost("callback")]
