@@ -186,8 +186,13 @@ public class AuthController : ControllerBase
                 LastName = result.Value.LastName
             }
         };
+        
+        var success = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1002, "TokenRefreshedSuccess"),
+            "Successfully refreshed token for user ID: {UserId}");
 
-        _logger.LogInformation("Successfully refreshed token for user ID: {UserId}", result.Value.Id);
+        success(_logger, result.Value.Id, null);
 
         return Ok(response);
     }
@@ -234,10 +239,24 @@ public class AuthController : ControllerBase
         {
             var result = await _authService.GetUserAsync(id);
             result.OnFailure(() =>
-                    _logger.LogWarning("Token verification failed for user ID: {UserId}. Error: {Error}", id,
-                        result.Error))
-                .OnSuccess(() =>
-                    _logger.LogInformation("Successfully verified token for user ID: {UserId}", id));
+            {
+                var tokenVerificationFailed = LoggerMessage.Define<int, string>(
+                    LogLevel.Warning,
+                    new EventId(1001, "TokenVerificationFailed"),
+                    "Token verification failed for user ID: {UserId}. Error: {Error}");
+
+                tokenVerificationFailed(_logger, id, result.Error, null);
+            });
+            result.OnSuccess(() =>
+            {
+                var tokenVerifiedSuccess = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(1002, "TokenVerifiedSuccess"),
+                    "Successfully verified token for user ID: {UserId}");
+
+                tokenVerifiedSuccess(_logger, id, null);
+            });
+    
             if (result.Failure)
             {
                 return Unauthorized();
