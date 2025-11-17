@@ -1,4 +1,4 @@
-namespace PlugPlay.Api.Dto.Order;
+namespace PlugPlay.Api.Dto.Ordering;
 
 public class CreatePaymentRequest
 {

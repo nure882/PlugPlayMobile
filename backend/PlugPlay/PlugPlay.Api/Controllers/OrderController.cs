@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PlugPlay.Api.Dto.Ordering;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Interfaces;
 using PlugPlay.Services.Ordering;
@@ -93,7 +94,18 @@ public class OrderController : ControllerBase
                 failureRetrievingUserOrders(_logger, userId, userOrdersRes.Error, null);
             });
 
-        return userOrdersRes.Failure ? StatusCode(404, userOrdersRes.Error) : StatusCode(200, userOrdersRes.Value);
+        if (userOrdersRes.Failure)
+        {
+            return StatusCode(404, userOrdersRes.Error);
+        }
+
+        List<OrderDto> orderDtos = [];
+        foreach (var order in userOrdersRes.Value)
+        {
+            orderDtos.Add(OrderDto.MapOrder(order));
+        }
+
+        return StatusCode(200, orderDtos);
     }
 
     [HttpGet("{orderId:int}/order_items")]
@@ -128,7 +140,19 @@ public class OrderController : ControllerBase
                 failureRetrievingOrderItems(_logger, orderId, orderItemsRes.Error, null);
             });
 
-        return orderItemsRes.Failure ? StatusCode(404, orderItemsRes.Error) : StatusCode(200, orderItemsRes.Value);
+
+        if (orderItemsRes.Failure)
+        {
+            return StatusCode(404, orderItemsRes.Error);
+        }
+
+        List<OrderItemDto> orderItemDtos = [];
+        foreach (var order in orderItemsRes.Value)
+        {
+            orderItemDtos.Add(OrderItemDto.MapOrderItem(order));
+        }
+
+        return StatusCode(200, orderItemDtos);
     }
 
     [HttpGet("{orderId:int}")]
@@ -162,7 +186,14 @@ public class OrderController : ControllerBase
                 failureRetrievingOrder(_logger, orderId, orderRes.Error, null);
             });
 
-        return orderRes.Failure ? StatusCode(404, orderRes.Error) : StatusCode(200, orderRes.Value);
+        if (orderRes.Failure)
+        {
+            return StatusCode(404, orderRes.Error);
+        }
+
+        var orderDto = OrderDto.MapOrder(orderRes.Value);
+
+        return StatusCode(200, orderDto);
     }
 
     [HttpPut("cancel/{orderId:int}")]

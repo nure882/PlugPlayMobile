@@ -1,6 +1,6 @@
 using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using PlugPlay.Api.Dto.Order;
+using PlugPlay.Api.Dto.Ordering;
 using PlugPlay.Services.Interfaces;
 using PlugPlay.Services.Payment;
 
