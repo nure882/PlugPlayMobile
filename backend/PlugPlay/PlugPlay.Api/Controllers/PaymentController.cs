@@ -6,19 +6,16 @@ using PlugPlay.Services.Payment;
 
 namespace PlugPlay.Api.Controllers;
 
+[Route("api/[controller]")]
 [ApiController]
-[Microsoft.AspNetCore.Components.Route("api/[controller]")]
 public class PaymentController : ControllerBase
 {
     private readonly LiqPayHelper _liqPayHelper;
 
     private readonly IPaymentService _paymentService;
 
-    public PaymentController(IConfiguration configuration, IPaymentService paymentService)
+    public PaymentController(IPaymentService paymentService)
     {
-        var publicKey = configuration["LiqPay:PublicKey"];
-        var privateKey = configuration["LiqPay:PrivateKey"];
-        _liqPayHelper = new LiqPayHelper(publicKey, privateKey);
         _paymentService = paymentService;
     }
 

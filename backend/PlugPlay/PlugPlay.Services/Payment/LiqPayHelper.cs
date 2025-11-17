@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
+using Microsoft.Extensions.Configuration;
 using SHA3.Net;
 
 namespace PlugPlay.Services.Payment;
@@ -11,10 +12,10 @@ public class LiqPayHelper
 
     private readonly string _privateKey;
 
-    public LiqPayHelper(string publicKey, string privateKey)
+    public LiqPayHelper(IConfiguration configuration)
     {
-        _publicKey = publicKey;
-        _privateKey = privateKey;
+        _publicKey = configuration["LiqPay:PublicKey"];
+        _privateKey = configuration["LiqPay:PrivateKey"];
     }
 
     public LiqPayPaymentData GeneratePaymentData(decimal amount, string currency, string description, int orderId)
