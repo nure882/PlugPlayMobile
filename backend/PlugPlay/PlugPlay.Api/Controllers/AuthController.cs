@@ -93,7 +93,7 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var user = MapUserFromRequest(registerRequest);
+        var user = RegisterRequest.MapUser(registerRequest);
         user.Role = Role.User;
         var result = await _authService.RegisterAsync(user, registerRequest.Password,
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
@@ -272,7 +272,7 @@ public class AuthController : ControllerBase
             return BadRequest(new ProblemDetails() { Title = "Invalid register data" });
         }
 
-        var user = MapUserFromRequest(registerRequest);
+        var user = RegisterRequest.MapUser(registerRequest);
         user.Role = Role.Admin;
         var result = await _authService.RegisterAsync(user, registerRequest.Password,
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
@@ -288,19 +288,4 @@ public class AuthController : ControllerBase
 
         return Ok();
     }
-
-    #region Helpers
-
-    User MapUserFromRequest(RegisterRequest request)
-    {
-        return new User
-        {
-            Email = request.Email,
-            FirstName = request.FirstName,
-            LastName = request.LastName,
-            PhoneNumber = request.PhoneNumber
-        };
-    }
-    
-    #endregion
 }
