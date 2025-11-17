@@ -39,7 +39,7 @@ public class ProductsController : ControllerBase
         _logger.LogInformation("Getting all products");
 
         var products = await _productsService.GetAllProductsAsync();
-        var productDtos = products.Select(MapProduct);
+        var productDtos = products.Select(ProductDto.MapProduct);
 
         _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
 
@@ -55,7 +55,7 @@ public class ProductsController : ControllerBase
         result.OnSuccess(() =>
             _logger.LogInformation("Successfully retrieved {Count} products", result.Value.Count()));
 
-        var productDtos = result.Value.Select(MapProduct).ToList();
+        var productDtos = result.Value.Select(ProductDto.MapProduct).ToList();
 
         return Ok(productDtos);
     }
@@ -89,7 +89,7 @@ public class ProductsController : ControllerBase
             return BadRequest($"Error: {result.Error}");
         }
 
-        var attributeDtos = result.Value.Select(MapAttribute);
+        var attributeDtos = result.Value.Select(AttributeDto.MapAttribute);
 
         return Ok(attributeDtos);
     }
@@ -160,7 +160,7 @@ public class ProductsController : ControllerBase
             return BadRequest(result.Error);
         }
 
-        var productDtos = result.Value.Select(MapProduct);
+        var productDtos = result.Value.Select(ProductDto.MapProduct);
         var total = result.Value.Count();
         var totalPages = (int)Math.Ceiling(total / (double)pageSize);
 
@@ -176,7 +176,7 @@ public class ProductsController : ControllerBase
         try
         {
             var product = await _productsService.GetProductByIdAsync(id);
-            var productDto = MapProduct(product);
+            var productDto = ProductDto.MapProduct(product);
 
             _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
 
@@ -222,7 +222,7 @@ public class ProductsController : ControllerBase
             return StatusCode(500, new ProblemDetails { Detail = "Search failed" });
         }
 
-        var productsDtos = result.Value.Select(MapProduct);
+        var productsDtos = result.Value.Select(ProductDto.MapProduct);
 
         return Ok(productsDtos);
     }
@@ -260,118 +260,4 @@ public class ProductsController : ControllerBase
 
         return Ok();
     }
-
-    #region Helpers
-
-    private ProductDto MapProduct(Product product)
-    {
-        return new ProductDto(
-            product.Id,
-            product.Name,
-            product.Description,
-            product.Price,
-            product.StockQuantity,
-            product.CreatedAt,
-            MapCategory(product.Category),
-            product.ProductImages.Select(pi => pi.ImageUrl),
-            product.Reviews.Select(MapReview),
-            product.ProductAttributes.Select(pa => pa.Attribute),
-            product.ProductAttributes.Select(MapProductAttribute)
-        );
-    }
-
-    private ProductAttributeDto MapProductAttribute(ProductAttribute pa)
-    {
-        var dto = new ProductAttributeDto
-        {
-            Id = pa.Id,
-            AttributeId = pa.AttributeId,
-            ProductId = pa.ProductId
-        };
-        var value = pa.GetTypedValue();
-        if (value.Item2 == typeof(string))
-        {
-            dto.StrValue = value.Item1;
-        }
-        else
-        {
-            dto.NumValue = value.Item1;
-        }
-
-        return dto;
-    }
-
-    private CategoryDto? MapCategory(Category category, int maxDepth = 16)
-    {
-        return category == null ? null : MapCategoryInternal(category, 0, maxDepth, new HashSet<int>());
-
-        CategoryDto MapCategoryInternal(Category category, int depth, int maxDepth, HashSet<int> seen)
-        {
-            if (depth >= maxDepth || !seen.Add(category.Id))
-                return new CategoryDto(category.Id, category.Name);
-
-            var parent = category.ParentCategory == null
-                ? null
-                : MapCategoryInternal(category.ParentCategory, depth + 1, maxDepth, seen);
-
-            return new CategoryDto(category.Id, category.Name, parent);
-        }
-    }
-
-    private ReviewDto MapReview(Review review)
-    {
-        return new ReviewDto(
-            review.Id,
-            review.ProductId,
-            review.UserId,
-            review.Rating,
-            review.Comment,
-            MapUser(review.User),
-            review.CreatedAt,
-            review.UpdatedAt);
-    }
-
-    private UserDto MapUser(Domain.Entities.User user)
-    {
-        return new UserDto
-        {
-            Id = user.Id,
-            FirstName = user.FirstName,
-            LastName = user.LastName,
-        };
-    }
-
-    private AttributeDto MapAttribute(Attribute attribute)
-    {
-        var pas = new List<ProductAttributeDto>();
-        foreach (var pa in attribute.ProductAttributes)
-        {
-            var paDto = new ProductAttributeDto
-            {
-                Id = pa.Id,
-                AttributeId = pa.AttributeId,
-                ProductId = pa.ProductId,
-            };
-            var value = pa.GetTypedValue();
-            if (value.Item2 == typeof(string))
-            {
-                paDto.StrValue = value.Item1;
-            }
-            else
-            {
-                paDto.NumValue = value.Item1;
-            }
-            pas.Add(paDto);
-        }
-
-        return new AttributeDto(
-            attribute.Id,
-            attribute.Name,
-            attribute.Unit,
-            attribute.DataType,
-            pas
-            );
-    }
-
-    #endregion
 }

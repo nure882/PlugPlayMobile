@@ -65,17 +65,6 @@ public class OrderService : IOrderService
                 var paymentDataResult = await _paymentService.CreatePayment(newOrder.Id, totalWithDelivery);
                 if (paymentDataResult.Failure)
                 {
-                    // _context.Remove(newOrder);
-                    // foreach (var item in items)
-                    // {
-                    //     item.Product.StockQuantity += orderReq.OrderItems
-                    //         .FirstOrDefault(oi => oi.ProductId == item.Product.Id)?.Quantity ?? 0;
-                    // }
-                    //
-                    // _context.RemoveRange(items);
-                    //
-                    // await _context.SaveChangesAsync();
-
                     return Result.Fail<OrderResponse>($"{paymentDataResult.Error}");
                 }
 
