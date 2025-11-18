@@ -210,10 +210,10 @@ public class ProductsService : IProductsService
             {
                 const string descendantsSql = """
                                                   WITH RECURSIVE descendants AS (
-                                                      SELECT * FROM "category" 
+                                                      SELECT * FROM "categories" 
                                                       WHERE "id" = {0}
                                                       UNION ALL
-                                                      SELECT c.* FROM "category" c 
+                                                      SELECT c.* FROM "categories" c 
                                                       INNER JOIN descendants d ON c."parent_category_id" = d."id"
                                                   )
                                                   SELECT * FROM descendants

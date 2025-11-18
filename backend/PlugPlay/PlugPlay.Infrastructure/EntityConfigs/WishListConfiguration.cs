@@ -8,9 +8,8 @@ public class WishListConfiguration : IEntityTypeConfiguration<WishList>
 {
     public void Configure(EntityTypeBuilder<WishList> builder)
     {
-        builder.ToTable("wishlist");
-
         builder.HasKey(w => w.Id);
+        builder.Property(w => w.Id);
 
         builder.HasOne(w => w.User)
             .WithMany(u => u.WishLists)

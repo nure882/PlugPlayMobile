@@ -15,4 +15,6 @@ public class UserAddress
     public string City { get; set; }
 
     public User User { get; set; }
+
+    public ICollection<Order> Orders { get; set; } = new List<Order>();
 }

@@ -8,9 +8,10 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
 {
     public void Configure(EntityTypeBuilder<Order> builder)
     {
-        builder.ToTable("order");
-
         builder.HasKey(o => o.Id);
+        builder.Property(o => o.Id);
+
+        builder.Property(o => o.UserId);
 
         builder.Property(o => o.OrderDate)
             .IsRequired();
@@ -25,11 +26,16 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.DiscountAmount)
             .HasColumnType("decimal(18,2)");
 
+        builder.Property(o => o.DeliveryMethod)
+            .IsRequired();
+
         builder.Property(o => o.PaymentMethod)
             .IsRequired();
 
-        builder.Property(o => o.DeliveryAddress)
-            .HasMaxLength(500);
+        builder.Property(o => o.DeliveryAddressId);
+
+        builder.Property(o => o.PaymentStatus)
+            .IsRequired();
 
         builder.Property(o => o.TransactionId)
             .IsRequired();
@@ -41,6 +47,9 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
         builder.Property(o => o.PaymentFailureReason)
             .HasMaxLength(500);
 
+        builder.Property(o => o.UpdatedAt)
+            .IsRequired();
+
         builder.HasOne(o => o.User)
             .WithMany(u => u.Orders)
             .HasForeignKey(o => o.UserId)
@@ -50,5 +59,10 @@ public class OrderConfiguration : IEntityTypeConfiguration<Order>
             .WithOne(oi => oi.Order)
             .HasForeignKey(oi => oi.OrderId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasOne(o => o.DeliveryAddress)
+            .WithMany(ua => ua.Orders)
+            .HasForeignKey(o => o.DeliveryAddressId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

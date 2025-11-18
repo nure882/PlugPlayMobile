@@ -8,9 +8,8 @@ public class ReviewConfiguration : IEntityTypeConfiguration<Review>
 {
     public void Configure(EntityTypeBuilder<Review> builder)
     {
-        builder.ToTable("review");
-
         builder.HasKey(r => r.Id);
+        builder.Property(r => r.Id);
 
         builder.Property(r => r.Rating)
             .IsRequired();

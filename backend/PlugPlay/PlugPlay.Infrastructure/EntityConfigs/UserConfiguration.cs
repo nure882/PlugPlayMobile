@@ -8,23 +8,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 {
     public void Configure(EntityTypeBuilder<User> builder)
     {
-        builder.ToTable("user");
-
         builder.HasKey(u => u.Id);
-
-        builder.Property(u => u.Id)
-            .HasColumnName("user_id");
+        builder.Property(u => u.Id);
 
         builder.Property(e => e.GoogleId)
             .HasMaxLength(255);
 
         builder.Property(u => u.FirstName)
-            .HasColumnName("first_name")
             .IsRequired()
             .HasMaxLength(100);
 
         builder.Property(u => u.LastName)
-            .HasColumnName("last_name")
             .IsRequired()
             .HasMaxLength(120);
 
@@ -32,17 +26,14 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasMaxLength(400);
 
         builder.Property(u => u.Email)
-            .HasColumnName("email")
             .IsRequired()
             .HasMaxLength(150);
 
         builder.Property(u => u.PhoneNumber)
-            .HasColumnName("phone_number")
             .IsRequired()
             .HasMaxLength(30);
 
         builder.Property(u => u.Role)
-            .HasColumnName("role")
             .IsRequired();
 
         builder.HasMany(u => u.Orders)

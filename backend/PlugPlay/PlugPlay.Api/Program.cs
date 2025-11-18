@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using PlugPlay.Api;
+using PlugPlay.Api.Dto;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services;
@@ -120,7 +121,7 @@ builder.Services.AddAuthentication(options =>
 builder.WebHost.ConfigureKestrel(options => { options.AddServerHeader = false; });
 builder.Services.AddAuthorization();
 builder.Services.RegisterServices();
-// builder.Services.Configure<LiqPaySettings>(builder.Configuration.GetSection("LiqPay"));
+builder.Services.Configure<LiqPaySettings>(builder.Configuration.GetSection("LiqPay"));
 
 builder.Logging.ClearProviders();
 builder.Logging.AddConsole();

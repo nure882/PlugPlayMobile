@@ -16,9 +16,13 @@ public class Order
 
     public decimal? DiscountAmount { get; set; }
 
+    public DeliveryMethod DeliveryMethod { get; set; }
+
     public PaymentMethod PaymentMethod { get; set; }
 
-    public string DeliveryAddress { get; set; }
+    public int? DeliveryAddressId { get; set; }
+
+    public PaymentStatus PaymentStatus { get; set; }
 
     public long TransactionId { get; set; }
 
@@ -28,7 +32,11 @@ public class Order
 
     public string PaymentFailureReason { get; set; }
 
+    public DateTime UpdatedAt { get; set; }
+
     public User User { get; set; }
+
+    public UserAddress DeliveryAddress { get; set; }
 
     public ICollection<OrderItem> OrderItems { get; set; } = new List<OrderItem>();
 }
