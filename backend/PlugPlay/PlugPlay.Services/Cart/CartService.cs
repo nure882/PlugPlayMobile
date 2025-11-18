@@ -32,29 +32,30 @@ public class CartService : ICartService
             return Result.Fail<int>("Quantity must be greater than zero");
         }
 
-        var product = await _context.Products.FindAsync(productId);
-        if (product is null)
-        {
-            return Result.Fail<int>($"Product with id {productId} not found");
-        }
-
-        var item = await _context.CartItems
-            .FirstOrDefaultAsync(ci => ci.UserId == userId && ci.ProductId == productId);
-        var existed = true;
-        if (item is null)
-        {
-            item = new CartItem
-            {
-                ProductId = productId,
-                UserId = userId
-            };
-            existed = false;
-        }
-
-        item.Quantity = existed ? item.Quantity + quantity : quantity;
-        item.Total = product.Price * item.Quantity;
         try
         {
+            var product = await _context.Products.FindAsync(productId);
+            if (product is null)
+            {
+                return Result.Fail<int>($"Product with id {productId} not found");
+            }
+
+            var item = await _context.CartItems
+                .FirstOrDefaultAsync(ci => ci.UserId == userId && ci.ProductId == productId);
+            var existed = true;
+            if (item is null)
+            {
+                item = new CartItem
+                {
+                    ProductId = productId,
+                    UserId = userId
+                };
+                existed = false;
+            }
+
+            item.Quantity = existed ? item.Quantity + quantity : quantity;
+            item.Total = product.Price * item.Quantity;
+
             var entityEntry = existed ? _context.CartItems.Update(item) : await _context.CartItems.AddAsync(item);
             await _context.SaveChangesAsync();
 
@@ -75,12 +76,19 @@ public class CartService : ICartService
             return Result.Fail<IEnumerable<CartItem>>("Invalid userId");
         }
 
-        var cart = await _context.CartItems
-            .Where(ci => ci.UserId == userId)
-            .AsNoTracking()
-            .ToListAsync();
+        try
+        {
+            var cart = await _context.CartItems
+                .Where(ci => ci.UserId == userId)
+                .AsNoTracking()
+                .ToListAsync();
 
-        return Result.Success<IEnumerable<CartItem>>(cart);
+            return Result.Success<IEnumerable<CartItem>>(cart);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<IEnumerable<CartItem>>($"Error: {e.Message}");
+        }
     }
 
     public async Task<Result<CartItem>> GetCartItemByIdAsync(int itemId)
@@ -90,16 +98,23 @@ public class CartService : ICartService
             return Result.Fail<CartItem>("Invalid item id");
         }
 
-        var cartItem = await _context.CartItems
-            .AsNoTracking()
-            .FirstOrDefaultAsync(ci => ci.Id == itemId);
-
-        if (cartItem is null)
+        try
         {
-            return Result.Fail<CartItem>($"No cart item with id {itemId}");
-        }
+            var cartItem = await _context.CartItems
+                .AsNoTracking()
+                .FirstOrDefaultAsync(ci => ci.Id == itemId);
 
-        return Result.Success(cartItem);
+            if (cartItem is null)
+            {
+                return Result.Fail<CartItem>($"No cart item with id {itemId}");
+            }
+
+            return Result.Success(cartItem);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<CartItem>($"Error: {e.Message}");
+        }
     }
 
     public async Task<Result> UpdateQuantityAsync(int itemId, int newQuantity)
@@ -136,7 +151,12 @@ public class CartService : ICartService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error updating cart item {ItemId}", itemId);
+            var errorUpdatingCartItem = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(4002, "ErrorUpdatingCartItem"),
+                "Error updating cart item {ItemId}");
+
+            errorUpdatingCartItem(_logger, itemId, e);
 
             return Result.Fail($"Problem updating cart item {itemId}");
         }
@@ -165,7 +185,12 @@ public class CartService : ICartService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error deleting cart item {ItemId}", itemId);
+            var errorDeletingCartItem = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(4001, "ErrorDeletingCartItem"),
+                "Error deleting cart item {ItemId}");
+
+            errorDeletingCartItem(_logger, itemId, e);
 
             return Result.Fail($"Problem deleting cart item {itemId}");
         }
@@ -186,7 +211,12 @@ public class CartService : ICartService
         }
         catch (Exception e)
         {
-            _logger.LogError(e, "Error deleting cart of user {UserId}", userId);
+            var errorDeletingCart = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(4001, "ErrorDeletingCart"),
+                "Error deleting cart of user {UserId}");
+
+            errorDeletingCart(_logger, userId, e);
 
             return Result.Fail($"Problem deleting cart of user {userId}");
         }
@@ -195,14 +225,32 @@ public class CartService : ICartService
     }
 
     public async Task<Result<int>> GetCartItemsTotalAsync(int userId)
-        => userId < 1 || await _context.Users.FindAsync(userId) == null
-            ? Result.Fail<int>($"Problem getting cart total for user {userId}")
-            : Result.Success(await _context.CartItems.Where(ci => ci.UserId == userId).CountAsync());
+    {
+        try
+        {
+            return userId < 1 || await _context.Users.FindAsync(userId) == null
+                ? Result.Fail<int>($"Problem getting cart total for user {userId}")
+                : Result.Success(await _context.CartItems.Where(ci => ci.UserId == userId).CountAsync());
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<int>($"Error: {e.Message}");
+        }
+    }
 
     public async Task<Result<bool>> IsInCartAsync(int productId, int userId)
-        => userId < 1 || productId < 1 || await _context.Users.FindAsync(userId) == null
-            ? Result.Fail<bool>($"Error checking cart item presence for user {userId}, product {productId}")
-            : Result.Success(
-                await _context.CartItems.
-                    FirstOrDefaultAsync(ci => ci.ProductId == productId && ci.UserId == userId) != null);
+    {
+        try
+        {
+            return userId < 1 || productId < 1 || await _context.Users.FindAsync(userId) == null
+                ? Result.Fail<bool>($"Error checking cart item presence for user {userId}, product {productId}")
+                : Result.Success(
+                    await _context.CartItems.FirstOrDefaultAsync(ci =>
+                        ci.ProductId == productId && ci.UserId == userId) != null);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<bool>($"Error: {e.Message}");
+        }
+    }
 }

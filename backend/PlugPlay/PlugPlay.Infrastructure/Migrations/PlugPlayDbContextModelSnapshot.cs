@@ -214,7 +214,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_attributes");
 
-                    b.ToTable("attribute", (string)null);
+                    b.ToTable("attributes");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.CartItem", b =>
@@ -251,7 +251,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_cart_items_user_id");
 
-                    b.ToTable("cart_item", (string)null);
+                    b.ToTable("cart_items");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.Category", b =>
@@ -279,7 +279,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("ParentCategoryId")
                         .HasDatabaseName("ix_categories_parent_category_id");
 
-                    b.ToTable("category", (string)null);
+                    b.ToTable("categories");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.Order", b =>
@@ -291,10 +291,13 @@ namespace PlugPlay.Infrastructure.Migrations
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
-                    b.Property<string>("DeliveryAddress")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("delivery_address");
+                    b.Property<int?>("DeliveryAddressId")
+                        .HasColumnType("integer")
+                        .HasColumnName("delivery_address_id");
+
+                    b.Property<int>("DeliveryMethod")
+                        .HasColumnType("integer")
+                        .HasColumnName("delivery_method");
 
                     b.Property<decimal?>("DiscountAmount")
                         .HasColumnType("decimal(18,2)")
@@ -321,6 +324,10 @@ namespace PlugPlay.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("payment_processed");
 
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_status");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -333,6 +340,10 @@ namespace PlugPlay.Infrastructure.Migrations
                         .HasColumnType("bigint")
                         .HasColumnName("transaction_id");
 
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
                     b.Property<int?>("UserId")
                         .HasColumnType("integer")
                         .HasColumnName("user_id");
@@ -340,10 +351,13 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasKey("Id")
                         .HasName("pk_orders");
 
+                    b.HasIndex("DeliveryAddressId")
+                        .HasDatabaseName("ix_orders_delivery_address_id");
+
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_orders_user_id");
 
-                    b.ToTable("order", (string)null);
+                    b.ToTable("orders");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.OrderItem", b =>
@@ -380,7 +394,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("ProductId")
                         .HasDatabaseName("ix_order_items_product_id");
 
-                    b.ToTable("order_item", (string)null);
+                    b.ToTable("order_items");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.Product", b =>
@@ -425,7 +439,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("CategoryId")
                         .HasDatabaseName("ix_products_category_id");
 
-                    b.ToTable("product", (string)null);
+                    b.ToTable("products");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.ProductAttribute", b =>
@@ -459,7 +473,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("ProductId")
                         .HasDatabaseName("ix_product_attributes_product_id");
 
-                    b.ToTable("product_attribute", (string)null);
+                    b.ToTable("product_attributes");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.ProductImage", b =>
@@ -487,7 +501,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("ProductId")
                         .HasDatabaseName("ix_product_images_product_id");
 
-                    b.ToTable("product_image", (string)null);
+                    b.ToTable("product_images");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.Review", b =>
@@ -533,7 +547,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_reviews_user_id");
 
-                    b.ToTable("review", (string)null);
+                    b.ToTable("reviews");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.User", b =>
@@ -541,7 +555,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
-                        .HasColumnName("user_id");
+                        .HasColumnName("id");
 
                     NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<int>("Id"));
 
@@ -653,7 +667,7 @@ namespace PlugPlay.Infrastructure.Migrations
                         .IsUnique()
                         .HasDatabaseName("user_name_index");
 
-                    b.ToTable("user", (string)null);
+                    b.ToTable("asp_net_users", (string)null);
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.UserAddress", b =>
@@ -695,7 +709,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_user_addresses_user_id");
 
-                    b.ToTable("user_address", (string)null);
+                    b.ToTable("user_addresses");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.UserRefreshToken", b =>
@@ -752,7 +766,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_user_refresh_tokens_user_id");
 
-                    b.ToTable("user_refresh_token", (string)null);
+                    b.ToTable("user_refresh_tokens");
                 });
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.WishList", b =>
@@ -781,7 +795,7 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.HasIndex("UserId")
                         .HasDatabaseName("ix_wish_list_user_id");
 
-                    b.ToTable("wishlist", (string)null);
+                    b.ToTable("wish_list");
                 });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<int>", b =>
@@ -875,11 +889,19 @@ namespace PlugPlay.Infrastructure.Migrations
 
             modelBuilder.Entity("PlugPlay.Domain.Entities.Order", b =>
                 {
+                    b.HasOne("PlugPlay.Domain.Entities.UserAddress", "DeliveryAddress")
+                        .WithMany("Orders")
+                        .HasForeignKey("DeliveryAddressId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_orders_user_addresses_delivery_address_id");
+
                     b.HasOne("PlugPlay.Domain.Entities.User", "User")
                         .WithMany("Orders")
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.SetNull)
                         .HasConstraintName("fk_orders_asp_net_users_user_id");
+
+                    b.Navigation("DeliveryAddress");
 
                     b.Navigation("User");
                 });
@@ -1056,6 +1078,11 @@ namespace PlugPlay.Infrastructure.Migrations
                     b.Navigation("UserAddresses");
 
                     b.Navigation("WishLists");
+                });
+
+            modelBuilder.Entity("PlugPlay.Domain.Entities.UserAddress", b =>
+                {
+                    b.Navigation("Orders");
                 });
 #pragma warning restore 612, 618
         }

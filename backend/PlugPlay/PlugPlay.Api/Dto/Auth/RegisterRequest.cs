@@ -1,3 +1,4 @@
+using PlugPlay.Domain.Entities;
 using System.ComponentModel.DataAnnotations;
 
 namespace PlugPlay.Api.Dto.Auth;
@@ -17,4 +18,15 @@ public class RegisterRequest
     public string LastName { get; set; }
 
     public string PhoneNumber { get; set; }
+
+    public static User MapUser(RegisterRequest request)
+    {
+        return new User
+        {
+            Email = request.Email,
+            FirstName = request.FirstName,
+            LastName = request.LastName,
+            PhoneNumber = request.PhoneNumber
+        };
+    }
 }

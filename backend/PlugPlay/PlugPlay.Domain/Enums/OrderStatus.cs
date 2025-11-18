@@ -6,4 +6,5 @@ public enum OrderStatus
     Approved = 1,
     Collected = 2,
     Delivered = 3,
+    Cancelled = 4,
 }

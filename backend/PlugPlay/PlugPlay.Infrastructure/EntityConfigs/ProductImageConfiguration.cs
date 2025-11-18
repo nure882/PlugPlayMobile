@@ -8,9 +8,8 @@ public class ProductImageConfiguration : IEntityTypeConfiguration<ProductImage>
 {
     public void Configure(EntityTypeBuilder<ProductImage> builder)
     {
-        builder.ToTable("product_image");
-
         builder.HasKey(pi => pi.Id);
+        builder.Property(pi => pi.Id);
 
         builder.Property(pi => pi.ImageUrl)
             .IsRequired()
