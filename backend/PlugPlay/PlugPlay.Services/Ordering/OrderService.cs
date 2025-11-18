@@ -35,7 +35,15 @@ public class OrderService : IOrderService
             var user = await _context.Users.FindAsync(orderReq.UserId);
             if (user == null)
             {
-                return Result.Fail<OrderResponse>($"No user {orderReq.UserId} specified in order request");
+                return Result.Fail<OrderResponse>(
+                    $"No user {orderReq.UserId} specified in order request");
+            }
+
+            var address = await _context.UserAddresses.FindAsync(orderReq.DeliveryAddressId);
+            if (address == null)
+            {
+                return Result.Fail<OrderResponse>(
+                    $"No address {orderReq.DeliveryAddressId} specified in order request");
             }
 
             var newOrder = new Order
