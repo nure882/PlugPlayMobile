@@ -105,7 +105,6 @@ const ProductDetail = () => {
 
   const purchaseUnavailable = product.stockQuantity === 0 || isInCart;
 
-  // Mock delivery options
   const deliveryOptions = [
     {
       icon: 'Truck',
@@ -174,7 +173,7 @@ const ProductDetail = () => {
                   return (
                     <div className="flex items-center gap-2 mt-1">
                       <div className="flex items-center gap-0.5">
-                        {Array.from({ length: 5 }).map((_, i) => (
+                        {Array.from({length: 5}).map((_, i) => (
                           <Star
                             key={i}
                             size={18}
@@ -280,14 +279,14 @@ const ProductDetail = () => {
           </p>
         </div>
 
-            {/* Product attributes (clickable multi-select pills) */}
-            <ProductAttributes
-              categoryId={product.category?.id ?? 0}
-              productId={product.id}
-              onSelectionChange={(sel) => console.log('Attribute selection:', sel)}
-            />
+        {/* Product attributes (clickable multi-select pills) */}
+        <ProductAttributes
+          categoryId={product.category?.id ?? 0}
+          productId={product.id}
+          onSelectionChange={(sel) => console.log('Attribute selection:', sel)}
+        />
 
-            <ReviewList reviews={product.reviews ?? []} />
+        <ReviewList reviews={product.reviews ?? []}/>
 
       </div>
     </div>

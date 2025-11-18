@@ -1,5 +1,5 @@
-import { ReactNode, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import {ReactNode, useState} from 'react';
+import {ChevronDown} from 'lucide-react';
 
 type Props = {
   title: string;
@@ -8,7 +8,7 @@ type Props = {
   defaultOpen?: boolean;
 };
 
-export default function AccordionSection({ title, subtitle, children, defaultOpen = false }: Props) {
+export default function AccordionSection({title, subtitle, children, defaultOpen = false}: Props) {
   const [open, setOpen] = useState(defaultOpen);
 
   return (

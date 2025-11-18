@@ -1,15 +1,15 @@
-import { configureStore } from '@reduxjs/toolkit'
-import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux'
-import { persistStore, persistReducer } from 'redux-persist'
+import {configureStore} from '@reduxjs/toolkit'
+import {TypedUseSelectorHook, useDispatch, useSelector} from 'react-redux'
+import {persistStore, persistReducer} from 'redux-persist'
 import storage from 'redux-persist/lib/storage'
-import { baseApi } from '../api/baseApi.ts'
-import { combineReducers } from '@reduxjs/toolkit'
+import {baseApi} from '../api/baseApi.ts'
+import {combineReducers} from '@reduxjs/toolkit'
 import filterReducer from '../app/slices/filterSlice.ts'
 
 const persistConfig = {
   key: 'root',
   storage,
-  whitelist: ['filter'], // Persist filter state
+  whitelist: ['filter'],
 };
 
 const rootReducer = combineReducers({

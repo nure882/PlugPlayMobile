@@ -2,7 +2,6 @@ import React, {createContext, useContext, useEffect, useState} from 'react';
 import {User} from '../models/User.ts';
 import {storage} from '../utils/StorageService.ts';
 import {useVerifyQuery, useLogoutMutation} from '../api/authApi.ts';
-// import {s} from "../utils/useful.ts";
 
 interface AuthContextType {
   user: User | null;
@@ -17,11 +16,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}) => {
   const [user, setUser] = useState<User | null>(null);
 
-  const hasToken = !!storage.getAccessToken() // && storage.hasValidToken();
-  // s(`access token: ${storage.getAccessToken()}`);
-  // s(`refresh token: ${storage.getRefreshToken()}`);
-  // s(`hasToken: ${hasToken}`);
-  // s(`user: ${user}`);
+  const hasToken = !!storage.getAccessToken();
 
   const {data, isFetching, isError} = useVerifyQuery(undefined, {skip: !hasToken});
   const [logoutApi, {isLoading: isLoggingOut}] = useLogoutMutation();
@@ -30,17 +25,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
     if (data) {
       setUser(data);
     } else if (!isFetching && !data) {
-      // No verified user
-      if (!hasToken) {
-        // storage.clearTokens();
-        // s("hui")
-      }
-      // setUser(null);
     }
 
     if (isError) {
       storage.clearTokens();
-      // s("nia");
       setUser(null);
     }
   }, [data, isFetching, isError, hasToken]);
@@ -52,7 +40,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({children}
         await logoutApi({refreshToken}).unwrap();
       }
     } catch (e) {
-      // ignore server errors on logout
     } finally {
       storage.clearTokens();
       setUser(null);

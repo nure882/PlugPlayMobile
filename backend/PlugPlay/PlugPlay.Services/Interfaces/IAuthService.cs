@@ -21,5 +21,6 @@ public interface IAuthService
 
     Task<Result<User>> GetUserAsync(int userId);
 
-    Task<Result<User>> GetOrCreateUser(string payloadEmail, string payloadName, string payloadSubject);
+    Task<Result<User>> GetOrCreateUser(
+        string payloadEmail, string payloadGivenName, string familyName, string payloadSubject);
 }

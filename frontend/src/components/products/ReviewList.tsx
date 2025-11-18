@@ -1,11 +1,11 @@
-import { Review } from '../../models/Review';
+import {Review} from '../../models/Review';
 import ReviewItem from './ReviewItem';
 
 interface ReviewListProps {
   reviews: Review[];
 }
 
-const ReviewList = ({ reviews }: ReviewListProps) => {
+const ReviewList = ({reviews}: ReviewListProps) => {
   if (!reviews || reviews.length === 0) {
     return (
       <div className="bg-white border border-gray-200 rounded-lg p-6 mt-8">
@@ -23,7 +23,7 @@ const ReviewList = ({ reviews }: ReviewListProps) => {
         {[...reviews]
           .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
           .map(review => (
-            <ReviewItem key={review.id} review={review} />
+            <ReviewItem key={review.id} review={review}/>
           ))}
       </ul>
     </div>

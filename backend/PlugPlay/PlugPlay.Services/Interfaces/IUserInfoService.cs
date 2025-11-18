@@ -6,7 +6,7 @@ namespace PlugPlay.Services.Interfaces
 {
     public interface IUserInfoService
     {
-        Task<User> GetUserInfoByIdAsync(int id);
+        Task<Result<User>> GetUserInfoByIdAsync(int id);
 
         Task<bool> UpdateUserAsync(int userId, UserInfoDto dto);
 

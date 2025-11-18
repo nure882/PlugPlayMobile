@@ -1,8 +1,8 @@
 import {ChevronDown, ChevronUp, X} from 'lucide-react';
 import {useState, useEffect} from 'react';
 import AttributeGroup from "../../models/AttributeGroup.ts";
-import { resetFilters } from '../../app/slices/filterSlice.ts';
-import { useDispatch } from 'react-redux';
+import {resetFilters} from '../../app/slices/filterSlice.ts';
+import {useDispatch} from 'react-redux';
 
 export interface DynamicFilters {
   [attributeId: string]: string[];
@@ -64,9 +64,9 @@ export default function DynamicFiltersSidebar({
   const commitPriceRange = () => {
     const min = Number(minInput) || 0;
     const max = Number(maxInput) || 5000;
-    
+
     if (min >= 0 && max > min) {
-      setPriceRange({ min, max });
+      setPriceRange({min, max});
     }
   };
 
@@ -93,10 +93,10 @@ export default function DynamicFiltersSidebar({
   const handleFilterChange = (attributeId: number, value: string) => {
     const key = attributeId.toString();
     const existing = filters[key] || [];
-    const updated = existing.includes(value) 
-      ? existing.filter((v) => v !== value) 
+    const updated = existing.includes(value)
+      ? existing.filter((v) => v !== value)
       : [...existing, value];
-    
+
     setFilters({
       ...filters,
       [key]: updated,
@@ -122,7 +122,7 @@ export default function DynamicFiltersSidebar({
         return pa.numValue?.toString();
       }
     }).filter(v => v != null) as string[];
-    
+
     return Array.from(new Set(values)).sort((a, b) => {
       if (group.dataType === 'decimal' || group.dataType === 'num') {
         return parseFloat(a) - parseFloat(b);
@@ -135,7 +135,7 @@ export default function DynamicFiltersSidebar({
     <>
       {/* Mobile/Tablet Overlay */}
       {isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
           onClick={onClose}
         />
@@ -154,7 +154,7 @@ export default function DynamicFiltersSidebar({
           onClick={onClose}
           className="lg:hidden absolute top-4 right-4 p-2 text-gray-500 hover:text-gray-700 z-10"
         >
-          <X className="w-6 h-6" />
+          <X className="w-6 h-6"/>
         </button>
 
         <div className="sticky top-0 bg-white border-b border-gray-200 px-4 sm:px-6 py-4 z-10">
@@ -207,7 +207,9 @@ export default function DynamicFiltersSidebar({
                         value={minInput}
                         onChange={(e) => setMinInput(e.target.value)}
                         onBlur={commitPriceRange}
-                        onKeyDown={(e) => { if (e.key === 'Enter') commitPriceRange(); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitPriceRange();
+                        }}
                         className="w-full pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="0"
                         min="0"
@@ -223,7 +225,9 @@ export default function DynamicFiltersSidebar({
                         value={maxInput}
                         onChange={(e) => setMaxInput(e.target.value)}
                         onBlur={commitPriceRange}
-                        onKeyDown={(e) => { if (e.key === 'Enter') commitPriceRange(); }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') commitPriceRange();
+                        }}
                         className="w-full pl-3 sm:pl-4 pr-2 sm:pr-3 py-2 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                         placeholder="5000"
                         min="0"

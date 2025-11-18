@@ -24,8 +24,13 @@ public class JwtService : IJwtService
 
     public string GenerateToken(User user)
     {
-        _logger.LogInformation("Generating JWT token for user ID: {UserId}", user.Id);
-        
+        var generatingJwtToken = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1000, "GeneratingJwtToken"),
+            "Generating JWT token for user ID: {UserId}");
+
+        generatingJwtToken(_logger, user.Id, null);
+
         var claims = new[]
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
@@ -46,8 +51,13 @@ public class JwtService : IJwtService
             expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"])),
             signingCredentials: creds);
 
-        _logger.LogInformation("Successfully generated JWT token for user ID: {UserId}", user.Id);
-      
+        var jwtTokenGenerated = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1002, "JwtTokenGenerated"),
+            "Successfully generated JWT token for user ID: {UserId}");
+
+        jwtTokenGenerated(_logger, user.Id, null);
+
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 

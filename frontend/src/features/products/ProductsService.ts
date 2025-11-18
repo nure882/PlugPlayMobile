@@ -30,7 +30,6 @@ class ProductsService {
   /**
    * Build filter string from attribute filters
    */
-  // ...existing code...
   buildFilterString(attributeFilters?: Record<string, string[]>): string | undefined {
     if (!attributeFilters || Object.keys(attributeFilters).length === 0) {
       return undefined;
@@ -122,13 +121,13 @@ class ProductsService {
     const isLoading = isLoadingFiltered || isLoadingAttributes;
     const isError = isErrorFiltered || isErrorAttributes;
 
-    console.log('[ProductsService] Results:', {
-      productsCount: products.length,
-      isLoading,
-      isError,
-      attributeGroupsCount: attributeGroups.length,
-      productIdsKey,
-    });
+    // console.log('[ProductsService] Results:', {
+    //   productsCount: products.length,
+    //   isLoading,
+    //   isError,
+    //   attributeGroupsCount: attributeGroups.length,
+    //   productIdsKey,
+    // });
 
     return {
       products,

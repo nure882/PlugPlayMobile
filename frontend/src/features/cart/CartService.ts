@@ -11,7 +11,6 @@ import {
 import { storage } from "../../utils/StorageService.ts";
 import { useMemo } from "react";
 import { skipToken } from '@reduxjs/toolkit/query';
-import { useState} from "react";
 
 class CartService {
   useCart(userId?: number): { cartItems: CartItem[], isLoading: boolean, isError: boolean, refetch: () => void } {
@@ -27,33 +26,25 @@ class CartService {
     const stored = storage.getGuestCart();
     const cartItems = useMemo(() => {
       if (userId) {
-        console.log(`[CartService] getting items from api for user/${userId}`)
+        // console.log(`[CartService] getting items from api for user/${userId}`)
         return cartItemsFromApi;
       } 
 
       return stored;
     }, [cartItemsFromApi, stored, userId]);
 
-    //temporary solution for rerendering guest cart
-    const [version, setVersion] = useState(0);
-
     const refetchCart = () => {
       if (userId) {
-        console.log("[CartService] refetch api cart")
+        // console.log("[CartService] refetch api cart")
         refetchApiCart();
-      }
-      else {
-        console.log("[CartService] refetch cart with version")
-        setVersion((v) => v + 1);
-      }
-    };
+    }};
 
-    console.log('[CartService] Results:', {
-      cartItemsCount: cartItems.length,
-      isLoading,
-      isError,
-      cartItems,
-    });
+    // console.log('[CartService] Results:', {
+    //   cartItemsCount: cartItems.length,
+    //   isLoading,
+    //   isError,
+    //   cartItems,
+    // });
 
     return { cartItems, isLoading, isError, refetch: refetchCart };
   }

@@ -15,11 +15,9 @@ export const handleGoogleSuccess = async (credentialResponse: any) => {
       });
 
     const data = await response.json();
-    // console.log(data);
     storage.setTokens(data.token, data.refreshToken);
 
     return data.user;
-    // console.log('Login successful:', data.user);
   } catch (error) {
     console.error('Login failed:', error);
   }

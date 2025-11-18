@@ -47,7 +47,6 @@ builder.Services.AddCors(options =>
     });
 });
 builder.Services.AddControllers();
-builder.Services.RegisterAutomapper();
 builder.Services.RegisterCloudinary(builder.Configuration["Cloudinary:Cloud"],
     builder.Configuration["Cloudinary:ApiKey"], builder.Configuration["Cloudinary:ApiSecret"]);
 
@@ -122,7 +121,6 @@ builder.Services.AddAuthentication(options =>
 builder.WebHost.ConfigureKestrel(options => { options.AddServerHeader = false; });
 builder.Services.AddAuthorization();
 builder.Services.RegisterServices();
-builder.Services.RegisterAutomapper();
 builder.Services.Configure<LiqPaySettings>(builder.Configuration.GetSection("LiqPay"));
 
 builder.Logging.ClearProviders();

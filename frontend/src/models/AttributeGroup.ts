@@ -11,4 +11,5 @@ interface AttributeGroup {
     numValue?: number;
   }>;
 }
+
 export default AttributeGroup;

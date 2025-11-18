@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Extensions;
 using PlugPlay.Services.Dto;
 using PlugPlay.Services.Interfaces;
@@ -23,12 +24,19 @@ public class UserInfoController : ControllerBase
     public async Task<IActionResult> GetUserByToken(string token)
     {
         _logger.LogInformation("Getting user by token");
-        
+
         var userResult = await _userInfoService.GetUserByTokenAsync(token);
         userResult.OnFailure(() =>
                 _logger.LogWarning("Failed to get user by token: {Error}", userResult.Error))
             .OnSuccess(() =>
-                _logger.LogInformation("Successfully retrieved user ID: {UserId} by token", userResult.Value.Id));
+            {
+                var userRetrievedByToken = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(3001, "UserRetrievedByToken"),
+                    "Successfully retrieved user ID: {UserId} by token");
+
+                userRetrievedByToken(_logger, userResult.Value.Id, null);
+            });
         if (userResult.Failure)
         {
             return BadRequest("No such user");
@@ -43,44 +51,83 @@ public class UserInfoController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetUserInfoById(int id)
     {
-        _logger.LogInformation("Getting user info for user ID: {UserId}", id);
-        
-        try
-        {
-            var user = await _userInfoService.GetUserInfoByIdAsync(id);
-            UserInfoDto userInfo = UserInfoDto.MapUser(user);
+        var gettingUserInfo = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(3000, "GettingUserInfo"),
+            "Getting user info for user ID: {UserId}");
 
-            _logger.LogInformation("Successfully retrieved user info for user ID: {UserId}", id);
-            
-            return Ok(userInfo);
-        }
-        catch (KeyNotFoundException ex)
+        gettingUserInfo(_logger, id, null);
+
+        var result = await _userInfoService.GetUserInfoByIdAsync(id);
+
+        result.OnSuccess(() =>
         {
-            _logger.LogWarning(ex, "User with ID {UserId} not found", id);
-            
-            return NotFound(new { message = ex.Message });
+            var userInfoRetrieved = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(3002, "UserInfoRetrieved"),
+                "Successfully retrieved user info for user ID: {UserId}");
+
+            userInfoRetrieved(_logger, id, null);
+        });
+
+        result.OnFailure(() =>
+        {
+            var userNotFound = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(3001, "UserNotFound"),
+                "User with ID {UserId} not found");
+
+            userNotFound(_logger, id, null);
+        });
+
+        if (result.Failure)
+        {
+            return NotFound(new { message = result.Error });
         }
+
+        User user = result.Value;
+        UserInfoDto userInfo = UserInfoDto.MapUser(user);
+
+        return Ok(userInfo);
     }
 
     [HttpPut("{id:int}")]
     public async Task<IActionResult> UpdateUserById(int id, [FromBody] UserInfoDto dto)
     {
-        _logger.LogInformation("Updating user with ID: {UserId}", id);
+        var updatingUser = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(3000, "UpdatingUser"),
+            "Updating user with ID: {UserId}");
+
+        updatingUser(_logger, id, null);
 
         try
         {
-            var result = await _userInfoService.UpdateUserAsync(id, dto);
-            
-            _logger.LogInformation("Successfully updated user with ID: {UserId}", id);
+            bool success = await _userInfoService.UpdateUserAsync(id, dto);
+            if (success)
+            {
+                var userUpdated = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(3002, "UserUpdated"),
+                    "Successfully updated user with ID: {UserId}");
 
-            return Ok("User updated successfully.");
+                userUpdated(_logger, id, null);
+
+                return Ok("User updated successfully.");
+            }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            _logger.LogError(ex, "Error updating user with ID: {UserId}", id);
-           
-            return BadRequest(new { message = ex.Message });
         }
+
+        var errorUpdatingUser = LoggerMessage.Define<int>(
+            LogLevel.Error,
+            new EventId(3001, "ErrorUpdatingUser"),
+            "Error updating user with ID: {UserId}");
+
+        errorUpdatingUser(_logger, id, null);
+
+        return BadRequest(new { message = "Failed to update user" });
     }
 
     [HttpPut("{token}")]
@@ -93,7 +140,14 @@ public class UserInfoController : ControllerBase
         userResult.OnFailure(() =>
                 _logger.LogWarning("Failed to get user by token: {Error}", userResult.Error))
             .OnSuccess(() =>
-                _logger.LogInformation("Successfully retrieved user ID: {UserId} by token", userResult.Value.Id));
+            {
+                var userRetrievedByToken = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(3002, "UserRetrievedByToken"),
+                    "Successfully retrieved user ID: {UserId} by token");
+
+                userRetrievedByToken(_logger, userResult.Value.Id, null);
+            });
 
         if (userResult.Failure)
         {
@@ -101,20 +155,41 @@ public class UserInfoController : ControllerBase
         }
 
         int id = userResult.Value.Id;
+
+        var updatingUserByToken = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(3000, "UpdatingUserByToken"),
+            "Updating user with ID: {UserId}");
+
+        updatingUserByToken(_logger, id, null);
+
         try
         {
-            _logger.LogInformation("Updating user with ID: {UserId}", id);
-            var result = await _userInfoService.UpdateUserAsync(id, dto);
+            var success = await _userInfoService.UpdateUserAsync(id, dto);
 
-            _logger.LogInformation("Successfully updated user with ID: {UserId}", id);
+            if (success)
+            {
+                var userUpdatedByToken = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(3002, "UserUpdatedByToken"),
+                    "Successfully updated user with ID: {UserId}");
 
-            return Ok("User updated successfully.");
+                userUpdatedByToken(_logger, id, null);
+
+                return Ok("User updated successfully.");
+            }
         }
-        catch (Exception ex)
+        catch (Exception e)
         {
-            _logger.LogError(ex, "Error updating user with ID: {UserId}", id);
-
-            return BadRequest(new { message = ex.Message });
         }
+
+        var errorUpdatingUserByToken = LoggerMessage.Define<int>(
+            LogLevel.Error,
+            new EventId(3001, "ErrorUpdatingUserByToken"),
+            "Error updating user with ID: {UserId}");
+
+        errorUpdatingUserByToken(_logger, id, null);
+
+        return BadRequest(new { message = "Failed to retrieve user by token" });
     }
 }

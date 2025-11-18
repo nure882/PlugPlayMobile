@@ -1,9 +1,9 @@
 import {useState} from 'react';
 import {useNavigate, Link} from 'react-router-dom';
 import {GoogleLogin} from "@react-oauth/google";
-import { useLoginMutation} from "../api/authApi.ts";
+import {useLoginMutation} from "../api/authApi.ts";
 import {storage} from "../utils/StorageService.ts";
-import { useAuth } from '../context/AuthContext.tsx';
+import {useAuth} from '../context/AuthContext.tsx';
 import {handleGoogleError, handleGoogleSuccess} from "../features/auth/googleHelper.ts";
 
 export default function SignIn() {
@@ -12,7 +12,7 @@ export default function SignIn() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  const { setUser } = useAuth();
+  const {setUser} = useAuth();
 
   const [login] = useLoginMutation();
 
@@ -28,21 +28,24 @@ export default function SignIn() {
 
     if (!email || !password) {
       setError('All fields are required');
+
       return;
     }
 
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
+
       return;
     }
 
     if (password.length < 6) {
       setError('Password must be at least 6 characters');
+
       return;
     }
 
     try {
-      const data = await login({ email, password }).unwrap();
+      const data = await login({email, password}).unwrap();
 
       storage.setTokens(data.token, data.refreshToken);
       setUser(data.user);
@@ -77,7 +80,7 @@ export default function SignIn() {
 
   return (
     <div className="min-h-screen bg-white">
-      
+
       <div className="flex items-center justify-center px-4">
         <div className="w-full max-w-md py-10">
           <div className="text-center mb-8">

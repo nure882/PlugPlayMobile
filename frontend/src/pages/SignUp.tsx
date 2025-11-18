@@ -50,47 +50,52 @@ export default function SignUp() {
     };
     setFieldErrors(newFieldErrors);
 
-    // required fields
     if (!firstName || !lastName || !phone || !email || !password || !confirmPassword) {
       setError('All fields are required');
       setIsLoading(false);
+
       return;
     }
 
-    // per-field validations (keep existing messages)
     if (!validateName(firstName)) {
       setError('First name must contain only Latin/Cyrillic letters and numbers, 2-30 characters');
       setIsLoading(false);
+
       return;
     }
 
     if (!validateName(lastName)) {
       setError('Last name must contain only Latin/Cyrillic letters and numbers, 2-30 characters');
       setIsLoading(false);
+
       return;
     }
 
     if (!validatePhone(phone)) {
       setError('Please enter a valid international phone number (e.g., +380123456789)');
       setIsLoading(false);
+
       return;
     }
 
     if (!validateEmail(email)) {
       setError('Please enter a valid email address');
       setIsLoading(false);
+
       return;
     }
 
     if (!validatePassword(password)) {
       setError('Password must contain at least 8 characters including: 1 digit, 1 lowercase letter, 1 uppercase letter, 1 special character, and at least 1 unique character');
       setIsLoading(false);
+
       return;
     }
 
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       setIsLoading(false);
+
       return;
     }
 
@@ -98,6 +103,7 @@ export default function SignUp() {
     if (!isValid) {
       setError('Please fix validation errors');
       setIsLoading(false);
+
       return;
     }
 
@@ -158,7 +164,6 @@ export default function SignUp() {
       };
 
       const msg = extractMessage(err);
-      // s(msg);
       setError(msg);
     } finally {
       setIsLoading(false);
@@ -225,7 +230,7 @@ export default function SignUp() {
 
   return (
     <div className="min-h-screen bg-white">
-      
+
       <div className="flex items-center justify-center px-4">
         <div className="w-full max-w-md py-10">
           <div className="text-center mb-8">

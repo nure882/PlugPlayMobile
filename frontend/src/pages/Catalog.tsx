@@ -1,14 +1,14 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Loader2 } from 'lucide-react';
+import {useState, useEffect} from 'react';
+import {useNavigate} from 'react-router-dom';
+import {Loader2} from 'lucide-react';
 import ProductCard from '../components/products/ProductCard';
 import DynamicFiltersSidebar, {
   DynamicFilters,
   PriceRange,
   SortOption,
 } from '../components/products/DynamicFilterSidebar';
-import { useProductsService } from '../features/products/ProductsService';
-import { useAppDispatch, useAppSelector } from '../app/configureStore';
+import {useProductsService} from '../features/products/ProductsService';
+import {useAppDispatch, useAppSelector} from '../app/configureStore';
 import {
   setAttributeFilters,
   setPriceRange,
@@ -22,15 +22,15 @@ const Catalog = () => {
 
   const {
     selectedCategory,
-    priceRange = { min: 0, max: 5000 },
+    priceRange = {min: 0, max: 5000},
     attributeFilters = {},
-    sortOption = { value: 'price-asc', label: 'Price (Low to High)' },
+    sortOption = {value: 'price-asc', label: 'Price (Low to High)'},
   } = useAppSelector((state) => state.filter || {});
 
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [visibleCount, setVisibleCount] = useState(20);
 
-  const { products, attributeGroups, isLoading, isError, refetch } = useProductsService({
+  const {products, attributeGroups, isLoading, isError, refetch} = useProductsService({
     categoryId: selectedCategory,
     minPrice: priceRange.min,
     maxPrice: priceRange.max,
@@ -70,7 +70,7 @@ const Catalog = () => {
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600"/>
             <p className="text-gray-600">Loading catalog...</p>
           </div>
         </div>
@@ -119,10 +119,12 @@ const Catalog = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
         {/* Desktop Sidebar - hidden on mobile, visible on desktop */}
-        <aside className="hidden lg:block lg:w-80 flex-shrink-0 bg-white border-r border-gray-200 sticky top-0 h-screen overflow-y-auto">
+        <aside
+          className="hidden lg:block lg:w-80 flex-shrink-0 bg-white border-r border-gray-200 sticky top-0 h-screen overflow-y-auto">
           <DynamicFiltersSidebar
             isOpen={true}
-            onClose={() => {}}
+            onClose={() => {
+            }}
             filters={attributeFilters}
             setFilters={handleSetFilters}
             priceRange={priceRange}
@@ -160,7 +162,8 @@ const Catalog = () => {
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
               </svg>
               <span className="font-medium">Filters & Sort</span>
             </button>

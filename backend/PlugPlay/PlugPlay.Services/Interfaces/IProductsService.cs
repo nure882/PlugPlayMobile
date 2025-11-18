@@ -9,7 +9,7 @@ namespace PlugPlay.Services.Interfaces
     {
         Task<IEnumerable<Product>> GetAllProductsAsync();
 
-        Task<Product> GetProductByIdAsync(int id);
+        Task<Result<Product>> GetProductByIdAsync(int id);
 
         Task<Result<IEnumerable<Product>>> GetAvailableProductsAsync();
 
