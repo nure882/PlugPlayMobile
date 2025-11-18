@@ -41,7 +41,12 @@ public class ProductsController : ControllerBase
         var products = await _productsService.GetAllProductsAsync();
         var productDtos = products.Select(MapProduct);
 
-        _logger.LogInformation("Successfully retrieved {Count} products", products.Count());
+        var productsRetrieved = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(2001, "ProductsRetrieved"),
+            "Successfully retrieved {Count} products");
+
+        productsRetrieved(_logger, products.Count(), null);
 
         return Ok(productDtos);
     }
@@ -49,11 +54,22 @@ public class ProductsController : ControllerBase
     [HttpGet("available")]
     public async Task<IActionResult> GetAllAvailableProducts()
     {
-        _logger.LogInformation("Getting all products");
+        _logger.LogInformation("Getting all available products");
 
         var result = await _productsService.GetAvailableProductsAsync();
         result.OnSuccess(() =>
-            _logger.LogInformation("Successfully retrieved {Count} products", result.Value.Count()));
+        {
+            var productsRetrievedResult = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(2002, "ProductsRetrievedResult"),
+                "Successfully retrieved {Count} products");
+
+            productsRetrievedResult(_logger, result.Value.Count(), null);
+        });
+        if (result.Failure)
+        {
+            return StatusCode(200, new List<Product>());
+        }
 
         var productDtos = result.Value.Select(MapProduct).ToList();
 
@@ -171,23 +187,44 @@ public class ProductsController : ControllerBase
     [HttpGet("{id:int}")]
     public async Task<IActionResult> GetProductById(int id)
     {
-        _logger.LogInformation("Getting product by ID: {ProductId}", id);
+        var gettingProductById = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(2000, "GettingProductById"),
+            "Getting product by ID: {ProductId}");
 
-        try
+        gettingProductById(_logger, id, null);
+
+        var result = await _productsService.GetProductByIdAsync(id);
+
+        result.OnSuccess(() =>
         {
-            var product = await _productsService.GetProductByIdAsync(id);
-            var productDto = MapProduct(product);
+            var productRetrieved = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(2001, "ProductRetrieved"),
+                "Successfully retrieved product with ID: {ProductId}");
 
-            _logger.LogInformation("Successfully retrieved product with ID: {ProductId}", id);
+            productRetrieved(_logger, id, null);
+        });
 
-            return Ok(productDto);
-        }
-        catch (KeyNotFoundException ex)
+        result.OnFailure(() =>
         {
-            _logger.LogWarning(ex, "Product with ID {ProductId} not found", id);
+            var productNotFound = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(2002, "ProductNotFound"),
+                "Product with ID {ProductId} not found");
 
-            return NotFound(new { message = ex.Message });
+            productNotFound(_logger, id, null);
+        });
+
+        if(result.Failure)
+        {
+            return NotFound(result.Error);
         }
+
+        var product = result.Value;
+        var productDto = MapProduct(product);
+
+        return Ok(productDto);
     }
 
     [HttpGet("search/{query}")]
@@ -205,17 +242,30 @@ public class ProductsController : ControllerBase
 
         if (page <= 0 || pageSize <= 0)
         {
-            _logger.LogWarning("Invalid paging parameters: page={Page}, pageSize={PageSize}", page, pageSize);
+            var invalidPagingParameters = LoggerMessage.Define<int, int>(
+                LogLevel.Warning,
+                new EventId(200, "InvalidPagingParameters"),
+                "Invalid paging parameters: page={Page}, pageSize={PageSize}");
+
+            invalidPagingParameters(_logger, page, pageSize, null);
 
             return StatusCode(400, "page and pageSize must be positive integers");
         }
 
         var result = await _productsService.SearchProductsAsync(new ProductSearchRequest
             { Query = query, Page = page, PageSize = pageSize });
-        result.OnSuccess(()
-                => _logger.LogInformation("Successfully found {Count} products", result.Value.Count()))
-            .OnFailure(()
-                => _logger.LogError($"{result.Error}"));
+        result.OnSuccess(() =>
+        {
+            var productsFound = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(2001, "ProductsFound"),
+                "Successfully found {Count} products");
+
+            productsFound(_logger, result.Value.Count(), null);
+        });
+       
+        result.OnFailure(() =>
+        _logger.LogError($"{result.Error}"));
 
         if (result.Failure)
         {
@@ -254,9 +304,24 @@ public class ProductsController : ControllerBase
         var result = await _productsService.AddImageAsync(
             productId, uploadResult.Url.AbsoluteUri);
         result.OnFailure(() =>
-                _logger.LogError("Failed to add image for product {ProductId}", productId))
-            .OnSuccess(() =>
-                _logger.LogInformation("Added image for product {ProductId}", productId));
+        {
+            var failedToAddProductImage = LoggerMessage.Define<int>(
+                LogLevel.Error,
+                new EventId(2001, "FailedToAddProductImage"),
+                "Failed to add image for product {ProductId}");
+
+            failedToAddProductImage(_logger, productId, null);
+        });
+
+        result.OnSuccess(() =>
+        {
+            var productImageAdded = LoggerMessage.Define<int>(
+                LogLevel.Information,
+                new EventId(2002, "ProductImageAdded"),
+                "Added image for product {ProductId}");
+
+            productImageAdded(_logger, productId, null);
+        });
 
         return Ok();
     }

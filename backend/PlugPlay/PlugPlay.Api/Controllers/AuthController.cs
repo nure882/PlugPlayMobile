@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using AutoMapper;
 using Google.Apis.Auth.OAuth2.Requests;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -18,17 +17,13 @@ public class AuthController : ControllerBase
 {
     private readonly IAuthService _authService;
 
-    private readonly IMapper _mapper;
-
     private readonly IConfiguration _configuration;
 
     private readonly ILogger<AuthController> _logger;
 
-    public AuthController(IAuthService authService, IMapper mapper, IConfiguration configuration,
-        ILogger<AuthController> logger)
+    public AuthController(IAuthService authService, IConfiguration configuration, ILogger<AuthController> logger)
     {
         _authService = authService;
-        _mapper = mapper;
         _configuration = configuration;
         _logger = logger;
     }
@@ -57,26 +52,33 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = userResult.Error });
         }
 
-        (string, string) tokens = await _authService.GenerateTokens(userResult.Value);
-        var tokenExpiration = DateTime.UtcNow.AddMinutes(
-            Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
-        var response = new LoginResponse
+        try
         {
-            Token = tokens.Item1,
-            RefreshToken = tokens.Item2,
-            Expiration = tokenExpiration,
-            User = new UserDto
+            (string, string) tokens = await _authService.GenerateTokens(userResult.Value);
+            var tokenExpiration = DateTime.UtcNow.AddMinutes(
+                Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
+            var response = new LoginResponse
             {
-                Id = userResult.Value.Id,
-                Email = userResult.Value.Email,
-                FirstName = userResult.Value.FirstName,
-                LastName = userResult.Value.LastName
-            }
-        };
+                Token = tokens.Item1,
+                RefreshToken = tokens.Item2,
+                Expiration = tokenExpiration,
+                User = new UserDto
+                {
+                    Id = userResult.Value.Id,
+                    Email = userResult.Value.Email,
+                    FirstName = userResult.Value.FirstName,
+                    LastName = userResult.Value.LastName
+                }
+            };
 
-        _logger.LogInformation("Successfully signed in user via Google: {Email}", payload.Email);
+            _logger.LogInformation("Successfully signed in user via Google: {Email}", payload.Email);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (Exception e)
+        {
+            return StatusCode(500, e.Message);
+        }
     }
 
     [HttpPost("register")]
@@ -98,13 +100,13 @@ public class AuthController : ControllerBase
             return BadRequest(ModelState);
         }
 
-        var user = _mapper.Map<User>(registerRequest);
+        var user = RegisterRequest.MapUser(registerRequest);
         user.Role = Role.User;
         var result = await _authService.RegisterAsync(user, registerRequest.Password,
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
         result.OnFailure(() =>
                 _logger.LogError("Registration failed for email: {Email}. Error: {Error}",
-                registerRequest.Email, result.Error))
+                    registerRequest.Email, result.Error))
             .OnSuccess(() =>
                 _logger.LogInformation("Successfully registered user with email: {Email}", registerRequest.Email));
         if (result.Failure)
@@ -136,26 +138,33 @@ public class AuthController : ControllerBase
             return Unauthorized(new { Message = validationResult.Error });
         }
 
-        (string, string) tokens = await _authService.GenerateTokens(validationResult.Value);
-        var tokenExpiration = DateTime.UtcNow.AddMinutes(
-            Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
-        var response = new LoginResponse
+        try
         {
-            Token = tokens.Item1,
-            RefreshToken = tokens.Item2,
-            Expiration = tokenExpiration,
-            User = new UserDto
+            (string, string) tokens = await _authService.GenerateTokens(validationResult.Value);
+            var tokenExpiration = DateTime.UtcNow.AddMinutes(
+                Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
+            var response = new LoginResponse
             {
-                Id = validationResult.Value.Id,
-                Email = validationResult.Value.Email,
-                FirstName = validationResult.Value.FirstName,
-                LastName = validationResult.Value.LastName
-            }
-        };
+                Token = tokens.Item1,
+                RefreshToken = tokens.Item2,
+                Expiration = tokenExpiration,
+                User = new UserDto
+                {
+                    Id = validationResult.Value.Id,
+                    Email = validationResult.Value.Email,
+                    FirstName = validationResult.Value.FirstName,
+                    LastName = validationResult.Value.LastName
+                }
+            };
 
-        _logger.LogInformation("Successfully logged in user: {Email}", request.Email);
+            _logger.LogInformation("Successfully logged in user: {Email}", request.Email);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (Exception e)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+        }
     }
 
     [HttpPost("refresh")]
@@ -192,7 +201,12 @@ public class AuthController : ControllerBase
             }
         };
 
-        _logger.LogInformation("Successfully refreshed token for user ID: {UserId}", result.Value.Id);
+        var success = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(1002, "TokenRefreshedSuccess"),
+            "Successfully refreshed token for user ID: {UserId}");
+
+        success(_logger, result.Value.Id, null);
 
         return Ok(response);
     }
@@ -239,10 +253,24 @@ public class AuthController : ControllerBase
         {
             var result = await _authService.GetUserAsync(id);
             result.OnFailure(() =>
-                    _logger.LogWarning("Token verification failed for user ID: {UserId}. Error: {Error}", id,
-                        result.Error))
-                .OnSuccess(() =>
-                    _logger.LogInformation("Successfully verified token for user ID: {UserId}", id));
+            {
+                var tokenVerificationFailed = LoggerMessage.Define<int, string>(
+                    LogLevel.Warning,
+                    new EventId(1001, "TokenVerificationFailed"),
+                    "Token verification failed for user ID: {UserId}. Error: {Error}");
+
+                tokenVerificationFailed(_logger, id, result.Error, null);
+            });
+            result.OnSuccess(() =>
+            {
+                var tokenVerifiedSuccess = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(1002, "TokenVerifiedSuccess"),
+                    "Successfully verified token for user ID: {UserId}");
+
+                tokenVerifiedSuccess(_logger, id, null);
+            });
+
             if (result.Failure)
             {
                 return Unauthorized();
@@ -277,13 +305,13 @@ public class AuthController : ControllerBase
             return BadRequest(new ProblemDetails() { Title = "Invalid register data" });
         }
 
-        var user = _mapper.Map<User>(registerRequest);
+        var user = RegisterRequest.MapUser(registerRequest);
         user.Role = Role.Admin;
         var result = await _authService.RegisterAsync(user, registerRequest.Password,
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
         result.OnFailure(() =>
                 _logger.LogError("Admin creation failed for email: {Email}. Error: {Error}",
-                registerRequest.Email, result.Error))
+                    registerRequest.Email, result.Error))
             .OnSuccess(() =>
                 _logger.LogInformation("Successfully created admin with email: {Email}", registerRequest.Email));
         if (result.Failure)

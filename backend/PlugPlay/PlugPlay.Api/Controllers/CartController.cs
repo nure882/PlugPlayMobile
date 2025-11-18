@@ -22,21 +22,38 @@ public class CartController : ControllerBase
     [HttpGet("{userId:int}")]
     public async Task<IActionResult> GetCartAsync(int userId)
     {
-        _logger.LogInformation("Getting cart for user {UserId}", userId);
+        var gettingCart = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4000, "GettingCart"),
+            "Getting cart for user {UserId}");
+
+        gettingCart(_logger, userId, null);
 
         if (userId < 1)
         {
-            _logger.LogWarning("Invalid userId: {UserId}", userId);
-            
+            var invalidUserId = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(4001, "InvalidUserId"),
+                "Invalid userId: {UserId}");
+
+            invalidUserId(_logger, userId, null);
+
             return BadRequest(new ProblemDetails() { Title = "Invalid userId" });
         }
 
         var result = await _cartService.GetUserCartAsync(userId);
         result.OnFailure(() =>
                 _logger.LogWarning("Problem retrieving a cart: {result.Error}", result.Error))
-            .OnSuccess(() => 
-                _logger.LogInformation("Retrieved cart for user {UserId}", userId));
+            .OnSuccess(() =>
+            {
+                var cartRetrieved = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(4002, "CartRetrieved"),
+                    "Retrieved cart for user {UserId}");
 
+                cartRetrieved(_logger, userId, null);
+            });
+               
         if (result.Failure)
         {
             return BadRequest(new ProblemDetails() { Title = $"Problem retrieving a cart: {result.Error}" });
@@ -48,20 +65,38 @@ public class CartController : ControllerBase
     [HttpGet("item/{itemId:int}")]
     public async Task<IActionResult> GetCartItemAsync(int itemId)
     {
-        _logger.LogInformation("Getting cart item {ItemId}", itemId);
+        var gettingCartItem = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4000, "GettingCartItem"),
+            "Getting cart item {ItemId}");
+
+        gettingCartItem(_logger, itemId, null);
 
         if (itemId < 1)
         {
-            _logger.LogWarning("Invalid cart item id: {ItemId}", itemId);
-            
+            var invalidCartItemId = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(4001, "InvalidCartItemId"),
+                "Invalid cart item id: {ItemId}");
+
+            invalidCartItemId(_logger, itemId, null);
+
             return BadRequest(new ProblemDetails() { Title = "Invalid cart item id" });
         }
 
         var result = await _cartService.GetCartItemByIdAsync(itemId);
-        result.OnFailure(() => 
+        result.OnFailure(() =>
                 _logger.LogWarning("Problem retrieving a cart item: {result.Error}", result.Error))
-            .OnSuccess(() => 
-                _logger.LogInformation("Retrieved cart item {ItemId}", itemId));
+            .OnSuccess(() =>
+            {
+                var cartItemRetrieved = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(4002, "CartItemRetrieved"),
+                    "Retrieved cart item {ItemId}");
+
+                cartItemRetrieved(_logger, itemId, null);
+            });
+                
         if (result.Failure)
         {
             return BadRequest(new ProblemDetails() { Title = $"Problem retrieving a cart item: {result.Error}" });
@@ -73,7 +108,12 @@ public class CartController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> AddToCartAsync(CreateCartItemDto dto)
     {
-        _logger.LogInformation("Adding item to cart for user {UserId}", dto?.UserId);
+        var addingItemToCart = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4000, "AddingItemToCart"),
+            "Adding item to cart for user {UserId}");
+
+        addingItemToCart(_logger, dto?.UserId ?? 0, null);
 
         if (dto is null)
         {
@@ -90,10 +130,18 @@ public class CartController : ControllerBase
         }
 
         var result = await _cartService.AddItemToCartAsync(dto.ProductId, dto.Quantity, dto.UserId);
-        result.OnFailure(() => 
+        result.OnFailure(() =>
                 _logger.LogWarning("Problem adding a cart item: {result.Error}", result.Error))
-            .OnSuccess(() => 
-                _logger.LogInformation("Added cart item {CartItemId} for user {UserId}", result.Value, dto.UserId));
+            .OnSuccess(() =>
+            {
+                var cartItemAdded = LoggerMessage.Define<int, int>(
+                    LogLevel.Information,
+                    new EventId(4002, "CartItemAdded"),
+                    "Added cart item {CartItemId} for user {UserId}");
+
+                cartItemAdded(_logger, result.Value, dto.UserId, null);
+            });
+               
         if (result.Failure)
         {
             return BadRequest(new ProblemDetails() { Title = $"Problem retrieving a cart item: {result.Error}" });
@@ -105,7 +153,12 @@ public class CartController : ControllerBase
     [HttpPut("quantity")]
     public async Task<IActionResult> UpdateQuantityAsync(UpdateCartItemQuantityDto dto)
     {
-        _logger.LogInformation("Updating quantity for cart item {CartItemId}", dto?.CartItemId);
+        var updatingCartItemQuantity = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4000, "UpdatingCartItemQuantity"),
+            "Updating quantity for cart item {CartItemId}");
+
+        updatingCartItemQuantity(_logger, dto?.CartItemId ?? 0, null);
 
         if (dto == null)
         {
@@ -122,10 +175,18 @@ public class CartController : ControllerBase
         }
 
         var result = await _cartService.UpdateQuantityAsync(dto.CartItemId, dto.NewQuantity);
-        result.OnFailure(() => 
+        result.OnFailure(() =>
                 _logger.LogWarning("Problem updating a cart item: {result.Error}", result.Error))
-            .OnSuccess(() => 
-                _logger.LogInformation("Updated quantity for cart item {CartItemId}", dto.CartItemId));
+            .OnSuccess(() =>
+            {
+                var cartItemQuantityUpdated = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(4001, "CartItemQuantityUpdated"),
+                    "Updated quantity for cart item {CartItemId}");
+
+                cartItemQuantityUpdated(_logger, dto.CartItemId, null);
+            });
+               
         if (result.Failure)
         {
             return BadRequest(new ProblemDetails() { Title = $"Problem updating a cart item: {result.Error}" });
@@ -137,11 +198,21 @@ public class CartController : ControllerBase
     [HttpDelete("{itemId:int}")]
     public async Task<IActionResult> DeleteCartItemAsync(int itemId)
     {
-        _logger.LogInformation("Deleting cart item {ItemId}", itemId);
+        var deletingCartItem = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4000, "DeletingCartItem"),
+            "Deleting cart item {ItemId}");
+
+        deletingCartItem(_logger, itemId, null);
 
         if (itemId < 1)
         {
-            _logger.LogWarning("Invalid itemId: {ItemId}", itemId);
+            var invalidItemId = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(4001, "InvalidItemId"),
+                "Invalid itemId: {ItemId}");
+
+            invalidItemId(_logger, itemId, null);
 
             return BadRequest(new ProblemDetails() { Title = "Invalid userId" });
         }
@@ -150,7 +221,14 @@ public class CartController : ControllerBase
         result.OnFailure(() =>
                 _logger.LogWarning("Problem deleting a cart item: {result.Error}", result.Error))
             .OnSuccess(() =>
-                _logger.LogInformation("Deleted cart item {ItemId}", itemId));
+            {
+                var cartItemDeleted = LoggerMessage.Define<int>(
+                    LogLevel.Information,
+                    new EventId(4002, "CartItemDeleted"),
+                    "Deleted cart item {ItemId}");
+
+                cartItemDeleted(_logger, itemId, null);
+            });
         if (result.Failure)
         {
             return BadRequest(new ProblemDetails() { Title = $"Problem deleting a cart item: {result.Error}" });
@@ -162,18 +240,36 @@ public class CartController : ControllerBase
     [HttpDelete("clear/{userId:int}")]
     public async Task<IActionResult> ClearCartAsync(int userId)
     {
-        _logger.LogInformation("Clearing cart for user {UserId}", userId);
+        var clearingCart = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4000, "ClearingCart"),
+            "Clearing cart for user {UserId}");
+
+        clearingCart(_logger, userId, null);
 
         if (userId < 1)
         {
-            _logger.LogWarning("Invalid userId: {UserId}", userId);
+            var invalidUserIdWarning = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(4001, "InvalidUserIdWarning"),
+                "Invalid userId: {UserId}");
+
+            invalidUserIdWarning(_logger, userId, null);
 
             return BadRequest(new ProblemDetails { Title = "Invalid userId" });
         }
 
         var result = await _cartService.ClearCartAsync(userId);
         result.OnFailure(() => _logger.LogWarning("Problem clearing cart: {Error}", result.Error))
-              .OnSuccess(() => _logger.LogInformation("Cleared cart for user {UserId}", userId));
+              .OnSuccess(() =>
+              {
+                  var cartCleared = LoggerMessage.Define<int>(
+                      LogLevel.Information,
+                      new EventId(4002, "CartCleared"),
+                      "Cleared cart for user {UserId}");
+
+                  cartCleared(_logger, userId, null);
+              });
 
         if (result.Failure)
         {
@@ -186,11 +282,21 @@ public class CartController : ControllerBase
     [HttpGet("total/{userId:int}")]
     public async Task<ActionResult<int>> GetCartItemsTotalAsync(int userId)
     {
-        _logger.LogInformation("Getting cart items total for user {UserId}", userId);
+        var gettingCartTotal = LoggerMessage.Define<int>(
+            LogLevel.Information,
+            new EventId(4000, "GettingCartTotal"),
+            "Getting cart items total for user {UserId}");
+
+        gettingCartTotal(_logger, userId, null);
 
         if (userId < 1)
         {
-            _logger.LogWarning("Invalid userId: {UserId}", userId);
+            var invalidUserIdCartTotal = LoggerMessage.Define<int>(
+                LogLevel.Warning,
+                new EventId(4001, "InvalidUserIdCartTotal"),
+                "Invalid userId: {UserId}");
+
+            invalidUserIdCartTotal(_logger, userId, null);
 
             return BadRequest(new ProblemDetails { Title = "Invalid userId" });
         }
@@ -199,7 +305,14 @@ public class CartController : ControllerBase
         result.OnFailure(() =>
                 _logger.LogWarning("Problem getting cart items total: {Error}", result.Error))
               .OnSuccess(() =>
-                  _logger.LogInformation("Cart items total for user {UserId}: {Total}", userId, result.Value));
+              {
+                  var cartTotalRetrieved = LoggerMessage.Define<int, decimal>(
+                      LogLevel.Information,
+                      new EventId(4002, "CartTotalRetrieved"),
+                      "Cart items total for user {UserId}: {Total}");
+
+                  cartTotalRetrieved(_logger, userId, result.Value, null);
+              });
 
         if (result.Failure)
         {
@@ -212,11 +325,21 @@ public class CartController : ControllerBase
     [HttpGet("isincart/{productId:int}/{userId:int}")]
     public async Task<ActionResult<bool>> IsInCartAsync(int productId, int userId)
     {
-        _logger.LogInformation("Checking if product {ProductId} is in cart for user {UserId}", productId, userId);
+        var checkingProductInCart = LoggerMessage.Define<int, int>(
+            LogLevel.Information,
+            new EventId(4000, "CheckingProductInCart"),
+            "Checking if product {ProductId} is in cart for user {UserId}");
+
+        checkingProductInCart(_logger, productId, userId, null);
 
         if (productId < 1 || userId < 1)
         {
-            _logger.LogWarning("Invalid productId or userId: {ProductId}, {UserId}", productId, userId);
+            var invalidProductOrUser = LoggerMessage.Define<int, int>(
+                LogLevel.Warning,
+                new EventId(4001, "InvalidProductOrUser"),
+                "Invalid productId or userId: {ProductId}, {UserId}");
+
+            invalidProductOrUser(_logger, productId, userId, null);
 
             return BadRequest(new ProblemDetails { Title = "Invalid productId or userId" });
         }
@@ -225,8 +348,14 @@ public class CartController : ControllerBase
         result.OnFailure(() =>
                 _logger.LogWarning("Problem checking cart item presence: {Error}", result.Error))
               .OnSuccess(() =>
-                  _logger.LogInformation("Product {ProductId} presence for user {UserId}: {Exists}",
-                      productId, userId, result.Value));
+              {
+                  var productPresenceChecked = LoggerMessage.Define<int, int, bool>(
+                      LogLevel.Information,
+                      new EventId(4002, "ProductPresenceChecked"),
+                      "Product {ProductId} presence for user {UserId}: {Exists}");
+
+                  productPresenceChecked(_logger, productId, userId, result.Value, null);
+              });
 
         if (result.Failure)
         {
