@@ -54,7 +54,7 @@ public class ProductsController : ControllerBase
     [HttpGet("available")]
     public async Task<IActionResult> GetAllAvailableProducts()
     {
-        _logger.LogInformation("Getting all products");
+        _logger.LogInformation("Getting all available products");
 
         var result = await _productsService.GetAvailableProductsAsync();
         result.OnSuccess(() =>
@@ -66,6 +66,10 @@ public class ProductsController : ControllerBase
 
             productsRetrievedResult(_logger, result.Value.Count(), null);
         });
+        if (result.Failure)
+        {
+            return StatusCode(200, new List<Product>());
+        }
 
         var productDtos = result.Value.Select(MapProduct).ToList();
 

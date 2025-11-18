@@ -52,26 +52,33 @@ public class AuthController : ControllerBase
             return Unauthorized(new { message = userResult.Error });
         }
 
-        (string, string) tokens = await _authService.GenerateTokens(userResult.Value);
-        var tokenExpiration = DateTime.UtcNow.AddMinutes(
-            Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
-        var response = new LoginResponse
+        try
         {
-            Token = tokens.Item1,
-            RefreshToken = tokens.Item2,
-            Expiration = tokenExpiration,
-            User = new UserDto
+            (string, string) tokens = await _authService.GenerateTokens(userResult.Value);
+            var tokenExpiration = DateTime.UtcNow.AddMinutes(
+                Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
+            var response = new LoginResponse
             {
-                Id = userResult.Value.Id,
-                Email = userResult.Value.Email,
-                FirstName = userResult.Value.FirstName,
-                LastName = userResult.Value.LastName
-            }
-        };
+                Token = tokens.Item1,
+                RefreshToken = tokens.Item2,
+                Expiration = tokenExpiration,
+                User = new UserDto
+                {
+                    Id = userResult.Value.Id,
+                    Email = userResult.Value.Email,
+                    FirstName = userResult.Value.FirstName,
+                    LastName = userResult.Value.LastName
+                }
+            };
 
-        _logger.LogInformation("Successfully signed in user via Google: {Email}", payload.Email);
+            _logger.LogInformation("Successfully signed in user via Google: {Email}", payload.Email);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (Exception e)
+        {
+            return StatusCode(500, e.Message);
+        }
     }
 
     [HttpPost("register")]
@@ -99,7 +106,7 @@ public class AuthController : ControllerBase
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
         result.OnFailure(() =>
                 _logger.LogError("Registration failed for email: {Email}. Error: {Error}",
-                registerRequest.Email, result.Error))
+                    registerRequest.Email, result.Error))
             .OnSuccess(() =>
                 _logger.LogInformation("Successfully registered user with email: {Email}", registerRequest.Email));
         if (result.Failure)
@@ -131,26 +138,33 @@ public class AuthController : ControllerBase
             return Unauthorized(new { Message = validationResult.Error });
         }
 
-        (string, string) tokens = await _authService.GenerateTokens(validationResult.Value);
-        var tokenExpiration = DateTime.UtcNow.AddMinutes(
-            Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
-        var response = new LoginResponse
+        try
         {
-            Token = tokens.Item1,
-            RefreshToken = tokens.Item2,
-            Expiration = tokenExpiration,
-            User = new UserDto
+            (string, string) tokens = await _authService.GenerateTokens(validationResult.Value);
+            var tokenExpiration = DateTime.UtcNow.AddMinutes(
+                Convert.ToDouble(_configuration["Jwt:TokenExpirationMinutes"]));
+            var response = new LoginResponse
             {
-                Id = validationResult.Value.Id,
-                Email = validationResult.Value.Email,
-                FirstName = validationResult.Value.FirstName,
-                LastName = validationResult.Value.LastName
-            }
-        };
+                Token = tokens.Item1,
+                RefreshToken = tokens.Item2,
+                Expiration = tokenExpiration,
+                User = new UserDto
+                {
+                    Id = validationResult.Value.Id,
+                    Email = validationResult.Value.Email,
+                    FirstName = validationResult.Value.FirstName,
+                    LastName = validationResult.Value.LastName
+                }
+            };
 
-        _logger.LogInformation("Successfully logged in user: {Email}", request.Email);
+            _logger.LogInformation("Successfully logged in user: {Email}", request.Email);
 
-        return Ok(response);
+            return Ok(response);
+        }
+        catch (Exception e)
+        {
+            return StatusCode(StatusCodes.Status500InternalServerError, e.Message);
+        }
     }
 
     [HttpPost("refresh")]
@@ -186,7 +200,7 @@ public class AuthController : ControllerBase
                 LastName = result.Value.LastName
             }
         };
-        
+
         var success = LoggerMessage.Define<int>(
             LogLevel.Information,
             new EventId(1002, "TokenRefreshedSuccess"),
@@ -256,7 +270,7 @@ public class AuthController : ControllerBase
 
                 tokenVerifiedSuccess(_logger, id, null);
             });
-    
+
             if (result.Failure)
             {
                 return Unauthorized();
@@ -297,7 +311,7 @@ public class AuthController : ControllerBase
             registerRequest.PhoneNumber, registerRequest.FirstName, registerRequest.LastName);
         result.OnFailure(() =>
                 _logger.LogError("Admin creation failed for email: {Email}. Error: {Error}",
-                registerRequest.Email, result.Error))
+                    registerRequest.Email, result.Error))
             .OnSuccess(() =>
                 _logger.LogInformation("Successfully created admin with email: {Email}", registerRequest.Email));
         if (result.Failure)
