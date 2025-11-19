@@ -14,8 +14,9 @@ import { useGetAllProductsQuery } from '../api/productsApi.ts';
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
- const token = storage.getAccessToken();
+  const token = storage.getAccessToken();
   const {data: user, isLoading: isLoadingUser, isError: isUserError, refetch} = useGetUserByTokenQuery(token ?? '', {skip: !token});
+  const registered = user !== null;
 
   const {cartItems, isLoading: isLoadingCart, isError: isCartError, refetch: updateCart} = cartService.useCart(user?.id);
   const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
@@ -37,14 +38,12 @@ const Checkout: React.FC = () => {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
 
-  const [deliveryAddress, setDeliveryAddress] = useState<Address>(
-  {
+  const [deliveryAddress, setDeliveryAddress] = useState<Address>({
     city: "",
     street: "",
     house: "",
-    apartments: ""
-  }
-);
+    apartments: "",
+  });
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
   const shipping = 15.0;
@@ -103,27 +102,31 @@ const Checkout: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <input
                 placeholder="First Name"
-                className="p-3 rounded-lg bg-gray-100"
+                className="p-3 rounded-lg bg-gray-100 disabled:bg-gray-300"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
+                disabled = {registered}
               />
               <input
                 placeholder="Last Name"
-                className="p-3 rounded-lg bg-gray-100"
+                className="p-3 rounded-lg bg-gray-100 disabled:bg-gray-300" 
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
+                disabled = {registered}
               />
               <input
                 placeholder="Email"
-                className="p-3 rounded-lg bg-gray-100 md:col-span-2"
+                className="p-3 rounded-lg bg-gray-100 md:col-span-2 disabled:bg-gray-300"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                disabled = {registered}
               />
               <input
                 placeholder="Phone Number"
-                className="p-3 rounded-lg bg-gray-100 md:col-span-2"
+                className="p-3 rounded-lg bg-gray-100 md:col-span-2 disabled:bg-gray-300"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
+                disabled = {registered}
               />
 
               {user ? (

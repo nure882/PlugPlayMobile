@@ -20,7 +20,7 @@ export interface PlaceOrderResponse {
 export const orderApi = createApi({
   reducerPath: "orderApi",
   baseQuery: fetchBaseQuery({
-    baseUrl: "/api/order", // URL of your controller
+    baseUrl: "/api/order",
   }),
   endpoints: (builder) => ({
     placeOrder: builder.mutation<PlaceOrderResponse, PlaceOrderRequest>({
