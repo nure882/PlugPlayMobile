@@ -1,10 +1,10 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
-import { CartItem } from "../models/CartItem";
+import OrderItem from "../models/OrderItem";
 
 export interface PlaceOrderRequest {
   userId: number;
   addressId: number;
-  items: CartItem[];
+  items: OrderItem[];
   paymentMethod: number;
 }
 
