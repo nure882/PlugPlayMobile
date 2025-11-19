@@ -33,11 +33,17 @@ class CartService {
       return stored;
     }, [cartItemsFromApi, stored, userId]);
 
+    const [version, setVersion] = useState(0);
+
     const refetchCart = () => {
       if (userId) {
-        // console.log("[CartService] refetch api cart")
         refetchApiCart();
-    }};
+      }
+      else {
+        console.log("[CartService] refetch cart with version")
+        setVersion((v) => v + 1);
+      }
+    };
 
     // console.log('[CartService] Results:', {
     //   cartItemsCount: cartItems.length,
