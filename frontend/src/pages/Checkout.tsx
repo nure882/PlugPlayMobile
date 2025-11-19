@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { storage } from '../utils/StorageService';
 import LiqPayButton from '../components/order/LiqPayButton';
+import AddressSelector from '../components/order/AddressSelector.tsx';
 import { useNavigate } from 'react-router-dom';
 import { Truck, Box, Zap, CreditCard, DollarSign } from 'lucide-react';
 import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
@@ -124,50 +125,64 @@ const Checkout: React.FC = () => {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
               />
-              <input
-                placeholder="City"
-                className="p-3 rounded-lg bg-gray-100"
-                value={deliveryAddress.city}
-                onChange={(e) =>
-                  setDeliveryAddress((prev) => ({
-                    ...prev,
-                    city: e.target.value,
-                  }))
-                }
-              />
-              <input
-                placeholder="Street"
-                className="p-3 rounded-lg bg-gray-100"
-                value={deliveryAddress.street}
-                onChange={(e) =>
-                  setDeliveryAddress((prev) => ({
-                    ...prev,
-                    street: e.target.value,
-                  }))
-                }
-              />
-              <input
-                placeholder="House"
-                className="p-3 rounded-lg bg-gray-100"
-                value={deliveryAddress.house}
-                onChange={(e) =>
-                  setDeliveryAddress((prev) => ({
-                    ...prev,
-                    house: e.target.value,
-                  }))
-                }
-              />
-              <input
-                placeholder="Apartment (optional)"
-                className="p-3 rounded-lg bg-gray-100"
-                value={deliveryAddress.apartments}
-                onChange={(e) =>
-                  setDeliveryAddress((prev) => ({
-                    ...prev,
-                    apartments: e.target.value,
-                  }))
-                }
-              />
+
+              {user ? (
+                <AddressSelector
+                  addresses={user.addresses}
+                  selectedId={deliveryAddress.id}
+                  onSelect={(selected: Address) => setDeliveryAddress(selected)}
+                />
+              ) : (
+                <>
+                  <input
+                    placeholder="City"
+                    className="p-3 rounded-lg bg-gray-100"
+                    value={deliveryAddress.city}
+                    onChange={(e) =>
+                      setDeliveryAddress((prev) => ({
+                        ...prev,
+                        city: e.target.value,
+                      }))
+                    }
+                  />
+
+                  <input
+                    placeholder="Street"
+                    className="p-3 rounded-lg bg-gray-100"
+                    value={deliveryAddress.street}
+                    onChange={(e) =>
+                      setDeliveryAddress((prev) => ({
+                        ...prev,
+                        street: e.target.value,
+                      }))
+                    }
+                  />
+
+                  <input
+                    placeholder="House"
+                    className="p-3 rounded-lg bg-gray-100"
+                    value={deliveryAddress.house}
+                    onChange={(e) =>
+                      setDeliveryAddress((prev) => ({
+                        ...prev,
+                        house: e.target.value,
+                      }))
+                    }
+                  />
+
+                  <input
+                    placeholder="Apartment (optional)"
+                    className="p-3 rounded-lg bg-gray-100"
+                    value={deliveryAddress.apartments}
+                    onChange={(e) =>
+                      setDeliveryAddress((prev) => ({
+                        ...prev,
+                        apartments: e.target.value,
+                      }))
+                    }
+                  />
+                </>
+              )}
             </div>
           </section>
 
@@ -319,7 +334,7 @@ const Checkout: React.FC = () => {
                     </div>
 
                     <div className="text-red-600">
-                      quantity: {item.quantity} 
+                      quantity: {item.quantity}
                     </div>
 
                     <div className="text-red-600">
