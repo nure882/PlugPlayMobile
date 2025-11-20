@@ -7,12 +7,15 @@ import { useNavigate } from 'react-router-dom';
 import { Truck, Box, Zap, CreditCard, DollarSign } from 'lucide-react';
 import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
 import { Address } from '../models/Address.ts';
+import OrderItem from '../models/OrderItem.ts';
 import DeliveryMethod, {DeliveryMethodInfo} from '../models/enums/DeliveryMethod.ts';
+import PaymentMethod from '../models/enums/PaymentMethod.ts';
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
 import { cartService } from '../features/cart/CartService.ts';
 import { useGetAllProductsQuery } from '../api/productsApi.ts';
 import { validateAdddress, validateEmail, validateName, validatePhone } from '../utils/validation.ts';
+import { usePlaceOrderMutation } from '../api/orderApi.ts';
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
@@ -21,7 +24,11 @@ const Checkout: React.FC = () => {
   const registered = user != null;
 
   const {cartItems, isLoading: isLoadingCart, isError: isCartError, refetch: updateCart} = cartService.useCart(user?.id);
+  const clearCart = cartService.useClearCart(user?.id);
+
   const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
+
+  const [placeOrder] = usePlaceOrderMutation();
   
   //cartItems with mapped data from products
   const enrichedItems = useMemo(() =>
@@ -32,8 +39,8 @@ const Checkout: React.FC = () => {
     [cartItems, products]
   );
 
-  const [delivery, setDelivery] = useState<DeliveryMethod>(0);
-  const [payment, setPayment] = useState<string>('card');
+  const [delivery, setDelivery] = useState<DeliveryMethod>(DeliveryMethod.Courier);
+  const [payment, setPayment] = useState<PaymentMethod>(PaymentMethod.Card);
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -65,18 +72,47 @@ const Checkout: React.FC = () => {
   }, [user]);
 
   const format = (v: number) => {
-    return new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(v);
+    return new Intl.NumberFormat('uk-UA').format(v) + " ₴";
   };
 
-  const handleMainAction = () => {
+  const handleMainAction = async () => {
     if(!handleValidation()) {
       return;
     }
 
-    if (payment === 'cash') {
-      storage.clearGuestCart();
-      alert('Order placed. Thank you!');
-      navigate('/');
+    if (payment === PaymentMethod.Cash) {
+      if(user) {
+        const orderItems: OrderItem[] = enrichedItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        }));
+
+        try {
+          console.log({
+            userId: user?.id,
+            deliveryAddressId: deliveryAddress.id,
+            items: orderItems,
+            paymentMethod: payment,
+            deliveryMethod: delivery,
+          })
+          const res = await placeOrder({
+            userId: user?.id,
+            deliveryAddressId: deliveryAddress.id,
+            orderItems: orderItems,
+            paymentMethod: payment,
+            deliveryMethod: delivery,
+          }).unwrap()
+          //console.log(res);
+
+          alert("Order placed. Thank you!");
+          clearCart();
+          updateCart();
+          navigate("/");
+        } catch (e) {
+          alert("Sorry, something went wrong");
+          console.error("Placing order failed", e);
+        }
+      }  
     }
   };
 
@@ -298,9 +334,9 @@ const Checkout: React.FC = () => {
                 <input
                   type="radio"
                   name="payment"
-                  checked={payment === "card"}
+                  checked={payment === PaymentMethod.Card}
                   onChange={() => {
-                    setPayment("card");
+                    setPayment(PaymentMethod.Card);
                   }}
                 />
                 <div>
@@ -317,9 +353,9 @@ const Checkout: React.FC = () => {
                 <input
                   type="radio"
                   name="payment"
-                  checked={payment === "cash"}
+                  checked={payment === PaymentMethod.Cash}
                   onChange={() => {
-                    setPayment("cash");
+                    setPayment(PaymentMethod.Cash);
                   }}
                 />
                 <div>
@@ -336,7 +372,7 @@ const Checkout: React.FC = () => {
 
           <div className="pt-4">
             <div>
-              {payment === "cash" ? (
+              {payment === PaymentMethod.Cash ? (
                 <button
                   onClick={handleMainAction}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg text-lg font-semibold"
@@ -386,7 +422,7 @@ const Checkout: React.FC = () => {
 
                   <div className="flex flex-col items-start gap-1">
                     <div className="text-red-600">
-                      price: {format(item.product?.price ?? 0)} ₴
+                      price: {format(item.product?.price ?? 0)}
                     </div>
 
                     <div className="text-red-600">
@@ -394,7 +430,7 @@ const Checkout: React.FC = () => {
                     </div>
 
                     <div className="text-red-600">
-                      total: {format(item.total)} ₴
+                      total: {format(item.total)}
                     </div>
                   </div>
                 </div>

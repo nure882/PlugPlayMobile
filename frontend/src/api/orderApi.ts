@@ -1,11 +1,12 @@
-import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import {baseApi} from './baseApi.ts';
 import OrderItem from "../models/OrderItem";
 
 export interface PlaceOrderRequest {
   userId: number;
-  addressId: number;
-  items: OrderItem[];
   paymentMethod: number;
+  deliveryMethod: number;
+  deliveryAddressId?: number;
+  orderItems: OrderItem[];
 }
 
 export interface LiqPayPaymentData {
@@ -14,18 +15,14 @@ export interface LiqPayPaymentData {
 }
 
 export interface PlaceOrderResponse {
-  paymentData: LiqPayPaymentData ;
+  paymentData: LiqPayPaymentData;
 }
 
-export const orderApi = createApi({
-  reducerPath: "orderApi",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "/api/order",
-  }),
+export const orderApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     placeOrder: builder.mutation<PlaceOrderResponse, PlaceOrderRequest>({
       query: (order) => ({
-        url: "",
+        url: "order/",
         method: "POST",
         body: order,
       }),
