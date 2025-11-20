@@ -1,5 +1,8 @@
 package com.plugplay.plugplaymobile.presentation.profile
-
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -145,8 +148,8 @@ fun ProfileScreen(
     val newPassword = remember { mutableStateOf("") }
     val confirmNewPassword = remember { mutableStateOf("") }
 
-    // Стан для секцій, "My Account" відкрита за замовчуванням
-    val openSection = remember { mutableStateOf("My Account") }
+    // Стан для секцій, "My Account" закрыта за замовчуванням
+    val openSection = remember { mutableStateOf("") }
 
     // Функція для скидання полів до оригінальних значень
     fun resetFields() {
@@ -196,6 +199,21 @@ fun ProfileScreen(
         }
     }
 
+
+    // [НОВА ЛОГІКА] Обробник для "Cancel"
+    val isCancelLoading = remember { mutableStateOf(false) }
+
+    // Обработчик Cancel
+    fun onCancelClick() {
+        isCancelLoading.value = true
+
+        profileViewModel.viewModelScope.launch {
+            kotlinx.coroutines.delay(800) // для красоты анимации
+            resetFields()
+            isCancelLoading.value = false
+        }
+    }
+
     // [НОВА ЛОГІКА] Обробник для "Save Changes"
     fun onSaveClick() {
         if (isSaveEnabled.value) {
@@ -226,36 +244,82 @@ fun ProfileScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
+
         // [НОВА ЛОГІКА] Нижня панель з кнопками
         bottomBar = {
             if (isLoggedIn) {
-                BottomAppBar(
-                    containerColor = Color.White
+                AnimatedVisibility(
+                    visible = openSection.value == "Edit Credentials",
+                    enter = slideInVertically(
+                        initialOffsetY = { it }  // старт снизу экрана
+                    ) + fadeIn(),
+                    exit = slideOutVertically(
+                        targetOffsetY = { it }  // уходит вниз
+                    ) + fadeOut()
                 ) {
-                    Button(
-                        onClick = { resetFields() },
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        Text("Cancel")
-                    }
-                    Spacer(Modifier.width(16.dp))
-                    Button(
-                        onClick = { onSaveClick() },
-                        enabled = isSaveEnabled.value,
-                        modifier = Modifier.weight(1f).height(48.dp),
-                        shape = RoundedCornerShape(8.dp)
-                    ) {
-                        if (profileState.isUpdating) {
-                            CircularProgressIndicator(Modifier.size(24.dp), color = Color.White)
-                        } else {
-                            Text("Save Changes")
+                    BottomAppBar(containerColor = Color.White) {
+
+                        val disableButtons = isCancelLoading.value || profileState.isUpdating
+
+                        // CANCEL BUTTON
+                        Button(
+                            onClick = { onCancelClick() },
+                            enabled = isSaveEnabled.value && !profileState.isUpdating && !isCancelLoading.value,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSaveEnabled.value) Color(0xFF2A1036) else Color(0xFFE0E0E0),
+                                disabledContainerColor = Color(0xFFE0E0E0),
+                                contentColor = if (isSaveEnabled.value) Color.White else Color.Gray,
+                                disabledContentColor = Color.Gray
+                            )
+                        ) {
+                            if (isCancelLoading.value) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    color = Color.Gray,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Cancel", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+
+                        Spacer(Modifier.width(16.dp))
+
+                        // SAVE BUTTON
+                        Button(
+                            onClick = { onSaveClick() },
+                            enabled = isSaveEnabled.value && !disableButtons,
+                            modifier = Modifier.weight(1f).height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isSaveEnabled.value) MaterialTheme.colorScheme.primary else Color(0xFFE0E0E0),
+                                disabledContainerColor = Color(0xFFE0E0E0),
+                                contentColor = if (isSaveEnabled.value) Color.White else Color.Gray,
+                                disabledContentColor = Color.Gray
+                            )
+                        ) {
+                            if (profileState.isUpdating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(22.dp),
+                                    color = Color.Gray,
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                Text("Save Changes", fontWeight = FontWeight.SemiBold)
+                            }
                         }
                     }
                 }
             }
         }
+
+
+
+
     ) { padding ->
         // --- [НОВИЙ МАКЕТ] ---
         LazyColumn(
@@ -298,7 +362,118 @@ fun ProfileScreen(
                         title = "My Account",
                         subtitle = "Account information and login credentials",
                         isExpanded = openSection.value == "My Account",
-                        onClick = { openSection.value = "My Account" }
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "My Account") "" else "My Account"
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+
+                            // First Name
+                            Text("First Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(
+                                text = firstName.value.ifBlank { "—" },
+                                fontSize = 16.sp,
+                                color = Color.DarkGray
+                            )
+
+                            Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+                            // Last Name
+                            Text("Last Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(
+                                text = lastName.value.ifBlank { "—" },
+                                fontSize = 16.sp,
+                                color = Color.DarkGray
+                            )
+
+
+                        }
+                    }
+                }
+
+
+
+                // 2. Contacts
+                item {
+                    ExpandableSection(
+                        title = "Contacts",
+                        subtitle = "Email addresses and phone numbers",
+                        isExpanded = openSection.value == "Contacts",
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "Contacts") "" else "Contacts"
+                        }
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            // Phone display (not editable)
+                            Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(phone.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+
+                            Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+                            // Email display (not editable)
+                            Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                            Text(email.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+                        }
+                    }
+                }
+
+
+                // 3. Delivery Addresses (Заглушка)
+                item {
+                    ExpandableSection(
+                        title = "Delivery Addresses",
+                        subtitle = "Saved delivery addresses",
+                        isExpanded = openSection.value == "Delivery Addresses",
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
+                        }
+                    ) {
+                        Text(
+                            text = "Тут будуть налаштування персональних даних (стать, дата народження).",
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+                // 4. My Orders (Заглушка)
+                item {
+                    ExpandableSection(
+                        title = "My orders",
+                        subtitle = "Your order history",
+                        isExpanded = openSection.value == "My Orders",
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "My Orders") "" else "My Orders"
+                        }
+                    ) {
+                        Text(
+                            text = "Тут будуть налаштування персональних даних (стать, дата народження).",
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+                // 5. Edit Credentials
+                item {
+                    ExpandableSection(
+                        title = "Edit Credentials",
+                        subtitle = "Edit account information and login credentials",
+                        isExpanded = openSection.value == "Edit Credentials",
+                        onClick = {
+                            openSection.value =
+                                if (openSection.value == "Edit Credentials") "" else "Edit Credentials"
+                        }
                     ) {
                         // Контент для "My Account" (ваша стара логіка)
                         MyAccountSection(
@@ -313,30 +488,6 @@ fun ProfileScreen(
                             error = profileState.error,
                             onLogoutClick = { authViewModel.logout() }
                         )
-                    }
-                }
-
-                // 2. Personal Data (Заглушка)
-                item {
-                    ExpandableSection(
-                        title = "Personal Data",
-                        subtitle = "Gender, date of birth and personal details",
-                        isExpanded = openSection.value == "Personal Data",
-                        onClick = { openSection.value = "Personal Data" }
-                    ) {
-                        Text("Тут будуть налаштування персональних даних (стать, дата народження).", modifier = Modifier.padding(16.dp))
-                    }
-                }
-
-                // 3. Contacts (Заглушка)
-                item {
-                    ExpandableSection(
-                        title = "Contacts",
-                        subtitle = "Email addresses and phone numbers",
-                        isExpanded = openSection.value == "Contacts",
-                        onClick = { openSection.value = "Contacts" }
-                    ) {
-                        Text("Тут буде керування контактними даними.", modifier = Modifier.padding(16.dp))
                     }
                 }
 

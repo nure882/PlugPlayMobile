@@ -15,7 +15,7 @@ object NetworkModule {
 
     // ВИПРАВЛЕНО: Встановлено IP-адресу, отриману з логів (10.0.2.2)
     // Використовуємо HTTP/5298. Переконайтеся, що ви дозволили Cleartext Traffic в Android Manifest!
-    private const val BASE_URL = "http://10.0.2.2:5298/"
+    private const val BASE_URL = "https://plugplay.dev1.dev/"
 
     @Provides
     @Singleton
