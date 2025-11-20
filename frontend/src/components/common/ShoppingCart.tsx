@@ -51,8 +51,8 @@ export function ShoppingCart({isOpen, onClose}: ShoppingCartProps) {
   const handleUpdateQuantity = async (id: number, newQuantity: number, price: number) => {
     await updateQuantity(id, newQuantity, price);
     updateCart();
-    console.log(token);
-    console.log(user ? "user" : "no user")
+    //console.log(token);
+    //console.log(user ? "user" : "no user")
   }
 
   const handleDelete = async (id: number) => {

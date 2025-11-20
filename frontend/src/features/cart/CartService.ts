@@ -41,7 +41,7 @@ class CartService {
         refetchApiCart();
       }
       else {
-        console.log("[CartService] refetch cart with version")
+        //console.log("[CartService] refetch cart with version")
         setVersion((v) => v + 1);
       }
     };
@@ -88,7 +88,7 @@ class CartService {
         return;
       }
 
-      console.log(`[CartService] merging items from api for user/${userId}`)
+      //console.log(`[CartService] merging items from api for user/${userId}`)
 
       for (const item of stored) {
         await addToCartMutation({
