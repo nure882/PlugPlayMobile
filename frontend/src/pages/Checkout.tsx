@@ -1,51 +1,74 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { storage } from '../utils/StorageService';
-import LiqPayButton from '../components/order/LiqPayButton';
-import AddressSelector from '../components/order/AddressSelector.tsx';
-import { ValidatedInput } from '../components/order/ValidatedInput.tsx';
-import { useNavigate } from 'react-router-dom';
-import { Truck, Box, Zap, CreditCard, DollarSign } from 'lucide-react';
-import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
-import { Address } from '../models/Address.ts';
-import OrderItem from '../models/OrderItem.ts';
-import DeliveryMethod, {DeliveryMethodInfo} from '../models/enums/DeliveryMethod.ts';
-import PaymentMethod from '../models/enums/PaymentMethod.ts';
-import LoadingMessage from '../components/common/LoadingMessage.tsx';
-import ErrorMessage from '../components/common/ErrorMessage.tsx';
-import { cartService } from '../features/cart/CartService.ts';
-import { useGetAllProductsQuery } from '../api/productsApi.ts';
-import { validateAdddress, validateEmail, validateName, validatePhone } from '../utils/validation.ts';
-import { usePlaceOrderMutation } from '../api/orderApi.ts';
+import React, { useEffect, useState, useMemo } from "react";
+import { storage } from "../utils/StorageService";
+import LiqPayButton from "../components/order/LiqPayButton";
+import AddressSelector from "../components/order/AddressSelector.tsx";
+import { ValidatedInput } from "../components/order/ValidatedInput.tsx";
+import { useNavigate } from "react-router-dom";
+import { Truck, Box, Zap, CreditCard, DollarSign } from "lucide-react";
+import { useGetUserByTokenQuery } from "../api/userInfoApi.ts";
+import { Address } from "../models/Address.ts";
+import OrderItem from "../models/OrderItem.ts";
+import DeliveryMethod, {
+  DeliveryMethodInfo,
+} from "../models/enums/DeliveryMethod.ts";
+import PaymentMethod from "../models/enums/PaymentMethod.ts";
+import LoadingMessage from "../components/common/LoadingMessage.tsx";
+import ErrorMessage from "../components/common/ErrorMessage.tsx";
+import { cartService } from "../features/cart/CartService.ts";
+import { useGetAllProductsQuery } from "../api/productsApi.ts";
+import {
+  validateAddress,
+  validateEmail,
+  validateName,
+  validatePhone,
+} from "../utils/validation.ts";
+import { usePlaceOrderMutation } from "../api/orderApi.ts";
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const token = storage.getAccessToken();
-  const {data: user, isLoading: isLoadingUser, isError: isUserError, refetch} = useGetUserByTokenQuery(token ?? '', {skip: !token});
+  const {
+    data: user,
+    isLoading: isLoadingUser,
+    isError: isUserError,
+  } = useGetUserByTokenQuery(token ?? "", { skip: !token });
   const registered = user != null;
 
-  const {cartItems, isLoading: isLoadingCart, isError: isCartError, refetch: updateCart} = cartService.useCart(user?.id);
+  const {
+    cartItems,
+    isLoading: isLoadingCart,
+    isError: isCartError,
+    refetch: updateCart,
+  } = cartService.useCart(user?.id);
   const clearCart = cartService.useClearCart(user?.id);
 
-  const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
+  const {
+    data: products,
+    isLoading: isLoadingProducts,
+    isError: isProductsError,
+  } = useGetAllProductsQuery();
 
   const [placeOrder] = usePlaceOrderMutation();
-  
+
   //cartItems with mapped data from products
-  const enrichedItems = useMemo(() =>
-      cartItems.map(item => ({
+  const enrichedItems = useMemo(
+    () =>
+      cartItems.map((item) => ({
         ...item,
-        product: products?.find(p => p.id === item.productId),
+        product: products?.find((p) => p.id === item.productId),
       })),
     [cartItems, products]
   );
 
-  const [delivery, setDelivery] = useState<DeliveryMethod>(DeliveryMethod.Courier);
+  const [delivery, setDelivery] = useState<DeliveryMethod>(
+    DeliveryMethod.Courier
+  );
   const [payment, setPayment] = useState<PaymentMethod>(PaymentMethod.Card);
 
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [email, setEmail] = useState('');
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
 
   const [deliveryAddress, setDeliveryAddress] = useState<Address>({
     city: "",
@@ -72,47 +95,38 @@ const Checkout: React.FC = () => {
   }, [user]);
 
   const format = (v: number) => {
-    return new Intl.NumberFormat('uk-UA').format(v) + " ₴";
+    return new Intl.NumberFormat("uk-UA").format(v) + " ₴";
   };
 
   const handleMainAction = async () => {
-    if(!handleValidation()) {
+    if (!handleValidation()) {
       return;
     }
 
     if (payment === PaymentMethod.Cash) {
-      if(user) {
-        const orderItems: OrderItem[] = enrichedItems.map((item) => ({
-          productId: item.productId,
-          quantity: item.quantity,
-        }));
-
-        try {
-          console.log({
-            userId: user?.id,
-            deliveryAddressId: deliveryAddress.id,
-            items: orderItems,
-            paymentMethod: payment,
-            deliveryMethod: delivery,
-          })
+      try {
+        if (user) {
+          const orderItems: OrderItem[] = enrichedItems.map((item) => ({
+            productId: item.productId,
+            quantity: item.quantity,
+          }));
           const res = await placeOrder({
             userId: user?.id,
             deliveryAddressId: deliveryAddress.id,
             orderItems: orderItems,
             paymentMethod: payment,
             deliveryMethod: delivery,
-          }).unwrap()
+          }).unwrap();
           //console.log(res);
-
-          alert("Order placed. Thank you!");
-          clearCart();
-          updateCart();
-          navigate("/");
-        } catch (e) {
-          alert("Sorry, something went wrong");
-          console.error("Placing order failed", e);
         }
-      }  
+        await clearCart();
+        await updateCart();
+        alert("Order placed. Thank you!");
+        navigate("/");
+      } catch (e) {
+        alert("Sorry, something went wrong");
+        console.error("Placing order failed", e);
+      }
     }
   };
 
@@ -127,33 +141,36 @@ const Checkout: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const handleValidation = () => {
-    if(!validateName(firstName) || !validateName(lastName)) {
+    if (!validateName(firstName) || !validateName(lastName)) {
       setError("Please provide a valid name");
       return false;
     }
-    if(!validateEmail(email)) {
+    if (!validateEmail(email)) {
       setError("Please provide a valid email");
       return false;
     }
-    if(!validatePhone(phone)) {
+    if (!validatePhone(phone)) {
       setError("Please provide a valid phone");
       return false;
     }
-    if(!validateAdddress(deliveryAddress)) {
+    if (!validateAddress(deliveryAddress)) {
       setError("Please provide a valid address");
       return false;
     }
 
     setError(null);
     return true;
-  }
+  };
 
   if (isLoadingUser || isLoadingCart || isLoadingProducts) {
     return LoadingMessage("checkout page");
   }
-  
+
   if (isUserError || isCartError || isProductsError) {
-    return ErrorMessage("error loading checkout page", "couldn't retrieve data from the database")
+    return ErrorMessage(
+      "error loading checkout page",
+      "couldn't retrieve data from the database"
+    );
   }
 
   return (
@@ -386,7 +403,7 @@ const Checkout: React.FC = () => {
                 />
               )}
             </div>
-             {error && <p className="text-sm text-red-500">{error}</p>}
+            {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
         </div>
 
@@ -445,7 +462,8 @@ const Checkout: React.FC = () => {
             </div>
             <div className="flex justify-between text-gray-600 mb-2">
               {" "}
-              <span>Shipping ({DeliveryMethodInfo[delivery].label}):</span> <span>{format(shipping)}</span>{" "}
+              <span>Shipping ({DeliveryMethodInfo[delivery].label}):</span>{" "}
+              <span>{format(shipping)}</span>{" "}
             </div>
             <div className="flex justify-between font-semibold text-blue-600 text-lg mt-4">
               {" "}

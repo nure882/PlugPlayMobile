@@ -50,7 +50,7 @@ export const validatePassword = (password: string): boolean => {
   return hasDigit && hasLowercase && hasUppercase && hasNonAlphanumeric && hasUniqueChar;
 };
 
-export const validateAdddress = (address: Address): boolean => {
+export const validateAddress = (address: Address): boolean => {
   return address.city != "" &&
     address.street != "" &&
     address.house != "";
