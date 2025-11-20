@@ -1,3 +1,4 @@
+import { Address } from "../models/Address";
 /**
  * Validates first or last name.
  * Allows Latin/Cyrillic letters and numbers, 2-30 characters.
@@ -48,3 +49,9 @@ export const validatePassword = (password: string): boolean => {
 
   return hasDigit && hasLowercase && hasUppercase && hasNonAlphanumeric && hasUniqueChar;
 };
+
+export const validateAdddress = (address: Address): boolean => {
+  return address.city != "" &&
+    address.street != "" &&
+    address.house != "";
+}

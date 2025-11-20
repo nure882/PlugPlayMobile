@@ -2,21 +2,22 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { storage } from '../utils/StorageService';
 import LiqPayButton from '../components/order/LiqPayButton';
 import AddressSelector from '../components/order/AddressSelector.tsx';
+import { ValidatedInput } from '../components/order/ValidatedInput.tsx';
 import { useNavigate } from 'react-router-dom';
 import { Truck, Box, Zap, CreditCard, DollarSign } from 'lucide-react';
 import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
 import { Address } from '../models/Address.ts';
-import { CartItem } from '../models/CartItem.ts';
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
 import { cartService } from '../features/cart/CartService.ts';
 import { useGetAllProductsQuery } from '../api/productsApi.ts';
+import { validateAdddress, validateEmail, validateName, validatePhone } from '../utils/validation.ts';
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
   const token = storage.getAccessToken();
   const {data: user, isLoading: isLoadingUser, isError: isUserError, refetch} = useGetUserByTokenQuery(token ?? '', {skip: !token});
-  const registered = user !== null;
+  const registered = user != null;
 
   const {cartItems, isLoading: isLoadingCart, isError: isCartError, refetch: updateCart} = cartService.useCart(user?.id);
   const {data: products, isLoading: isLoadingProducts, isError: isProductsError} = useGetAllProductsQuery();
@@ -49,30 +50,34 @@ const Checkout: React.FC = () => {
   const shipping = 15.0;
   const total = subtotal + shipping;
 
+  useEffect(() => {
+    if (user) {
+      setFirstName(user.firstName);
+      setLastName(user.lastName);
+      setEmail(user.email);
+      setPhone(user.phoneNumber);
+
+      if (user?.addresses?.[0]) {
+        setDeliveryAddress(user?.addresses?.[0]);
+      }
+    }
+  }, [user]);
+
   const format = (v: number) => {
     return new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'UAH' }).format(v);
   };
 
   const handleMainAction = () => {
+    if(!handleValidation()) {
+      return;
+    }
+
     if (payment === 'cash') {
       storage.clearGuestCart();
       alert('Order placed. Thank you!');
       navigate('/');
     }
   };
-
-   useEffect(() => {
-    if (user) {
-      setFirstName(user.firstName);
-      setLastName(user.lastName);
-      setEmail(user.email);
-      setPhone(user.phoneNumber)
-
-      if(user?.addresses?.[0]) {
-        setDeliveryAddress(user?.addresses?.[0])
-      }
-    }
-  }, [user]);
 
   const handleImageClick = (productId?: number) => {
     if (!productId) {
@@ -81,6 +86,30 @@ const Checkout: React.FC = () => {
 
     navigate(`/product/${productId}`);
   };
+
+  const [error, setError] = useState<string | null>(null);
+
+  const handleValidation = () => {
+    if(!validateName(firstName) || !validateName(lastName)) {
+      setError("Please provide a valid name");
+      return false;
+    }
+    if(!validateEmail(email)) {
+      setError("Please provide a valid email");
+      return false;
+    }
+    if(!validatePhone(phone)) {
+      setError("Please provide a valid phone");
+      return false;
+    }
+    if(!validateAdddress(deliveryAddress)) {
+      setError("Please provide a valid address");
+      return false;
+    }
+
+    setError(null);
+    return true;
+  }
 
   if (isLoadingUser || isLoadingCart || isLoadingProducts) {
     return LoadingMessage("checkout page");
@@ -100,33 +129,45 @@ const Checkout: React.FC = () => {
           <section className="bg-white rounded-lg p-6 border">
             <h2 className="text-lg font-medium mb-4">Shipping Information</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <input
+              <ValidatedInput
+                label="First name"
                 placeholder="First Name"
                 className="p-3 rounded-lg bg-gray-100 disabled:bg-gray-300"
                 value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                disabled = {registered}
+                onChange={(e) => setFirstName(e)}
+                validate={(s) => validateName(s)}
+                errorMessage="Only Latin/Cyrillic letters and numbers, 2-30 characters"
+                disabled={registered}
               />
-              <input
+              <ValidatedInput
+                label="Last name"
                 placeholder="Last Name"
-                className="p-3 rounded-lg bg-gray-100 disabled:bg-gray-300" 
+                className="p-3 rounded-lg bg-gray-100 disabled:bg-gray-300"
                 value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                disabled = {registered}
+                onChange={(e) => setLastName(e)}
+                validate={(s) => validateName(s)}
+                errorMessage="Only Latin/Cyrillic letters and numbers, 2-30 characters"
+                disabled={registered}
               />
-              <input
+              <ValidatedInput
+                label="Email"
                 placeholder="Email"
                 className="p-3 rounded-lg bg-gray-100 md:col-span-2 disabled:bg-gray-300"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                disabled = {registered}
+                onChange={(e) => setEmail(e)}
+                validate={(s) => validateEmail(s)}
+                errorMessage="Invalid email format"
+                disabled={registered}
               />
-              <input
+              <ValidatedInput
+                label="Phone number"
                 placeholder="Phone Number"
                 className="p-3 rounded-lg bg-gray-100 md:col-span-2 disabled:bg-gray-300"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                disabled = {registered}
+                onChange={(e) => setPhone(e)}
+                validate={(s) => validatePhone(s)}
+                errorMessage="International format: +country code + number"
+                disabled={registered}
               />
 
               {user ? (
@@ -137,50 +178,60 @@ const Checkout: React.FC = () => {
                 />
               ) : (
                 <>
-                  <input
+                  <ValidatedInput
+                    label="City"
                     placeholder="City"
                     className="p-3 rounded-lg bg-gray-100"
                     value={deliveryAddress.city}
                     onChange={(e) =>
                       setDeliveryAddress((prev) => ({
                         ...prev,
-                        city: e.target.value,
+                        city: e,
                       }))
                     }
+                    validate={(s) => s != ""}
+                    errorMessage="City cannot be empty!"
                   />
 
-                  <input
+                  <ValidatedInput
+                    label="Street"
                     placeholder="Street"
                     className="p-3 rounded-lg bg-gray-100"
                     value={deliveryAddress.street}
                     onChange={(e) =>
                       setDeliveryAddress((prev) => ({
                         ...prev,
-                        street: e.target.value,
+                        street: e,
                       }))
                     }
+                    validate={(s) => s != ""}
+                    errorMessage="Street cannot be empty!"
                   />
 
-                  <input
+                  <ValidatedInput
+                    label="House"
                     placeholder="House"
                     className="p-3 rounded-lg bg-gray-100"
                     value={deliveryAddress.house}
                     onChange={(e) =>
                       setDeliveryAddress((prev) => ({
                         ...prev,
-                        house: e.target.value,
+                        house: e,
                       }))
                     }
+                    validate={(s) => s != ""}
+                    errorMessage="House cannot be empty!"
                   />
 
-                  <input
+                  <ValidatedInput
+                    label="Apartment"
                     placeholder="Apartment (optional)"
                     className="p-3 rounded-lg bg-gray-100"
                     value={deliveryAddress.apartments}
                     onChange={(e) =>
                       setDeliveryAddress((prev) => ({
                         ...prev,
-                        apartments: e.target.value,
+                        apartments: e,
                       }))
                     }
                   />
@@ -298,6 +349,7 @@ const Checkout: React.FC = () => {
                 />
               )}
             </div>
+             {error && <p className="text-sm text-red-500">{error}</p>}
           </div>
         </div>
 
