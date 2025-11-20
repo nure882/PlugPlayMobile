@@ -7,6 +7,7 @@ import { useNavigate } from 'react-router-dom';
 import { Truck, Box, Zap, CreditCard, DollarSign } from 'lucide-react';
 import {useGetUserByTokenQuery} from '../api/userInfoApi.ts';
 import { Address } from '../models/Address.ts';
+import DeliveryMethod, {DeliveryMethodInfo} from '../models/enums/DeliveryMethod.ts';
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
 import { cartService } from '../features/cart/CartService.ts';
@@ -31,7 +32,7 @@ const Checkout: React.FC = () => {
     [cartItems, products]
   );
 
-  const [delivery, setDelivery] = useState<string>('courier');
+  const [delivery, setDelivery] = useState<DeliveryMethod>(0);
   const [payment, setPayment] = useState<string>('card');
 
   const [firstName, setFirstName] = useState('');
@@ -47,7 +48,7 @@ const Checkout: React.FC = () => {
   });
 
   const subtotal = cartItems.reduce((sum, item) => sum + item.total, 0);
-  const shipping = 15.0;
+  const shipping = DeliveryMethodInfo[delivery].price;
   const total = subtotal + shipping;
 
   useEffect(() => {
@@ -247,8 +248,8 @@ const Checkout: React.FC = () => {
                 <input
                   type="radio"
                   name="delivery"
-                  checked={delivery === "courier"}
-                  onChange={() => setDelivery("courier")}
+                  checked={delivery === DeliveryMethod.Courier}
+                  onChange={() => setDelivery(DeliveryMethod.Courier)}
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
@@ -262,8 +263,8 @@ const Checkout: React.FC = () => {
                 <input
                   type="radio"
                   name="delivery"
-                  checked={delivery === "post"}
-                  onChange={() => setDelivery("post")}
+                  checked={delivery === DeliveryMethod.Post}
+                  onChange={() => setDelivery(DeliveryMethod.Post)}
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
@@ -277,8 +278,8 @@ const Checkout: React.FC = () => {
                 <input
                   type="radio"
                   name="delivery"
-                  checked={delivery === "premium"}
-                  onChange={() => setDelivery("premium")}
+                  checked={delivery === DeliveryMethod.Premium}
+                  onChange={() => setDelivery(DeliveryMethod.Premium)}
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
@@ -408,7 +409,7 @@ const Checkout: React.FC = () => {
             </div>
             <div className="flex justify-between text-gray-600 mb-2">
               {" "}
-              <span>Shipping</span> <span>{format(shipping)}</span>{" "}
+              <span>Shipping ({DeliveryMethodInfo[delivery].label}):</span> <span>{format(shipping)}</span>{" "}
             </div>
             <div className="flex justify-between font-semibold text-blue-600 text-lg mt-4">
               {" "}
