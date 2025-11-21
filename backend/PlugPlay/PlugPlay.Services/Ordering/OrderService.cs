@@ -262,6 +262,11 @@ public class OrderService : IOrderService
                 throw new InvalidOperationException($"Out of stock: {dto.ProductId}");
             }
 
+            if (product.StockQuantity - dto.Quantity < 0)
+            {
+                throw new InvalidOperationException($"Ordered more than in stock");
+            }
+
             var price = product.Price;
 
             var item = new OrderItem
