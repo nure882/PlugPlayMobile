@@ -185,6 +185,11 @@ const Checkout: React.FC = () => {
       return false;
     }
 
+    if(enrichedItems.length === 0) {
+      setError("Cannot place an order with empty cart, please add some products");
+      return false;
+    }
+
     setError(null);
     return true;
   };
