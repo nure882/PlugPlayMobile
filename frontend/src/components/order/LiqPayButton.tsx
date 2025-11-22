@@ -1,31 +1,46 @@
-import { useState } from 'react';
-import axios from 'axios';
+import {useState} from 'react';
+import {PlaceOrderRequest} from "../../pages/Checkout.tsx";
+import {usePlaceOrderMutation} from "../../api/orderApi.ts";
+import PaymentMethod from "../../models/enums/PaymentMethod.ts";
 
-const LiqPayButton = ({ amount, description, currency = 'UAH' }) => {
+interface LiqPayButtonProps {
+  request: PlaceOrderRequest | null;
+}
+
+const LiqPayButton = (props: LiqPayButtonProps) => {
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [placeOrder] = usePlaceOrderMutation();
+
+  if (props.request === null) {
+    return null;
+  }
+
+  const {userId, deliveryAddressId, orderItems, deliveryMethod} = props.request;
 
   const handlePayment = async () => {
     setLoading(true);
     setError(null);
 
     try {
-      // const orderPlacementResponse = await axios.post('/api/order/place', {});
-      // const paymentId = orderPlacementResponse.data;
-      const paymentId = 2;
-
-      const paymentResponse = await axios.post('https://irrigative-bessie-evidentially.ngrok-free.dev/api/payment/create', {
-        amount: amount,
-        currency: currency,
-        description: description,
-        paymentId: paymentId
+      const {data: orderPlacementRes, error} = await placeOrder({
+        userId: userId,
+        deliveryAddressId: deliveryAddressId,
+        orderItems: orderItems,
+        paymentMethod: PaymentMethod.Card,
+        deliveryMethod: deliveryMethod,
       });
 
-      const { data, signature } = paymentResponse.data;
-      console.log('LiqPay Data:', data);
-      console.log('LiqPay Signature:', signature);
+      if (error || !orderPlacementRes) {
+        console.error('Order placement error:', error);
+        setError('Failed to place order. Please try again.');
+        setLoading(false);
+        return;
+      }
 
-      // setLoading(false);
+      const {data, signature} = orderPlacementRes.paymentData;
+
       const form = document.createElement('form');
       form.method = 'POST';
       form.action = 'https://www.liqpay.ua/api/3/checkout';
@@ -45,7 +60,6 @@ const LiqPayButton = ({ amount, description, currency = 'UAH' }) => {
       form.appendChild(signatureInput);
       document.body.appendChild(form);
       form.submit();
-
     } catch (err) {
       console.error('Payment error:', err);
       setError('Failed to initiate payment. Please try again.');
@@ -58,7 +72,9 @@ const LiqPayButton = ({ amount, description, currency = 'UAH' }) => {
       <button
         onClick={handlePayment}
         disabled={loading}
-        className={`w-full py-3 rounded-lg text-lg font-semibold text-white ${loading ? 'bg-blue-400 cursor-not-allowed opacity-70' : 'bg-blue-600 hover:bg-blue-700'}`}
+        className={`w-full py-3 rounded-lg text-lg font-semibold text-white ${
+          loading ? 'bg-blue-400 cursor-not-allowed opacity-70' : 'bg-blue-600 hover:bg-blue-700'
+        }`}
       >
         {loading ? 'Processing...' : 'Go to payment'}
       </button>

@@ -1,12 +1,12 @@
-import React, { useEffect, useState, useMemo } from "react";
-import { storage } from "../utils/StorageService";
+import React, {useEffect, useState, useMemo} from "react";
+import {storage} from "../utils/StorageService";
 import LiqPayButton from "../components/order/LiqPayButton";
 import AddressSelector from "../components/order/AddressSelector.tsx";
-import { ValidatedInput } from "../components/order/ValidatedInput.tsx";
-import { useNavigate } from "react-router-dom";
-import { Truck, Box, Zap, CreditCard, DollarSign } from "lucide-react";
-import { useGetUserByTokenQuery } from "../api/userInfoApi.ts";
-import { Address } from "../models/Address.ts";
+import {ValidatedInput} from "../components/order/ValidatedInput.tsx";
+import {useNavigate} from "react-router-dom";
+import {Truck, Box, Zap, CreditCard, DollarSign} from "lucide-react";
+import {useGetUserByTokenQuery} from "../api/userInfoApi.ts";
+import {Address} from "../models/Address.ts";
 import OrderItem from "../models/OrderItem.ts";
 import DeliveryMethod, {
   DeliveryMethodInfo,
@@ -14,15 +14,22 @@ import DeliveryMethod, {
 import PaymentMethod from "../models/enums/PaymentMethod.ts";
 import LoadingMessage from "../components/common/LoadingMessage.tsx";
 import ErrorMessage from "../components/common/ErrorMessage.tsx";
-import { cartService } from "../features/cart/CartService.ts";
-import { useGetAllProductsQuery } from "../api/productsApi.ts";
+import {cartService} from "../features/cart/CartService.ts";
+import {useGetAllProductsQuery} from "../api/productsApi.ts";
 import {
   validateAddress,
   validateEmail,
   validateName,
   validatePhone,
 } from "../utils/validation.ts";
-import { usePlaceOrderMutation } from "../api/orderApi.ts";
+import {usePlaceOrderMutation} from "../api/orderApi.ts";
+
+export interface PlaceOrderRequest {
+  userId: number,
+  deliveryAddressId: number,
+  orderItems: OrderItem[],
+  deliveryMethod: DeliveryMethod,
+}
 
 const Checkout: React.FC = () => {
   const navigate = useNavigate();
@@ -31,7 +38,7 @@ const Checkout: React.FC = () => {
     data: user,
     isLoading: isLoadingUser,
     isError: isUserError,
-  } = useGetUserByTokenQuery(token ?? "", { skip: !token });
+  } = useGetUserByTokenQuery(token ?? "", {skip: !token});
   const registered = user != null;
 
   const {
@@ -103,31 +110,51 @@ const Checkout: React.FC = () => {
       return;
     }
 
-    if (payment === PaymentMethod.Cash) {
-      try {
-        if (user) {
-          const orderItems: OrderItem[] = enrichedItems.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-          }));
-          const res = await placeOrder({
-            userId: user?.id,
-            deliveryAddressId: deliveryAddress.id,
-            orderItems: orderItems,
-            paymentMethod: payment,
-            deliveryMethod: delivery,
-          }).unwrap();
-          //console.log(res);
-        }
-        await clearCart();
-        await updateCart();
-        alert("Order placed. Thank you!");
-        navigate("/");
-      } catch (e) {
-        alert("Sorry, something went wrong");
-        console.error("Placing order failed", e);
+    try {
+      if (user) {
+        const orderItems: OrderItem[] = enrichedItems.map((item) => ({
+          productId: item.productId,
+          quantity: item.quantity,
+        }));
+        const res = await placeOrder({
+          userId: user?.id,
+          deliveryAddressId: deliveryAddress.id,
+          orderItems: orderItems,
+          paymentMethod: payment,
+          deliveryMethod: delivery,
+        }).unwrap();
+        //console.log(res);
       }
+      await clearCart();
+      await updateCart();
+      alert("Order placed. Thank you!");
+      navigate("/");
+    } catch (e) {
+      alert("Sorry, something went wrong");
+      console.error("Placing order failed", e);
     }
+  };
+
+  const createLiqPayRequest = (): PlaceOrderRequest | null => {
+    if (!user) {
+      return null;
+    }
+
+    if (deliveryAddress.id === undefined) {
+      return null;
+    }
+
+    const orderItems: OrderItem[] = enrichedItems.map((item) => ({
+      productId: item.productId,
+      quantity: item.quantity,
+    }));
+
+    return {
+      userId: user.id,
+      deliveryAddressId: deliveryAddress.id,
+      orderItems: orderItems,
+      deliveryMethod: delivery,
+    };
   };
 
   const handleImageClick = (productId?: number) => {
@@ -306,7 +333,7 @@ const Checkout: React.FC = () => {
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    <Truck size={16} /> Courier
+                    <Truck size={16}/> Courier
                   </div>
                   <div className="text-sm text-gray-500">Delivery 1-2 days</div>
                 </div>
@@ -321,7 +348,7 @@ const Checkout: React.FC = () => {
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    <Box size={16} /> Post
+                    <Box size={16}/> Post
                   </div>
                   <div className="text-sm text-gray-500">Delivery 3-5 days</div>
                 </div>
@@ -336,7 +363,7 @@ const Checkout: React.FC = () => {
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    <Zap size={16} /> Premium Delivery
+                    <Zap size={16}/> Premium Delivery
                   </div>
                   <div className="text-sm text-gray-500">Same day delivery</div>
                 </div>
@@ -358,7 +385,7 @@ const Checkout: React.FC = () => {
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    <CreditCard size={16} /> Card
+                    <CreditCard size={16}/> Card
                   </div>
                   <div className="text-sm text-gray-500">
                     Pay online with card
@@ -377,7 +404,7 @@ const Checkout: React.FC = () => {
                 />
                 <div>
                   <div className="flex items-center gap-2 font-medium">
-                    <DollarSign size={16} /> Cash after delivery
+                    <DollarSign size={16}/> Cash after delivery
                   </div>
                   <div className="text-sm text-gray-500">
                     Pay when you receive
@@ -397,10 +424,7 @@ const Checkout: React.FC = () => {
                   Place order
                 </button>
               ) : (
-                <LiqPayButton
-                  amount={total}
-                  description={`Order payment ${new Date().toISOString()}`}
-                />
+                <LiqPayButton request={createLiqPayRequest()}/>
               )}
             </div>
             {error && <p className="text-sm text-red-500">{error}</p>}
