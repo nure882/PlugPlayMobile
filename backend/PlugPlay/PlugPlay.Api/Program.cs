@@ -19,17 +19,19 @@ var config = new ConfigurationBuilder()
     .Build();
 
 Log.Logger = new LoggerConfiguration()
-    .ReadFrom.Configuration(config) // optional: if you add Serilog section to appsettings.json
+    .ReadFrom.Configuration(config)
     .Enrich.FromLogContext()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Information)
-    .WriteTo.Console()
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] {Message:lj} {EventId}{NewLine}{Exception}")
     .WriteTo.File(
-        path: "Logs/log-.txt", // todo: change dir
+        path: "Logs/log-.txt",
         rollingInterval: RollingInterval.Day,
-        retainedFileCountLimit: 14,
-        fileSizeLimitBytes: 10_000_000,
+        fileSizeLimitBytes: 10_000_000, // 10 MB
         rollOnFileSizeLimit: true,
-        shared: true) // important for Docker
+        shared: true,
+        outputTemplate: "{Timestamp:yyyy-MM-dd HH:mm:ss.fff} [{Level:u3}] {EventId} {Message:lj}{NewLine}{Exception}"
+    )
     .CreateLogger();
 
 var builder = WebApplication.CreateBuilder(args);
