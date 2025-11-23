@@ -36,9 +36,18 @@ public class PaymentService : IPaymentService
         }
     }
 
-    public Task<Result> RefundPayment(int orderId)
+    public async Task<Result<LiqPayRefundResponse>> RefundPayment(int orderId)
     {
-        throw new NotImplementedException();
+        try
+        {
+            var result = await _liqPayHelper.RefundAsync<LiqPayRefundResponse>(orderId);
+
+            return Result.Success(result);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<LiqPayRefundResponse>($"Error refunding payment: {e.Message}");
+        }
     }
 
     public async Task<Result> UpdatePaymentStatus(int orderId, long transactionId, string status)
