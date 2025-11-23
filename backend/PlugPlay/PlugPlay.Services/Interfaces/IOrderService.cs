@@ -1,6 +1,7 @@
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Services.Ordering;
+using PlugPlay.Services.Payment;
 
 namespace PlugPlay.Services.Interfaces;
 
@@ -14,7 +15,5 @@ public interface IOrderService
 
     Task<Result<IEnumerable<OrderItem>>> GetOrderItemsAsync(int orderId);
 
-    Task<Result> UpdateOrderAsync(Order order);
-
-    Task<Result> CancelOrderAsync(int orderId);
+    Task<Result<LiqPayRefundResponse>> CancelOrderAsync(int orderId);
 }

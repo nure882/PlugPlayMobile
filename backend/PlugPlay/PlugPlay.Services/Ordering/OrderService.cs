@@ -4,8 +4,11 @@ using Microsoft.Extensions.Logging;
 using PlugPlay.Domain.Common;
 using PlugPlay.Domain.Entities;
 using PlugPlay.Domain.Enums;
+using PlugPlay.Domain.Extensions;
 using PlugPlay.Infrastructure;
 using PlugPlay.Services.Interfaces;
+using PlugPlay.Services.Payment;
+using Serilog;
 
 namespace PlugPlay.Services.Ordering;
 
@@ -17,12 +20,16 @@ public class OrderService : IOrderService
 
     private readonly IPaymentService _paymentService;
 
+    private readonly ICartService _cartService;
+
     private readonly ILogger<OrderService> _logger;
 
-    public OrderService(PlugPlayDbContext context, IPaymentService paymentService, ILogger<OrderService> logger)
+    public OrderService(PlugPlayDbContext context, IPaymentService paymentService, ICartService cartService,
+        ILogger<OrderService> logger)
     {
         _context = context;
         _paymentService = paymentService;
+        _cartService = cartService;
         _logger = logger;
     }
 
@@ -89,6 +96,7 @@ public class OrderService : IOrderService
             }
 
             await _context.SaveChangesAsync();
+            await ClearCart();
             scope.Complete();
 
             return Result.Success(new OrderResponse { OrderId = newOrder.Id });
@@ -122,6 +130,15 @@ public class OrderService : IOrderService
 
             return totalAmount + totalWithDelivery;
         }
+
+        async Task ClearCart()
+        {
+            var cartRes = await _cartService.ClearCartAsync(orderReq.UserId);
+            if (cartRes.Failure)
+            {
+                _logger.LogWarning("Couldn't clear cart {cartRes.Error}", cartRes.Error);
+            }
+        }
     }
 
     public async Task<Result<IEnumerable<Order>>> GetUserOrdersAsync(int userId)
@@ -149,8 +166,6 @@ public class OrderService : IOrderService
                 .ThenInclude(p => p.Category)
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
-                // .ThenInclude(p => p.Reviews)
-                // .ThenInclude(r => r.User)
                 .ToListAsync();
 
             return Result.Success<IEnumerable<Order>>(orders);
@@ -180,8 +195,6 @@ public class OrderService : IOrderService
                 .ThenInclude(p => p.Category)
                 .Include(o => o.OrderItems)
                 .ThenInclude(oi => oi.Product)
-                // .ThenInclude(p => p.Reviews)
-                // .ThenInclude(r => r.User)
                 .FirstOrDefaultAsync(o => o.Id == orderId);
 
             if (order == null)
@@ -204,14 +217,49 @@ public class OrderService : IOrderService
         }
     }
 
-    public async Task<Result> UpdateOrderAsync(Order order)
+    public async Task<Result<LiqPayRefundResponse>> CancelOrderAsync(int orderId)
     {
-        throw new NotImplementedException();
-    }
+        try
+        {
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order is null)
+            {
+                return Result.Fail<LiqPayRefundResponse>($"No order with id {orderId}");
+            }
 
-    public async Task<Result> CancelOrderAsync(int orderId)
-    {
-        throw new NotImplementedException();
+            var stateTransitionNotValid = order.Status == OrderStatus.Cancelled
+                                          || order.Status == OrderStatus.Delivered;
+            if (stateTransitionNotValid)
+            {
+                return Result.Fail<LiqPayRefundResponse>($"Order with id {orderId} can't be cancelled");
+            }
+
+            Result<LiqPayRefundResponse> result = new Result<LiqPayRefundResponse>(null, true, "");
+            if (order.PaymentMethod == PaymentMethod.Card && (order.PaymentStatus == PaymentStatus.TestPaid ||
+                                                              order.PaymentStatus == PaymentStatus.Paid))
+            {
+                result = await _paymentService.RefundPayment(orderId);
+                result.OnSuccess(() => Log.Information("Success refunding payment"))
+                    .OnFailure(() => Log.Error(result.Error));
+
+                if (result.Value.Result == "error")
+                {
+                    return Result.Fail<LiqPayRefundResponse>($"Error refunding: {result.Value.Status}");
+                }
+            }
+
+            order.Status = OrderStatus.Cancelled;
+            _context.Orders.Update(order);
+            await _context.SaveChangesAsync();
+
+            return result.Failure
+                ? Result.Fail<LiqPayRefundResponse>($"Payment refund failed. Reason: {result.Error}")
+                : Result.Success(result.Value);
+        }
+        catch (Exception e)
+        {
+            return Result.Fail<LiqPayRefundResponse>($"Error refunding: {e.Message}");
+        }
     }
 
     public async Task<Result<IEnumerable<OrderItem>>> GetOrderItemsAsync(int orderId)
@@ -232,9 +280,6 @@ public class OrderService : IOrderService
                 .ThenInclude(p => p.ProductImages)
                 .Include(oi => oi.Product)
                 .ThenInclude(p => p.Category)
-                // .Include(oi => oi.Product)
-                // .ThenInclude(p => p.Reviews)
-                // .ThenInclude(r => r.User)
                 .ToListAsync();
 
             return Result.Success<IEnumerable<OrderItem>>(items);
@@ -261,6 +306,11 @@ public class OrderService : IOrderService
             if (product.StockQuantity == 0)
             {
                 throw new InvalidOperationException($"Out of stock: {dto.ProductId}");
+            }
+
+            if (product.StockQuantity - dto.Quantity < 0)
+            {
+                throw new InvalidOperationException($"Ordered more than in stock");
             }
 
             var price = product.Price;

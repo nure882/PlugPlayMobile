@@ -12,5 +12,5 @@ docker run --rm -it \
   bash -c "dotnet tool install --global dotnet-ef && export PATH=\"\$PATH:/root/.dotnet/tools\" && dotnet ef database update --project /src/PlugPlay.Infrastructure/PlugPlay.Infrastructure.csproj"
 
 cd /var/www/plugplay
-docker exec -i plugplay-db-1 psql -U myuser -d plugplay < /var/www/plugplay/backend/PlugPlay/PlugPlay.Infrastructure/data_seed.sql
+docker exec -i plugplay-db-1 psql -U myuser -d plugplay < /var/www/plugplay/backend/PlugPlay/PlugPlay.Infrastructure/DataSeeds/prod_data_seed.sql
 docker restart plugplay-db-1

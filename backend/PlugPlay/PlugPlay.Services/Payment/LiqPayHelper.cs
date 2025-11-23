@@ -32,9 +32,6 @@ public class LiqPayHelper
         };
 
         var jsonParams = JsonSerializer.Serialize(paymentParams);
-        Debug.WriteLine("JSON:");
-        Debug.WriteLine(jsonParams);
-        Debug.WriteLine("---------------------------------");
         var data = Convert.ToBase64String(Encoding.UTF8.GetBytes(jsonParams));
         var signature = GenerateSignature(data);
 
@@ -66,5 +63,32 @@ public class LiqPayHelper
         var hash = sha3.ComputeHash(Encoding.UTF8.GetBytes(signString));
         
         return Convert.ToBase64String(hash);
+    }
+
+    public async Task<T> RefundAsync<T>(int orderId)
+    {
+        var payload = new
+        {
+            public_key = _publicKey,
+            version = 7,
+            action = "refund",
+            order_id = orderId.ToString()
+        };
+
+        var json = JsonSerializer.Serialize(payload);
+        var data = Convert.ToBase64String(Encoding.UTF8.GetBytes(json));
+        var signature = GenerateSignature(data);
+
+        using var client = new HttpClient();
+        var content = new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            { "data", data },
+            { "signature", signature }
+        });
+
+        var response = await client.PostAsync("https://www.liqpay.ua/api/request", content);
+        var responseString = await response.Content.ReadAsStringAsync();
+
+        return JsonSerializer.Deserialize<T>(responseString);
     }
 }
