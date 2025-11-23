@@ -65,6 +65,7 @@ public class PaymentService : IPaymentService
                     break;
                 case "Failed":
                     order.PaymentStatus = PaymentStatus.Failed;
+                    order.Status = OrderStatus.Cancelled;
                     break;
                 default:
                     order.PaymentStatus = order.PaymentStatus;

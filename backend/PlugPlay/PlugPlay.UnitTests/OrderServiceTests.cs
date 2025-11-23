@@ -21,6 +21,8 @@ public class OrderServiceTests
 
     private readonly OrderService _service;
 
+    private readonly Mock<ICartService> _mockCartService;
+
     public OrderServiceTests()
     {
         var databaseName = Guid.NewGuid().ToString();
@@ -29,8 +31,9 @@ public class OrderServiceTests
             .Options;
         _context = new PlugPlayDbContext(options);
         _mockPaymentService = new Mock<IPaymentService>();
+        _mockCartService = new Mock<ICartService>();
         _mockLogger = new Mock<ILogger<OrderService>>();
-        _service = new OrderService(_context, _mockPaymentService.Object, _mockLogger.Object);
+        _service = new OrderService(_context, _mockPaymentService.Object, _mockCartService.Object, _mockLogger.Object);
     }
 
     [Fact]

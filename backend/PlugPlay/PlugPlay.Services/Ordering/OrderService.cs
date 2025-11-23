@@ -226,23 +226,25 @@ public class OrderService : IOrderService
                 return Result.Fail<LiqPayRefundResponse>($"No order with id {orderId}");
             }
 
-            var stateTransitionNotValid = order.PaymentStatus == PaymentStatus.NotPaid
-                                          || order.PaymentStatus == PaymentStatus.Failed
-                                          || order.Status == OrderStatus.Cancelled
+            var stateTransitionNotValid = order.Status == OrderStatus.Cancelled
                                           || order.Status == OrderStatus.Delivered;
             if (stateTransitionNotValid)
             {
                 return Result.Fail<LiqPayRefundResponse>($"Order with id {orderId} can't be cancelled");
             }
 
-            var result = await _paymentService.RefundPayment(orderId);
-            result
-                .OnSuccess(() => Log.Information("Success refunding payment"))
-                .OnFailure(() => Log.Error(result.Error));
-
-            if (result.Value.Result == "error")
+            Result<LiqPayRefundResponse> result = new Result<LiqPayRefundResponse>(null, true, "");
+            if (order.PaymentMethod == PaymentMethod.Card && (order.PaymentStatus == PaymentStatus.TestPaid ||
+                                                              order.PaymentStatus == PaymentStatus.Paid))
             {
-                return Result.Fail<LiqPayRefundResponse>($"Error refunding: {result.Value.Status}");
+                result = await _paymentService.RefundPayment(orderId);
+                result.OnSuccess(() => Log.Information("Success refunding payment"))
+                    .OnFailure(() => Log.Error(result.Error));
+
+                if (result.Value.Result == "error")
+                {
+                    return Result.Fail<LiqPayRefundResponse>($"Error refunding: {result.Value.Status}");
+                }
             }
 
             order.Status = OrderStatus.Cancelled;
