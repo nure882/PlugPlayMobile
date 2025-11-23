@@ -11,6 +11,7 @@ import {
 import { storage } from "../../utils/StorageService.ts";
 import { useMemo } from "react";
 import { skipToken } from '@reduxjs/toolkit/query';
+import { useState } from "react";
 
 class CartService {
   useCart(userId?: number): { cartItems: CartItem[], isLoading: boolean, isError: boolean, refetch: () => void } {
@@ -33,11 +34,17 @@ class CartService {
       return stored;
     }, [cartItemsFromApi, stored, userId]);
 
+    const [version, setVersion] = useState(0);
+
     const refetchCart = () => {
       if (userId) {
-        // console.log("[CartService] refetch api cart")
         refetchApiCart();
-    }};
+      }
+      else {
+        //console.log("[CartService] refetch cart with version")
+        setVersion((v) => v + 1);
+      }
+    };
 
     // console.log('[CartService] Results:', {
     //   cartItemsCount: cartItems.length,
@@ -81,7 +88,7 @@ class CartService {
         return;
       }
 
-      console.log(`[CartService] merging items from api for user/${userId}`)
+      //console.log(`[CartService] merging items from api for user/${userId}`)
 
       for (const item of stored) {
         await addToCartMutation({

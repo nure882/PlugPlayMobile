@@ -103,7 +103,7 @@ const ProductDetail = () => {
     updateCart();
   };
 
-  const purchaseUnavailable = product.stockQuantity === 0 || isInCart;
+  const purchaseUnavailable = product.stockQuantity < 1 || isInCart;
 
   const deliveryOptions = [
     {

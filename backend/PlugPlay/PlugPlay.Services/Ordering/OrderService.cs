@@ -79,6 +79,7 @@ public class OrderService : IOrderService
                 scope.Complete();
                 return Result.Success(new OrderResponse
                 {
+                    OrderId = newOrder.Id,
                     PaymentData = paymentDataResult.Value
                 });
             }
@@ -90,7 +91,7 @@ public class OrderService : IOrderService
             await _context.SaveChangesAsync();
             scope.Complete();
 
-            return Result.Success(new OrderResponse { });
+            return Result.Success(new OrderResponse { OrderId = newOrder.Id });
         }
         catch (InvalidOperationException e)
         {
