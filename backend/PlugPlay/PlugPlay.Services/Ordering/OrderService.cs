@@ -24,7 +24,8 @@ public class OrderService : IOrderService
 
     private readonly ILogger<OrderService> _logger;
 
-    public OrderService(PlugPlayDbContext context, IPaymentService paymentService, ICartService cartService, ILogger<OrderService> logger)
+    public OrderService(PlugPlayDbContext context, IPaymentService paymentService, ICartService cartService,
+        ILogger<OrderService> logger)
     {
         _context = context;
         _paymentService = paymentService;
@@ -217,34 +218,45 @@ public class OrderService : IOrderService
 
     public async Task<Result<LiqPayRefundResponse>> CancelOrderAsync(int orderId)
     {
-        var order = await _context.Orders.FindAsync(orderId);
-        if (order is null)
+        try
         {
-            return Result.Fail<LiqPayRefundResponse>($"No order with id {orderId}");
-        }
+            var order = await _context.Orders.FindAsync(orderId);
+            if (order is null)
+            {
+                return Result.Fail<LiqPayRefundResponse>($"No order with id {orderId}");
+            }
 
-        var stateTransitionNotValid = order.PaymentStatus == PaymentStatus.NotPaid
-                                      || order.PaymentStatus == PaymentStatus.Failed
-                                      || order.Status == OrderStatus.Cancelled
-                                      || order.Status == OrderStatus.Delivered;
-        if (stateTransitionNotValid)
+            var stateTransitionNotValid = order.PaymentStatus == PaymentStatus.NotPaid
+                                          || order.PaymentStatus == PaymentStatus.Failed
+                                          || order.Status == OrderStatus.Cancelled
+                                          || order.Status == OrderStatus.Delivered;
+            if (stateTransitionNotValid)
+            {
+                return Result.Fail<LiqPayRefundResponse>($"Order with id {orderId} can't be cancelled");
+            }
+
+            var result = await _paymentService.RefundPayment(orderId);
+            result
+                .OnSuccess(() => Log.Information("Success refunding payment"))
+                .OnFailure(() => Log.Error(result.Error));
+
+            if (result.Value.Result == "error")
+            {
+                return Result.Fail<LiqPayRefundResponse>($"Error refunding: {result.Value.Status}");
+            }
+
+            order.Status = OrderStatus.Cancelled;
+            _context.Orders.Update(order);
+            await _context.SaveChangesAsync();
+
+            return result.Failure
+                ? Result.Fail<LiqPayRefundResponse>($"Payment refund failed. Reason: {result.Error}")
+                : Result.Success(result.Value);
+        }
+        catch (Exception e)
         {
-            return Result.Fail<LiqPayRefundResponse>($"Order with id {orderId} can't be cancelled");
+            return Result.Fail<LiqPayRefundResponse>($"Error refunding: {e.Message}");
         }
-
-        var result = await _paymentService.RefundPayment(orderId);
-        result
-            .OnSuccess(() => Log.Information("Success refunding payment"))
-            .OnFailure(() => Log.Error(result.Error));
-
-        if (result.Value.Result == "error")
-        {
-            return Result.Fail<LiqPayRefundResponse>($"Error refunding: {result.Value.Status}");
-        }
-
-        return result.Failure
-            ? Result.Fail<LiqPayRefundResponse>($"Payment refund failed. Reason: {result.Error}")
-            : Result.Success(result.Value);
     }
 
     public async Task<Result<IEnumerable<OrderItem>>> GetOrderItemsAsync(int orderId)
