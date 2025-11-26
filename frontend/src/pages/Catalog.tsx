@@ -1,19 +1,21 @@
-import {useState, useEffect} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {Loader2} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import ProductCard from '../components/products/ProductCard';
 import DynamicFiltersSidebar, {
   DynamicFilters,
   PriceRange,
   SortOption,
 } from '../components/products/DynamicFilterSidebar';
-import {useProductsService} from '../features/products/ProductsService';
-import {useAppDispatch, useAppSelector} from '../app/configureStore';
+import { useProductsService } from '../features/products/ProductsService';
+import { useAppDispatch, useAppSelector } from '../app/configureStore';
 import {
   setAttributeFilters,
   setPriceRange,
   setSortOption,
+  setSearchQuery,
 } from '../app/slices/filterSlice';
+import { useSearchProductsQuery } from '../api/productsApi';
 
 const Catalog = () => {
   const navigate = useNavigate();
@@ -22,15 +24,22 @@ const Catalog = () => {
 
   const {
     selectedCategory,
-    priceRange = {min: 0, max: 5000},
+    searchQuery = '',
+    priceRange = { min: 0, max: 5000 },
     attributeFilters = {},
-    sortOption = {value: 'price-asc', label: 'Price (Low to High)'},
+    sortOption = { value: 'price-asc', label: 'Price (Low to High)' },
   } = useAppSelector((state) => state.filter || {});
 
   const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [visibleCount, setVisibleCount] = useState(20);
 
-  const {products, attributeGroups, isLoading, isError, refetch} = useProductsService({
+  // Use search API when there's a search query, otherwise use filter API
+  const { data: searchResults, isLoading: isSearchLoading, isError: isSearchError } = useSearchProductsQuery(
+    { query: searchQuery, page: 1, pageSize: 100 },
+    { skip: !searchQuery }
+  );
+
+  const { products: filterProducts, attributeGroups, isLoading: isFilterLoading, isError: isFilterError, refetch } = useProductsService({
     categoryId: selectedCategory,
     minPrice: priceRange.min,
     maxPrice: priceRange.max,
@@ -40,18 +49,30 @@ const Catalog = () => {
     pageSize: 100,
   });
 
+  // Determine which products to display based on search mode
+  const products = searchQuery ? (searchResults || []) : filterProducts;
+  const isLoading = searchQuery ? isSearchLoading : isFilterLoading;
+  const isError = searchQuery ? isSearchError : isFilterError;
+
   const currentMin = products.length > 0 ? Math.min(...products.map(p => p.price)) : 0;
   const currentMax = products.length > 0 ? Math.max(...products.map(p => p.price)) : 5000;
 
   useEffect(() => {
-    if (typeof refetch === 'function') {
+    if (typeof refetch === 'function' && !searchQuery) {
       refetch();
     }
-  }, [sortOption.value, attributeFilters, priceRange, selectedCategory, refetch]);
+  }, [sortOption.value, attributeFilters, priceRange, selectedCategory, refetch, searchQuery]);
 
   useEffect(() => {
     setVisibleCount(20);
-  }, [selectedCategory]);
+  }, [selectedCategory, searchQuery]);
+
+  // Clear search when category is selected
+  useEffect(() => {
+    if (selectedCategory !== null) {
+      dispatch(setSearchQuery(''));
+    }
+  }, [selectedCategory, dispatch]);
 
   const handleSetFilters = (filters: DynamicFilters) => {
     dispatch(setAttributeFilters(filters));
@@ -70,7 +91,7 @@ const Catalog = () => {
       <div className="min-h-screen bg-gray-50">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600"/>
+            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
             <p className="text-gray-600">Loading catalog...</p>
           </div>
         </div>
@@ -163,7 +184,7 @@ const Catalog = () => {
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
               </svg>
               <span className="font-medium">Filters & Sort</span>
             </button>
