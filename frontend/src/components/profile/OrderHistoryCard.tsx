@@ -7,6 +7,11 @@ interface OrderHistoryCardProps {
     onCancelOrder?: (orderId: number) => void;
 }
 
+function formatHryvnia(amount?: number) {
+    const v = amount ?? 0;
+    return `₴${v.toFixed(2)}`;
+}
+
 export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
@@ -55,7 +60,7 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
                         <div className="text-right">
                             <p className="text-xs text-gray-500">Total Amount</p>
                             <p className="text-sm font-semibold text-gray-900">
-                                ${order.totalAmount.toFixed(2)}
+                                {formatHryvnia(order.totalAmount)}
                             </p>
                         </div>
                     </div>
@@ -104,7 +109,7 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
                                     <div className="text-right">
                                         <p className="text-sm text-gray-700">Qty: {item.quantity}</p>
                                         <p className="text-sm font-medium text-gray-900">
-                                            ${item.price.toFixed(2)}
+                                            {formatHryvnia(item.price)}
                                         </p>
                                     </div>
                                 </div>
@@ -117,16 +122,16 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
                         <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">Subtotal</span>
                             <span className="text-gray-900">
-                                ${(order.totalAmount - order.shipmentCost).toFixed(2)}
+                                {formatHryvnia(order.totalAmount - (order.shipmentCost ?? 0))}
                             </span>
                         </div>
                         <div className="flex justify-between text-sm mb-2">
                             <span className="text-gray-600">Shipment Cost</span>
-                            <span className="text-gray-900">${order.shipmentCost.toFixed(2)}</span>
+                            <span className="text-gray-900">{formatHryvnia(order.shipmentCost)}</span>
                         </div>
                         <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-200">
                             <span className="text-gray-900">Total</span>
-                            <span className="text-gray-900">${order.totalAmount.toFixed(2)}</span>
+                            <span className="text-gray-900">{formatHryvnia(order.totalAmount)}</span>
                         </div>
                     </div>
 
