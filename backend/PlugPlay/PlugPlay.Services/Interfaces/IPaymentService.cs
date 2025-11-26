@@ -9,5 +9,5 @@ public interface IPaymentService
 
     Task<Result<LiqPayPaymentData>> CreatePayment(int orderId, decimal totalWithDelivery);
 
-    Task<Result> RefundPayment(int orderId);
+    Task<Result<LiqPayRefundResponse>> RefundPayment(int orderId);
 }

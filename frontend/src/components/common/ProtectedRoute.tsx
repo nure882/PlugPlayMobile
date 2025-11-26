@@ -1,6 +1,6 @@
 import React from 'react';
 import {Navigate} from 'react-router-dom';
-import {Role} from "../../models/Role.ts";
+import {Role} from "../../models/enums/Role.ts";
 import {useAuth} from "../../context/AuthContext.tsx";
 
 interface ProtectedRouteProps {

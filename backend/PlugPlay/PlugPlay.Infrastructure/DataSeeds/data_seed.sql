@@ -1,46 +1,57 @@
-﻿BEGIN;
+﻿TRUNCATE TABLE
+  public.product_images,
+  public.product_attributes,
+  public.products,
+  public.attributes,
+  public.categories,
+  public.asp_net_user_roles,
+  public.asp_net_users,
+  public.asp_net_roles
+RESTART IDENTITY CASCADE;
+
+BEGIN;
 
 -- ====== asp_net_roles ======
+INSERT INTO public.asp_net_roles (id, name, normalized_name, concurrency_stamp)
+SELECT 0, 'User', 'USER', gen_random_uuid()::text
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_roles WHERE name = 'User');
+
 INSERT INTO public.asp_net_roles (id, name, normalized_name, concurrency_stamp)
 SELECT 1, 'Admin', 'ADMIN', gen_random_uuid()::text
 WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_roles WHERE name = 'Admin');
 
-INSERT INTO public.asp_net_roles (id, name, normalized_name, concurrency_stamp)
-SELECT 2, 'User', 'USER', gen_random_uuid()::text
-WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_roles WHERE name = 'User');
-
--- ====== user ======
-INSERT INTO public."user" (user_id, user_name, normalized_user_name, email, normalized_email,
+-- ====== asp_net_users ======
+INSERT INTO public.asp_net_users (id, user_name, normalized_user_name, email, normalized_email,
  email_confirmed, password_hash, phone_number, phone_number_confirmed, two_factor_enabled,
  first_name, last_name, role, created_at, updated_at, security_stamp, concurrency_stamp, lockout_enabled, access_failed_count, google_id, picture_url)
 SELECT 1, 'admin', 'ADMIN', 'admin@cowork.com', 'ADMIN@COWORK.COM',
  true, 'AQAAAAEAACcQAAAAEMOCKHASH==', '+10000000001', true, false,
  'Admin', 'User', 1, NOW(), NOW(), gen_random_uuid()::text, gen_random_uuid()::text, false, 0, '', NULL
-WHERE NOT EXISTS (SELECT 1 FROM public."user" WHERE user_name = 'admin');
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_users WHERE user_name = 'admin');
 
-INSERT INTO public."user" (user_id, user_name, normalized_user_name, email, normalized_email,
+INSERT INTO public.asp_net_users (id, user_name, normalized_user_name, email, normalized_email,
  email_confirmed, password_hash, phone_number, phone_number_confirmed, two_factor_enabled,
  first_name, last_name, role, created_at, updated_at, security_stamp, concurrency_stamp, lockout_enabled, access_failed_count, google_id, picture_url)
 SELECT 2, 'user1', 'USER1', 'user1@cowork.com', 'USER1@COWORK.COM',
  true, 'AQAAAAEAACcQAAAAEMOCKHASH==', '+10000000002', true, false,
- 'John', 'Doe', 2, NOW(), NOW(), gen_random_uuid()::text, gen_random_uuid()::text, false, 0, '', NULL
-WHERE NOT EXISTS (SELECT 1 FROM public."user" WHERE user_name = 'user1');
+ 'John', 'Doe', 0, NOW(), NOW(), gen_random_uuid()::text, gen_random_uuid()::text, false, 0, '', NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_users WHERE user_name = 'user1');
 
-INSERT INTO public."user" (user_id, user_name, normalized_user_name, email, normalized_email,
+INSERT INTO public.asp_net_users (id, user_name, normalized_user_name, email, normalized_email,
  email_confirmed, password_hash, phone_number, phone_number_confirmed, two_factor_enabled,
  first_name, last_name, role, created_at, updated_at, security_stamp, concurrency_stamp, lockout_enabled, access_failed_count, google_id, picture_url)
 SELECT 3, 'user2', 'USER2', 'user2@cowork.com', 'USER2@COWORK.COM',
  true, 'AQAAAAEAACcQAAAAEMOCKHASH==', '+10000000003', true, false,
- 'Jane', 'Smith', 2, NOW(), NOW(), gen_random_uuid()::text, gen_random_uuid()::text, false, 0, '', NULL
-WHERE NOT EXISTS (SELECT 1 FROM public."user" WHERE user_name = 'user2');
+ 'Jane', 'Smith', 0, NOW(), NOW(), gen_random_uuid()::text, gen_random_uuid()::text, false, 0, '', NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_users WHERE user_name = 'user2');
 
-INSERT INTO public."user" (user_id, user_name, normalized_user_name, email, normalized_email,
+INSERT INTO public.asp_net_users (id, user_name, normalized_user_name, email, normalized_email,
  email_confirmed, password_hash, phone_number, phone_number_confirmed, two_factor_enabled,
  first_name, last_name, role, created_at, updated_at, security_stamp, concurrency_stamp, lockout_enabled, access_failed_count, google_id, picture_url)
 SELECT 4, 'user3', 'USER3', 'user3@cowork.com', 'USER3@COWORK.COM',
  true, 'AQAAAAEAACcQAAAAEMOCKHASH==', '+10000000004', true, false,
- 'Alex', 'Johnson', 2, NOW(), NOW(), gen_random_uuid()::text, gen_random_uuid()::text, false, 0, '', NULL
-WHERE NOT EXISTS (SELECT 1 FROM public."user" WHERE user_name = 'user3');
+ 'Alex', 'Johnson', 0, NOW(), NOW(), gen_random_uuid()::text, gen_random_uuid()::text, false, 0, '', NULL
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_users WHERE user_name = 'user3');
 
 -- ====== asp_net_user_roles ======
 INSERT INTO public.asp_net_user_roles (user_id, role_id)
@@ -48,15 +59,20 @@ SELECT 1, 1
 WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_user_roles WHERE user_id = 1 AND role_id = 1);
 
 INSERT INTO public.asp_net_user_roles (user_id, role_id)
-SELECT user_id, 2
-FROM public."user"
-WHERE user_id IN (2,3,4)
-AND NOT EXISTS (SELECT 1 FROM public.asp_net_user_roles WHERE user_id = user_id AND role_id = 2);
+SELECT 2, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_user_roles WHERE user_id = 2 AND role_id = 0);
+
+INSERT INTO public.asp_net_user_roles (user_id, role_id)
+SELECT 3, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_user_roles WHERE user_id = 3 AND role_id = 0);
+
+INSERT INTO public.asp_net_user_roles (user_id, role_id)
+SELECT 4, 0
+WHERE NOT EXISTS (SELECT 1 FROM public.asp_net_user_roles WHERE user_id = 4 AND role_id = 0);
 
 
--- ====== category ======
-INSERT INTO public.category (id, name, parent_category_id) VALUES
--- (Full list of 103 categories)
+-- ====== categories ======
+INSERT INTO public.categories (id, name, parent_category_id) VALUES
 (1, 'Computers & Laptops', NULL),
 (2, 'Laptops', 1),
 (3, 'Desktops', 1),
@@ -163,8 +179,8 @@ INSERT INTO public.category (id, name, parent_category_id) VALUES
 ON CONFLICT DO NOTHING;
 
 
--- ====== attribute ======
-INSERT INTO public.attribute (id, name, unit, data_type) VALUES
+-- ====== attributes ======
+INSERT INTO public.attributes (id, name, unit, data_type) VALUES
   (1, 'Color', '', 'string'),
   (2, 'Weight', 'kg', 'string'),
   (3, 'Dimensions', 'cm', 'string'),
@@ -174,12 +190,20 @@ INSERT INTO public.attribute (id, name, unit, data_type) VALUES
   (7, 'Form Factor', '', 'string'),
   (8, 'Resolution', '', 'string'),
   (9, 'Color Variant', '', 'string'),
-  (10, 'Weight (packaging)', 'kg', 'string')
+  (10, 'Weight (packaging)', 'kg', 'string'),
+  (11, 'Processor', '', 'string'),
+  (12, 'RAM', 'GB', 'decimal'),
+  (13, 'Storage Type', '', 'string'),
+  (14, 'Screen Size', 'inch', 'decimal'),
+  (15, 'Battery Life', 'hours', 'decimal'),
+  (16, 'Operating System', '', 'string'),
+  (17, 'Camera Resolution', 'MP', 'decimal'),
+  (18, 'Audio Type', '', 'string')
 ON CONFLICT DO NOTHING;
 
 
--- ====== product ======
-INSERT INTO public.product (id, category_id, name, description, price, stock_quantity, created_at) VALUES
+-- ====== products ======
+INSERT INTO public.products (id, category_id, name, description, price, stock_quantity, created_at) VALUES
   (1, 2, 'Acme Ultrabook X1', 'Thin and light 14" laptop, ideal for travel.', 999.99, 10, '2025-01-05T10:15:00Z'),
   (2, 3, 'Acme Gaming Desktop G2', 'High-end desktop with liquid cooling.', 1499.00, 5, '2025-02-12T09:00:00Z'),
   (3, 10, 'Pro NVMe 1TB SSD', 'Fast NVMe storage drive, 1TB.', 129.99, 50, '2025-03-01T12:00:00Z'),
@@ -189,12 +213,22 @@ INSERT INTO public.product (id, category_id, name, description, price, stock_qua
   (7, 35, 'BlueSound B300', 'Bluetooth over-ear headphones with ANC.', 89.99, 15, '2025-01-30T11:00:00Z'),
   (8, 44, 'VisionSmart 55 OLED', '55" OLED Smart TV with 4K HDR.', 1199.00, 4, '2025-02-05T13:20:00Z'),
   (9, 85, 'FitTrack S2', 'Fitness smartwatch with heart-rate and GPS.', 149.99, 30, '2025-03-15T07:45:00Z'),
-  (10, 15, 'USB-C 65W Charger', 'Compact 65W USB-C charger, PD support.', 29.99, 100, '2025-01-10T10:00:00Z')
+  (10, 15, 'USB-C 65W Charger', 'Compact 65W USB-C charger, PD support.', 29.99, 100, '2025-01-10T10:00:00Z'),
+  (11, 23, 'Galaxy S24 Ultra', 'Flagship smartphone with advanced AI camera.', 1299.99, 20, '2025-04-01T09:00:00Z'),
+  (12, 23, 'iPhone 15 Pro', 'Apple''s latest smartphone with A18 Bionic chip.', 1399.99, 25, '2025-03-25T11:30:00Z'),
+  (13, 25, 'TabMate 12.4', 'Large-screen tablet for productivity and entertainment.', 749.99, 15, '2025-03-10T10:45:00Z'),
+  (14, 35, 'AudioCore H500', 'Studio-grade over-ear headphones for professionals.', 199.99, 12, '2025-02-15T08:00:00Z'),
+  (15, 36, 'BoomBox Mini 3', 'Compact Bluetooth speaker with deep bass.', 59.99, 30, '2025-01-28T09:30:00Z'),
+  (16, 53, 'Canon EOS R7', 'Mirrorless camera with APS-C sensor and 4K video.', 1599.00, 8, '2025-02-10T10:00:00Z'),
+  (17, 57, 'AeroCam X2 Drone', 'Lightweight drone with 4K stabilized camera.', 899.99, 10, '2025-03-05T12:00:00Z'),
+  (18, 85, 'SmartFit Pro Band', 'Fitness band with heart-rate and SpO2 monitoring.', 89.99, 40, '2025-02-20T15:00:00Z'),
+  (19, 64, 'HomePlug Smart Socket', 'Wi-Fi smart plug with energy monitoring.', 29.99, 100, '2025-01-15T14:00:00Z'),
+  (20, 71, 'NetFast AX6000 Router', 'Dual-band Wi-Fi 6 router for large homes.', 249.99, 18, '2025-03-01T09:00:00Z')
 ON CONFLICT DO NOTHING;
 
 
--- ====== product_attribute ======
-INSERT INTO public.product_attribute (id, attribute_id, product_id, value) VALUES
+-- ====== product_attributes ======
+INSERT INTO public.product_attributes (id, attribute_id, product_id, value) VALUES
   (1, 1, 1, 'Silver'),
   (2, 2, 1, '1.20'),
   (3, 3, 1, '32x22x1.5'),
@@ -224,46 +258,8 @@ INSERT INTO public.product_attribute (id, attribute_id, product_id, value) VALUE
   (27, 6, 9, 'Bluetooth, GPS'),
   (28, 1, 10, 'White'),
   (29, 6, 10, 'USB-C PD'),
-  (30, 10, 10, '0.15')
-ON CONFLICT DO NOTHING;
+  (30, 10, 10, '0.15'),
 
-
--- ===============================================
--- ADDITIONAL ATTRIBUTES
--- ===============================================
-INSERT INTO public.attribute (id, name, unit, data_type) VALUES
-  (11, 'Processor', '', 'string'),
-  (12, 'RAM', 'GB', 'decimal'),
-  (13, 'Storage Type', '', 'string'),
-  (14, 'Screen Size', 'inch', 'decimal'),
-  (15, 'Battery Life', 'hours', 'decimal'),
-  (16, 'Operating System', '', 'string'),
-  (17, 'Camera Resolution', 'MP', 'decimal'),
-  (18, 'Audio Type', '', 'string')
-ON CONFLICT DO NOTHING;
-
-
--- ===============================================
--- ADDITIONAL PRODUCTS
--- ===============================================
-INSERT INTO public.product (id, category_id, name, description, price, stock_quantity, created_at) VALUES
-  (11, 23, 'Galaxy S24 Ultra', 'Flagship smartphone with advanced AI camera.', 1299.99, 20, '2025-04-01T09:00:00Z'),
-  (12, 23, 'iPhone 15 Pro', 'Apple’s latest smartphone with A18 Bionic chip.', 1399.99, 25, '2025-03-25T11:30:00Z'),
-  (13, 25, 'TabMate 12.4', 'Large-screen tablet for productivity and entertainment.', 749.99, 15, '2025-03-10T10:45:00Z'),
-  (14, 35, 'AudioCore H500', 'Studio-grade over-ear headphones for professionals.', 199.99, 12, '2025-02-15T08:00:00Z'),
-  (15, 36, 'BoomBox Mini 3', 'Compact Bluetooth speaker with deep bass.', 59.99, 30, '2025-01-28T09:30:00Z'),
-  (16, 53, 'Canon EOS R7', 'Mirrorless camera with APS-C sensor and 4K video.', 1599.00, 8, '2025-02-10T10:00:00Z'),
-  (17, 57, 'AeroCam X2 Drone', 'Lightweight drone with 4K stabilized camera.', 899.99, 10, '2025-03-05T12:00:00Z'),
-  (18, 85, 'SmartFit Pro Band', 'Fitness band with heart-rate and SpO2 monitoring.', 89.99, 40, '2025-02-20T15:00:00Z'),
-  (19, 64, 'HomePlug Smart Socket', 'Wi-Fi smart plug with energy monitoring.', 29.99, 100, '2025-01-15T14:00:00Z'),
-  (20, 71, 'NetFast AX6000 Router', 'Dual-band Wi-Fi 6 router for large homes.', 249.99, 18, '2025-03-01T09:00:00Z')
-ON CONFLICT DO NOTHING;
-
-
--- ===============================================
--- ADDITIONAL PRODUCT ATTRIBUTES
--- ===============================================
-INSERT INTO public.product_attribute (id, attribute_id, product_id, value) VALUES
   -- Galaxy S24 Ultra
   (31, 11, 11, 'Snapdragon 8 Gen 3'),
   (32, 12, 11, '12'),
@@ -335,28 +331,31 @@ INSERT INTO public.product_attribute (id, attribute_id, product_id, value) VALUE
   (80, 1, 20, 'Black')
 ON CONFLICT DO NOTHING;
 
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (1, 9, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761419900/uploads/4b368387-5bae-4313-a090-0bdae62b28cf.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (2, 8, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422322/uploads/92942d36-2b38-49d9-9f66-19f5992566b2.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (3, 1, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761867319/Gemini_Generated_Image_3vl0793vl0793vl0_ly2vhd.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (4, 2, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420157/uploads/8e65b215-f887-40d3-9e69-e12bef53810d.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (5, 3, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761761430/5192691606795450845_b7twbr.jpg');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (6, 3, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761761430/5192691606795450844_p6odh2.jpg');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (7, 4, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420213/uploads/92338612-f60f-4344-ab2f-479686b36251.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (8, 5, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420763/uploads/a00e7a08-79b8-48cb-ab94-86cc9d8a069a.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (9, 6, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761599314/5188579197084367820_kechi9.jpg');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (10, 6, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761599314/5188579197084367819_1_gtlzzq.jpg');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (11, 7, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (12, 10, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (13, 11, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (14, 12, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (15, 17, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422207/uploads/33560038-abe3-447e-bb99-675cbc0cfc16.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (16, 16, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (17, 19, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422295/uploads/488a04d8-a483-47fd-b251-ea0b1d834a86.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (18, 20, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761870221/18308988_vjwt4o.jpg');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (19, 18, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761867003/s-l1600_sncgz8.webp');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (20, 13, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (21, 15, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png');
-INSERT INTO public.product_image (id, product_id, image_url) VALUES (22, 14, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761866164/maxresdefault_zkrrsb.jpg');
+-- ====== product_images ======
+INSERT INTO public.product_images (id, product_id, image_url) VALUES
+  (1, 9, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761419900/uploads/4b368387-5bae-4313-a090-0bdae62b28cf.png'),
+  (2, 8, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422322/uploads/92942d36-2b38-49d9-9f66-19f5992566b2.png'),
+  (3, 1, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761867319/Gemini_Generated_Image_3vl0793vl0793vl0_ly2vhd.png'),
+  (4, 2, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420157/uploads/8e65b215-f887-40d3-9e69-e12bef53810d.png'),
+  (5, 3, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761761430/5192691606795450845_b7twbr.jpg'),
+  (6, 3, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761761430/5192691606795450844_p6odh2.jpg'),
+  (7, 4, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420213/uploads/92338612-f60f-4344-ab2f-479686b36251.png'),
+  (8, 5, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420763/uploads/a00e7a08-79b8-48cb-ab94-86cc9d8a069a.png'),
+  (9, 6, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761599314/5188579197084367820_kechi9.jpg'),
+  (10, 6, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761599314/5188579197084367819_1_gtlzzq.jpg'),
+  (11, 7, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png'),
+  (12, 10, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png'),
+  (13, 11, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png'),
+  (14, 12, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png'),
+  (15, 17, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422207/uploads/33560038-abe3-447e-bb99-675cbc0cfc16.png'),
+  (16, 16, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422224/uploads/1135cd61-4ccf-4522-9ad4-62f206ef3113.png'),
+  (17, 19, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761422295/uploads/488a04d8-a483-47fd-b251-ea0b1d834a86.png'),
+  (18, 20, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761870221/18308988_vjwt4o.jpg'),
+  (19, 18, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761867003/s-l1600_sncgz8.webp'),
+  (20, 13, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png'),
+  (21, 15, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761420428/uploads/737e1894-6d50-429a-b6c8-a3576a92cc7a.png'),
+  (22, 14, 'https://res.cloudinary.com/dovmlupww/image/upload/v1761866164/maxresdefault_zkrrsb.jpg')
+ON CONFLICT DO NOTHING;
 
 -- ====== sequence sync ======
 DO $$
