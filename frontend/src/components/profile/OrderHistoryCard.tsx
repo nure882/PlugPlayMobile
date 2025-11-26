@@ -1,13 +1,23 @@
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, X } from 'lucide-react';
 import { Order, getStatusColor } from '../../models/Order';
 
 interface OrderHistoryCardProps {
     order: Order;
+    onCancelOrder?: (orderId: number) => void;
 }
 
-export default function OrderHistoryCard({ order }: OrderHistoryCardProps) {
+export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
+
+    const canCancelOrder = order.status === 'Processing' || order.status === 'Shipped';
+
+    const handleCancelOrder = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        if (onCancelOrder && window.confirm(`Are you sure you want to cancel order #${order.id}?`)) {
+            onCancelOrder(order.id);
+        }
+    };
 
     return (
         <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
@@ -101,6 +111,37 @@ export default function OrderHistoryCard({ order }: OrderHistoryCardProps) {
                             ))}
                         </div>
                     </div>
+
+                    {/* Cost Breakdown */}
+                    <div className="pt-2 border-t border-gray-200">
+                        <div className="flex justify-between text-sm mb-1">
+                            <span className="text-gray-600">Subtotal</span>
+                            <span className="text-gray-900">
+                                ${(order.totalAmount - order.shipmentCost).toFixed(2)}
+                            </span>
+                        </div>
+                        <div className="flex justify-between text-sm mb-2">
+                            <span className="text-gray-600">Shipment Cost</span>
+                            <span className="text-gray-900">${order.shipmentCost.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-200">
+                            <span className="text-gray-900">Total</span>
+                            <span className="text-gray-900">${order.totalAmount.toFixed(2)}</span>
+                        </div>
+                    </div>
+
+                    {/* Cancel Order Button */}
+                    {canCancelOrder && (
+                        <div className="pt-2">
+                            <button
+                                onClick={handleCancelOrder}
+                                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 rounded-lg transition-colors font-medium text-sm border border-red-200"
+                            >
+                                <X className="w-4 h-4" />
+                                Cancel Order
+                            </button>
+                        </div>
+                    )}
                 </div>
             </div>
         </div>

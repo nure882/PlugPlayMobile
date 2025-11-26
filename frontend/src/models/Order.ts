@@ -12,6 +12,7 @@ export interface Order {
     orderDate: string;
     status: OrderStatus;
     totalAmount: number;
+    shipmentCost: number;
     deliveryMethod: string;
     fullAddress: string;
     paymentType: string;
@@ -40,6 +41,7 @@ export const mockOrders: Order[] = [
         orderDate: 'Nov 12, 2025',
         status: 'Shipped',
         totalAmount: 89.99,
+        shipmentCost: 5.99,
         deliveryMethod: 'Standard Delivery',
         fullAddress: 'Moscow, Kutuzovsky Prospekt, House 8, Apartment 105',
         paymentType: 'Cash on Delivery',
@@ -63,6 +65,7 @@ export const mockOrders: Order[] = [
         orderDate: 'Nov 10, 2025',
         status: 'Processing',
         totalAmount: 219.97,
+        shipmentCost: 12.99,
         deliveryMethod: 'Express Delivery',
         fullAddress: 'Kyiv, Khreshchatyk Street, House 22, Apartment 15',
         paymentType: 'Credit Card',
@@ -86,6 +89,7 @@ export const mockOrders: Order[] = [
         orderDate: 'Nov 08, 2025',
         status: 'Delivered',
         totalAmount: 59.99,
+        shipmentCost: 5.99,
         deliveryMethod: 'Standard Delivery',
         fullAddress: 'Berlin, Friedrichstrasse, House 100, Apartment 42',
         paymentType: 'PayPal',

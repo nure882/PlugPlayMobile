@@ -216,6 +216,14 @@ export default function Profile() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleCancelOrder = (orderId: number) => {
+    // TODO: Implement API call to cancel order
+    console.log(`Cancelling order #${orderId}`);
+    // In a real implementation, you would call an API endpoint here
+    // Example: await cancelOrderMutation({ orderId });
+    // Then refetch orders or update local state
+  };
+
   if (isLoading) {
     return LoadingMessage("profile page");
   }
@@ -486,7 +494,7 @@ export default function Profile() {
           <AccordionSection title="My Orders" subtitle="Your order history">
             <div className="space-y-4">
               {mockOrders.map((order) => (
-                <OrderHistoryCard key={order.id} order={order} />
+                <OrderHistoryCard key={order.id} order={order} onCancelOrder={handleCancelOrder} />
               ))}
             </div>
           </AccordionSection>
