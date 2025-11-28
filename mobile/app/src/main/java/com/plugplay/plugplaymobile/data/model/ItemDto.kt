@@ -12,7 +12,7 @@ data class ItemDto(
     @SerializedName("name") val name: String,
     @SerializedName("description") val description: String,
     @SerializedName("price") val price: Double,
-    @SerializedName("imageUrl") val imageUrl: String,
+    @SerializedName("imageUrls") val imageUrls: List<String>,
     @SerializedName("isAvailable") val isAvailable: Boolean = true,
     @SerializedName("brand") val brand: String,
     @SerializedName("category") val category: String

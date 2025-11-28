@@ -39,28 +39,27 @@ class CartViewModel @Inject constructor(
 
     private val _loadingState = MutableStateFlow(false)
 
-    // Получаем ID пользователя из AuthViewModel, чтобы знать, это гость или зарегистрированный
-    // Используем null для гостя, mock ID 42 для зарегистрированного
+    // Получаем ID пользователя из AuthRepository
     private val userIdFlow = authRepository.getUserId()
         .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
+
     // Комбинируем поток товаров в корзине с состоянием загрузки
     val state: StateFlow<CartState> = combine(
         userIdFlow,
-        // Поскольку MockCartRepositoryImpl всегда возвращает локальный Flow,
-        // передаем userId = null, чтобы избежать лишних запросов к API/Remote Cart в мок-логике.
-        getCartItemsUseCase(null)
-    ) { userId, items ->
+        getCartItemsUseCase(null),
+        _loadingState // <--- [ВИПРАВЛЕННЯ] Включаємо потік _loadingState сюди
+    ) { userId, items, isMutating -> // <--- [ВИПРАВЛЕННЯ] Отримуємо нове значення isMutating
         val subtotal = items.sumOf { it.total }
         CartState(
             cartItems = items.sortedBy { it.id },
             subtotal = subtotal,
-            isLoading = _loadingState.value,
+            isLoading = isMutating, // <--- [ВИПРАВЛЕННЯ] Використовуємо реактивне значення isMutating
             error = null
         )
     }.stateIn(
         viewModelScope,
         kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
-        CartState(isLoading = true)
+        CartState(isLoading = false)
     )
 
     fun addToCart(productId: String, quantity: Int) {

@@ -82,7 +82,7 @@ class CartRepositoryImpl @Inject constructor(
                         id = localDataSource.getNextId(),
                         productId = product.id,
                         name = product.name,
-                        imageUrl = product.imageUrl,
+                        imageUrl = product.imageUrls[0],
                         unitPrice = product.price,
                         quantity = quantity,
                         total = product.price * quantity

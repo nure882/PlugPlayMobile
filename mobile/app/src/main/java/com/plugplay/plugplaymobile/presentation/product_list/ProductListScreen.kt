@@ -213,10 +213,11 @@ fun ProductItem(
                     .height(180.dp)
             ) {
                 AsyncImage(
-                    model = product.image,
+                    model = product.image, // <--- URL-адреса з моделі
                     contentDescription = product.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
+                    // Використовуємо заглушку на випадок помилки Coil
                     error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
                 Badge(

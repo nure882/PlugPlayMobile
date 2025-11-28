@@ -161,7 +161,7 @@ fun ItemDetailContent(
     ) {
         // --- Секція 1: Зображення ---
         item {
-            ImagePager(item.imageUrl)
+            ImagePager(item.imageUrls)
         }
 
         // --- Секція 2: Назва, ціна, варіанти ---
@@ -253,7 +253,11 @@ fun ActionButtons(
 
 // ... (ImagePager, TitleAndPrice, VariantSelectors, InfoSection, InfoRow, DescriptionSection - без змін)
 @Composable
-fun ImagePager(imageUrl: String) {
+fun ImagePager(imageUrls: List<String>) {
+    // В якості заглушки для дизайну використовуємо перше зображення
+    val mainImageUrl = imageUrls.firstOrNull()
+        ?: "https://example.com/placeholder.jpg"
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -261,14 +265,24 @@ fun ImagePager(imageUrl: String) {
             .background(Color.White),
         contentAlignment = Alignment.Center
     ) {
-        // TODO: Замініть на HorizontalPager з Accompanist або Foundation 1.6+
+        // TODO: Після цього кроку рекомендується впровадити HorizontalPager
         AsyncImage(
-            model = imageUrl,
+            model = mainImageUrl, // <--- URL-адреса
             contentDescription = "Зображення товару",
             modifier = Modifier.fillMaxSize(),
             contentScale = ContentScale.Crop,
             error = painterResource(id = R.drawable.ic_launcher_foreground)
         )
+
+        // "Like" кнопка
+        IconButton(
+            onClick = { /*TODO*/ },
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        ) {
+            Icon(Icons.Outlined.FavoriteBorder, contentDescription = "В обране")
+        }
 
         // "Like" кнопка
         IconButton(

@@ -11,7 +11,7 @@ fun ItemDto.toDomain(): Item {
         name = this.name,
         description = this.description,
         price = this.price,
-        imageUrl = this.imageUrl,
+        imageUrls = this.imageUrls,
         isAvailable = this.isAvailable,
         brand = this.brand,
         category = this.category
