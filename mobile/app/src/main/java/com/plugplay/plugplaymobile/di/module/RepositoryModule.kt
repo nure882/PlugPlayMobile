@@ -1,12 +1,12 @@
 package com.plugplay.plugplaymobile.di.module
 
-// [НОВИЙ ІМПОРТ] Імпортуємо мокову реалізацію
-import com.plugplay.plugplaymobile.data.repository.MockAuthRepositoryImpl
+// [НОВИЙ ІМПОРТ] Імпортуємо реальні реалізації
+import com.plugplay.plugplaymobile.data.repository.AuthRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.ProductRepositoryImpl
-import com.plugplay.plugplaymobile.data.repository.MockCartRepositoryImpl // [НОВИЙ ІМПОРТ]
+import com.plugplay.plugplaymobile.data.repository.CartRepositoryImpl
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
-import com.plugplay.plugplaymobile.domain.repository.CartRepository // [НОВИЙ ІМПОРТ]
+import com.plugplay.plugplaymobile.domain.repository.CartRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -20,28 +20,21 @@ abstract class RepositoryModule {
     @Binds
     @Singleton
     abstract fun bindProductRepository(
+        // Використовуємо реальну реалізацію
         productRepositoryImpl: ProductRepositoryImpl
     ): ProductRepository
 
     @Binds
     @Singleton
     abstract fun bindAuthRepository(
-        mockAuthRepositoryImpl: MockAuthRepositoryImpl
+        // [ОНОВЛЕНО] Використовуємо реальну реалізацію
+        authRepositoryImpl: AuthRepositoryImpl
     ): AuthRepository
 
-    // [ДОДАНО] Биндинг CartRepository
+    // [ОНОВЛЕНО] Використовуємо реальну реалізацію
     @Binds
     @Singleton
     abstract fun bindCartRepository(
-        mockCartRepositoryImpl: MockCartRepositoryImpl
+        cartRepositoryImpl: CartRepositoryImpl
     ): CartRepository
-
-    /*
-    // [ВИМКНЕНО] Поки що вимикаємо реальну реалізацію
-    @Binds
-    @Singleton
-    abstract fun bindAuthRepository(
-        authRepositoryImpl: AuthRepositoryImpl
-    ): AuthRepository
-    */
 }

@@ -17,7 +17,6 @@ class AuthRepositoryImpl @Inject constructor(
     private val localDataSource: AuthLocalDataSource
 ) : AuthRepository {
 
-    // ... (login залишається без змін)
     override suspend fun login(email: String, password: String): Result<AuthData> {
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -33,7 +32,6 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    // [ВИПРАВЛЕНО] Реалізація для Response<Void>
     override suspend fun register(firstName: String, lastName: String, phoneNumber: String, email: String, password: String): Result<Unit> {
         return withContext(Dispatchers.IO) {
             runCatching {
@@ -44,14 +42,11 @@ class AuthRepositoryImpl @Inject constructor(
                     email = email,
                     password = password
                 )
-                // [ВИПРАВЛЕНО] Викликаємо API, що повертає <Void>
                 val response = apiService.register(request)
 
                 if (response.isSuccessful) {
-                    // Успіх (HTTP 200-299), тіло пусте, як і очікувалось
-                    Unit // Повертаємо Unit
+                    Unit
                 } else {
-                    // Помилка (HTTP 4xx, 5xx), спробуємо прочитати тіло помилки
                     val errorBody = response.errorBody()?.string()
                     throw Exception(errorBody ?: "Registration failed: ${response.message()}")
                 }
@@ -63,11 +58,6 @@ class AuthRepositoryImpl @Inject constructor(
         localDataSource.saveAuthData(authData.token, authData.userId)
     }
 
-    override fun getUserId(): Flow<Int?> {
-        return localDataSource.userId
-    }
-
-    // ... (logout, getAuthStatus, getProfile, updateProfile залишаються без змін)
     override suspend fun logout() {
         localDataSource.clearToken()
     }
@@ -76,6 +66,12 @@ class AuthRepositoryImpl @Inject constructor(
         return localDataSource.isLoggedIn
     }
 
+    // [ДОДАНО] Реалізація відсутнього методу
+    override fun getUserId(): Flow<Int?> {
+        return localDataSource.userId
+    }
+
+    // [ВИПРАВЛЕНО] Використовуємо userId як Int
     override suspend fun getProfile(): Result<UserProfile> {
         val userId = localDataSource.userId.first()
         if (userId == null) {
@@ -84,7 +80,7 @@ class AuthRepositoryImpl @Inject constructor(
 
         return withContext(Dispatchers.IO) {
             runCatching {
-                val response = apiService.getProfile(userId.toString())
+                val response = apiService.getProfile(userId)
                 if (response.isSuccessful && response.body() != null) {
                     response.body()!!.toDomain()
                 } else {
@@ -95,6 +91,7 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    // [ВИПРАВЛЕНО] Використовуємо userId як Int
     override suspend fun updateProfile(
         firstName: String,
         lastName: String,
@@ -118,7 +115,7 @@ class AuthRepositoryImpl @Inject constructor(
                     currentPassword = currentPassword,
                     newPassword = newPassword
                 )
-                val response = apiService.updateProfile(userId.toString(), request)
+                val response = apiService.updateProfile(userId, request)
                 if (response.isSuccessful && response.body() != null) {
                     response.body()!!.toDomain()
                 } else {
