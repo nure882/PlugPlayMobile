@@ -63,6 +63,10 @@ class AuthRepositoryImpl @Inject constructor(
         localDataSource.saveAuthData(authData.token, authData.userId)
     }
 
+    override fun getUserId(): Flow<Int?> {
+        return localDataSource.userId
+    }
+
     // ... (logout, getAuthStatus, getProfile, updateProfile залишаються без змін)
     override suspend fun logout() {
         localDataSource.clearToken()

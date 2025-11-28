@@ -15,6 +15,9 @@ class MockAuthRepositoryImpl @Inject constructor() : AuthRepository {
     private val _isLoggedIn = MutableStateFlow(false)
     private val mockAuthData = AuthData("mock_jwt_token_12345", 42)
 
+    // [ДОДАНО] Стан для зберігання ID користувача в моку
+    private val _userId = MutableStateFlow<Int?>(null)
+
     private var currentMockUserProfile = UserProfile(
         id = "42",
         firstName = "John",
@@ -25,21 +28,25 @@ class MockAuthRepositoryImpl @Inject constructor() : AuthRepository {
 
     override fun getAuthStatus(): Flow<Boolean> = _isLoggedIn.asStateFlow()
 
+    // [ДОДАНО] Реалізація нової функції
+    override fun getUserId(): Flow<Int?> = _userId.asStateFlow()
+
     override suspend fun login(email: String, password: String): Result<AuthData> {
         delay(800L)
 
         return if (email == "test@plugplay.com" && password == "123456") {
             _isLoggedIn.value = true
+            _userId.value = mockAuthData.userId // [ОНОВЛЕНО] Зберігаємо ID
             Result.success(mockAuthData)
         } else if (email.startsWith("error")) {
             Result.failure(Exception("Невірний логін або пароль."))
         } else {
             _isLoggedIn.value = true
+            _userId.value = mockAuthData.userId // [ОНОВЛЕНО] Зберігаємо ID
             Result.success(mockAuthData)
         }
     }
 
-    // [ВИПРАВЛЕНО] Повертає Result<Unit>
     override suspend fun register(firstName: String, lastName: String, phoneNumber: String, email: String, password: String): Result<Unit> {
         delay(1200L)
         // Обновляем мок-профиль при регистрации для имитации свежих данных
@@ -51,19 +58,21 @@ class MockAuthRepositoryImpl @Inject constructor() : AuthRepository {
             email = email
         )
         _isLoggedIn.value = true
-        return Result.success(Unit) // <-- ЗМІНЕНО ТУТ
+        _userId.value = mockAuthData.userId // [ОНОВЛЕНО] Зберігаємо ID
+        return Result.success(Unit)
     }
 
-    // [ВИПРАВЛЕНО] Реалізація saveAuthData
     override suspend fun saveAuthData(authData: AuthData) {
         println("MOCK: AuthData сохранен: token=${authData.token}, userId=${authData.userId}")
-        // В мок-реалізації _isLoggedIn вже встановлено в login/register,
-        // але в реальній імплементації це робить localDataSource
+        // В реальному житті це робить LocalDataSource, тут імітуємо
+        _isLoggedIn.value = true
+        _userId.value = authData.userId // [ОНОВЛЕНО] Зберігаємо ID
     }
 
     override suspend fun logout() {
         delay(500L)
         _isLoggedIn.value = false
+        _userId.value = null // [ОНОВЛЕНО] Очищуємо ID
         println("MOCK: Користувач вийшов.")
     }
 

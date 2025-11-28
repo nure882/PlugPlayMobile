@@ -13,6 +13,8 @@ interface AuthRepository {
 
     suspend fun saveAuthData(authData: AuthData)
 
+    fun getUserId(): Flow<Int?>
+
     suspend fun logout()
 
     fun getAuthStatus(): Flow<Boolean>

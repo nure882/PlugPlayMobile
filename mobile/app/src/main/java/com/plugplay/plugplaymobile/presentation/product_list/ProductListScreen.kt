@@ -35,6 +35,8 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.plugplay.plugplaymobile.R // Потрібен для R.drawable...
 import com.plugplay.plugplaymobile.domain.model.Product
+import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
+import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
 
 // --- ДАНІ-ЗАГЛУШКИ ДЛЯ ДИЗАЙНУ ---
 
@@ -55,9 +57,26 @@ val categoryItems = listOf(
 fun ProductListScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToItemDetail: (itemId: String) -> Unit,
-    viewModel: ProductListViewModel = hiltViewModel()
+    onNavigateToCheckout: () -> Unit, // [НОВИЙ АРГУМЕНТ]
+    viewModel: ProductListViewModel = hiltViewModel(),
+    cartViewModel: CartViewModel = hiltViewModel() // [НОВИЙ VIEWMODEL]
 ) {
     val state by viewModel.state.collectAsState()
+    val cartState by cartViewModel.state.collectAsState() // [CART STATE]
+    val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
+
+    // Стан для відображення діалогу кошика
+    var isCartOpen by remember { mutableStateOf(false) }
+
+    // [ДОДАНО] Діалог кошика
+    ShoppingCartDialog(
+        isOpen = isCartOpen,
+        onClose = { isCartOpen = false },
+        onNavigateToCheckout = {
+            isCartOpen = false
+            onNavigateToCheckout()
+        }
+    )
 
     Scaffold(
         topBar = {
@@ -75,19 +94,22 @@ fun ProductListScreen(
                         Icon(Icons.Outlined.Search, contentDescription = "Пошук")
                     }
 
-                    // [ДОДАНО] Іконка профілю, як на мокапі
+                    // [ДОДАНО] Іконка профілю
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Outlined.Person, contentDescription = "Профіль")
                     }
 
-                    IconButton(onClick = { /* TODO: Корзина */ }) {
+                    // [ОНОВЛЕНО] Кнопка корзини з лічильником
+                    IconButton(onClick = { isCartOpen = true }) {
                         BadgedBox(
                             badge = {
-                                Badge(
-                                    modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
-                                    containerColor = MaterialTheme.colorScheme.error
-                                ) {
-                                    Text("2")
+                                if (cartItemsCount > 0) {
+                                    Badge(
+                                        modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ) {
+                                        Text(cartItemsCount.toString())
+                                    }
                                 }
                             }
                         ) {

@@ -21,11 +21,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -33,6 +30,8 @@ import androidx.navigation.NavController
 import coil.compose.AsyncImage
 import com.plugplay.plugplaymobile.domain.model.Item
 import com.plugplay.plugplaymobile.R
+import com.plugplay.plugplaymobile.presentation.cart.CartViewModel // [НОВИЙ ІМПОРТ]
+import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog // [НОВИЙ ІМПОРТ]
 import java.text.NumberFormat
 import java.util.Locale
 
@@ -42,15 +41,40 @@ import java.util.Locale
 fun ItemDetailScreen(
     itemId: String,
     navController: NavController,
-    viewModel: ItemDetailViewModel = hiltViewModel()
+    onNavigateToCheckout: () -> Unit, // [НОВИЙ АРГУМЕНТ]
+    viewModel: ItemDetailViewModel = hiltViewModel(),
+    cartViewModel: CartViewModel = hiltViewModel() // [НОВИЙ VIEWMODEL]
 ) {
     val state by viewModel.state.collectAsState()
+    val cartState by cartViewModel.state.collectAsState() // [CART STATE]
+    val cartItemsCount = cartState.cartItems.sumOf { it.quantity } // Кількість товарів
+
+    val item = state.item
+
+    // Стан для відображення діалогу кошика
+    var isCartOpen by remember { mutableStateOf(false) }
+
+    // Перевіряємо, чи є товар уже в кошику (як у frontend/src/pages/ProductDetail.tsx)
+    val isInCart = remember(cartState.cartItems, item) {
+        if (item == null) return@remember false
+        cartState.cartItems.any { it.productId == item.id }
+    }
+
+    // [ДОДАНО] Діалог кошика
+    ShoppingCartDialog(
+        isOpen = isCartOpen,
+        onClose = { isCartOpen = false },
+        onNavigateToCheckout = {
+            isCartOpen = false
+            onNavigateToCheckout()
+        }
+    )
 
     Scaffold(
         topBar = {
-            // [НОВИЙ TopAppBar] З іконками, як на головному екрані
+            // [ОНОВЛЕНО TopAppBar]
             TopAppBar(
-                title = { Text("Plug & Play") }, // Або state.item?.name
+                title = { Text("Plug & Play") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
                         Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
@@ -63,8 +87,22 @@ fun ItemDetailScreen(
                     IconButton(onClick = { /* TODO: Профіль */ }) {
                         Icon(Icons.Outlined.Person, contentDescription = "Профіль")
                     }
-                    IconButton(onClick = { /* TODO: Корзина */ }) {
-                        Icon(Icons.Outlined.ShoppingCart, contentDescription = "Корзина")
+                    // [ОНОВЛЕНО] Кнопка корзини з лічильником
+                    IconButton(onClick = { isCartOpen = true }) {
+                        BadgedBox(
+                            badge = {
+                                if (cartItemsCount > 0) {
+                                    Badge(
+                                        modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ) {
+                                        Text(cartItemsCount.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            Icon(Icons.Outlined.ShoppingCart, contentDescription = "Корзина")
+                        }
                     }
                 }
             )
@@ -88,21 +126,37 @@ fun ItemDetailScreen(
                             .padding(16.dp)
                     )
                 }
-                state.item != null -> {
-                    // [НОВИЙ МАКЕТ] Використовуємо LazyColumn
-                    ItemDetailContent(item = state.item!!)
+                item != null -> {
+                    // [ОНОВЛЕНО] Передаємо логіку Add to Cart
+                    ItemDetailContent(
+                        item = item,
+                        isInCart = isInCart,
+                        onAddToCart = {
+                            cartViewModel.addToCart(item.id, 1)
+                        },
+                        onBuyClick = {
+                            cartViewModel.addToCart(item.id, 1)
+                            isCartOpen = true
+                        }
+                    )
                 }
             }
         }
     }
 }
 
+// [ОНОВЛЕНО] Сигнатура функції
 @Composable
-fun ItemDetailContent(item: Item) {
+fun ItemDetailContent(
+    item: Item,
+    isInCart: Boolean,
+    onAddToCart: () -> Unit,
+    onBuyClick: () -> Unit
+) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xFFF4F4F4)), // Світло-сірий фон, як на макеті
+            .background(Color(0xFFF4F4F4)),
         contentPadding = PaddingValues(bottom = 32.dp)
     ) {
         // --- Секція 1: Зображення ---
@@ -125,12 +179,18 @@ fun ItemDetailContent(item: Item) {
 
         // --- Секція 3: Кнопки ---
         item {
-            ActionButtons(item)
+            // [ОНОВЛЕНО] Викликаємо оновлений ActionButtons
+            ActionButtons(
+                item = item,
+                isInCart = isInCart,
+                onAddToCart = onAddToCart,
+                onBuyClick = onBuyClick
+            )
         }
 
         // --- Секція 4: Доставка та Гарантія ---
         item {
-            InfoSection() // Заглушка
+            InfoSection()
         }
 
         // --- Секція 5: Опис ---
@@ -140,7 +200,58 @@ fun ItemDetailContent(item: Item) {
     }
 }
 
-// [НОВИЙ КОМПОНЕНТ] Заглушка для пейджера зображень
+
+// [НОВИЙ КОМПОНЕНТ] Кнопки "Купити" / "В корзину"
+@Composable
+fun ActionButtons(
+    item: Item,
+    isInCart: Boolean,
+    onAddToCart: () -> Unit,
+    onBuyClick: () -> Unit
+) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 8.dp)
+    ) {
+        // Buy Button
+        Button(
+            onClick = onBuyClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(8.dp),
+            enabled = item.isAvailable
+        ) {
+            Text("Купити", fontWeight = FontWeight.Bold)
+        }
+        Spacer(Modifier.height(8.dp))
+
+        // Add to Cart Button (змінюється на "Already in cart")
+        OutlinedButton(
+            onClick = onAddToCart,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+            shape = RoundedCornerShape(8.dp),
+            enabled = !isInCart && item.isAvailable,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (isInCart) Color(0xFFF4F7F8) else Color.White,
+                contentColor = if (isInCart) Color.Gray else MaterialTheme.colorScheme.onSurface,
+                disabledContentColor = Color.Gray
+            ),
+            border = BorderStroke(
+                1.dp,
+                if (isInCart) Color(0xFFE0E0E0) else Color.Gray.copy(alpha = 0.5f)
+            )
+        ) {
+            Text(if (isInCart) "Вже в корзині" else "Додати в корзину", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// ... (ImagePager, TitleAndPrice, VariantSelectors, InfoSection, InfoRow, DescriptionSection - без змін)
 @Composable
 fun ImagePager(imageUrl: String) {
     Box(
@@ -173,7 +284,6 @@ fun ImagePager(imageUrl: String) {
     }
 }
 
-// [НОВИЙ КОМПОНЕНТ] Назва, рейтинг, ціна
 @Composable
 fun TitleAndPrice(item: Item) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("uk", "UA"))
@@ -238,7 +348,6 @@ fun TitleAndPrice(item: Item) {
     }
 }
 
-// [НОВИЙ КОМПОНЕНТ] Заглушка для вибору варіантів
 @Composable
 fun VariantSelectors() {
     var selectedColor by remember { mutableStateOf("Чорний") }
@@ -309,40 +418,6 @@ fun VariantSelectors() {
     }
 }
 
-// [НОВИЙ КОМПОНЕНТ] Кнопки "Купити" / "В корзину"
-@Composable
-fun ActionButtons(item: Item) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 8.dp)
-    ) {
-        Button(
-            onClick = { /* TODO: Buy Logic */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(8.dp),
-            enabled = item.isAvailable
-        ) {
-            Text("Купити", fontWeight = FontWeight.Bold)
-        }
-        Spacer(Modifier.height(8.dp))
-        OutlinedButton(
-            onClick = { /* TODO: Add to Cart Logic */ },
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp),
-            shape = RoundedCornerShape(8.dp),
-            enabled = item.isAvailable
-        ) {
-            Text("Додати в корзину", fontWeight = FontWeight.Bold)
-        }
-    }
-}
-
-// [НОВИЙ КОМПОНЕНТ] Заглушка для інфо-секції
 @Composable
 fun InfoSection() {
     Column(
@@ -375,7 +450,6 @@ fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String
     }
 }
 
-// [НОВИЙ КОМПОНЕНТ] Секція опису
 @Composable
 fun DescriptionSection(item: Item) {
     Column(

@@ -12,6 +12,7 @@ import com.plugplay.plugplaymobile.presentation.auth.RegisterScreen
 import com.plugplay.plugplaymobile.presentation.product_list.ProductListScreen
 import com.plugplay.plugplaymobile.presentation.profile.ProfileScreen
 import com.plugplay.plugplaymobile.presentation.product_detail.ItemDetailScreen
+import com.plugplay.plugplaymobile.presentation.checkout.CheckoutScreen // [НОВИЙ ІМПОРТ]
 
 object Routes {
     const val PRODUCT_LIST = "product_list"
@@ -19,6 +20,7 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val ITEM_DETAIL = "detail_list/{itemId}"
+    const val CHECKOUT = "checkout" // <-- НОВИЙ МАРШРУТ
 }
 
 fun createItemDetailRoute(itemId: String) = "detail_list/$itemId"
@@ -33,7 +35,7 @@ fun AppNavigation(
         startDestination = Routes.PRODUCT_LIST,
         modifier = modifier
     ) {
-        // ... (composable для PRODUCT_LIST, PROFILE залишаються без змін)
+        // Product List Screen
         composable(Routes.PRODUCT_LIST) {
             ProductListScreen(
                 onNavigateToProfile = {
@@ -43,10 +45,14 @@ fun AppNavigation(
                 },
                 onNavigateToItemDetail = { itemId ->
                     navController.navigate(createItemDetailRoute(itemId))
+                },
+                onNavigateToCheckout = { // [НОВИЙ КОЛБЕК]
+                    navController.navigate(Routes.CHECKOUT)
                 }
             )
         }
 
+        // Profile Screen (без змін)
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onNavigateToCatalog = {
@@ -58,11 +64,10 @@ fun AppNavigation(
             )
         }
 
-        // Екран Входу
+        // Login Screen (без змін)
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // Після успішного входу повертаємося на екран Профілю
                     navController.navigate(Routes.PROFILE) {
                         popUpTo(Routes.LOGIN) { inclusive = true }
                         launchSingleTop = true
@@ -74,20 +79,16 @@ fun AppNavigation(
             )
         }
 
-        // Екран Реєстрації
+        // Register Screen (без змін)
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // [ВИПРАВЛЕНО] Після успішної реєстрації ведемо на екран ЛОГІНУ
                     navController.navigate(Routes.LOGIN) {
-                        // Видаляємо екран реєстрації з бекстеку
                         popUpTo(Routes.REGISTER) { inclusive = true }
                         launchSingleTop = true
                     }
-                    // TODO: Тут можна додати SnackBar "Реєстрація успішна! Увійдіть."
                 },
                 onNavigateToLogin = {
-                    // Повертаємося на екран входу
                     navController.navigate(Routes.LOGIN) {
                         popUpTo(Routes.REGISTER) { inclusive = true }
                         launchSingleTop = true
@@ -96,7 +97,7 @@ fun AppNavigation(
             )
         }
 
-        // ... (composable для ITEM_DETAIL залишається без змін)
+        // Item Detail Screen
         composable(
             route = Routes.ITEM_DETAIL,
             arguments = listOf(
@@ -110,11 +111,23 @@ fun AppNavigation(
             if (itemId != null) {
                 ItemDetailScreen(
                     itemId = itemId,
-                    navController = navController
+                    navController = navController,
+                    onNavigateToCheckout = { // [НОВИЙ КОЛБЕК]
+                        navController.navigate(Routes.CHECKOUT)
+                    }
                 )
             } else {
                 navController.popBackStack(Routes.PRODUCT_LIST, inclusive = false)
             }
+        }
+
+        // [НОВИЙ КОМПОЗАБЛ] Checkout Screen
+        composable(Routes.CHECKOUT) {
+            CheckoutScreen(
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
         }
     }
 }
