@@ -6,25 +6,20 @@ import com.plugplay.plugplaymobile.domain.model.Product
 // Default placeholder for missing images
 private const val PLACEHOLDER_URL = "https://example.com/placeholder.jpg"
 
-/**
- * Маппер DTO -> Product (для екрану СПИСКУ)
- */
 fun ProductDto.toDomain(): Product {
 
-    val firstImage = this.productImages?.images?.firstOrNull()?.imageUrl
-        ?: PLACEHOLDER_URL // Заглушка
+    // [ОНОВЛЕНО] Використовуємо нове поле pictureUrls
+    val firstImage = this.pictureUrls?.firstOrNull() ?: PLACEHOLDER_URL
 
     return Product(
         id = this.id.toString(),
         title = this.name ?: "Без назви",
         priceValue = String.format("%.2f ₴", this.price ?: 0.0),
-        image = firstImage // ВИКОРИСТОВУЄМО ОДНУ URL
+        image = firstImage
     )
 }
 
-/**
- * Допоміжна функція для мапінгу списку
- */
+
 fun List<ProductDto>.toDomainList(): List<Product> {
     return this.map { it.toDomain() }
 }
@@ -35,12 +30,11 @@ fun List<ProductDto>.toDomainList(): List<Product> {
  */
 fun ProductDto.toDomainItem(): Item {
 
-    // [ОНОВЛЕНО] Збираємо список усіх доступних URL
-    val imageUrls = this.productImages?.images
-        ?.mapNotNull { it.imageUrl }
-        ?.filter { it.isNotBlank() }
+    // [ОНОВЛЕНО] Використовуємо нове поле pictureUrls
+    val imageUrls = this.pictureUrls
         .orEmpty()
-        .ifEmpty { listOf(PLACEHOLDER_URL) } // Якщо список порожній, додаємо заглушку
+        .filter { it.isNotBlank() }
+        .ifEmpty { listOf(PLACEHOLDER_URL) }
 
     return Item(
         id = this.id.toString(),

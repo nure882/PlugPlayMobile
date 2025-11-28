@@ -117,7 +117,7 @@ fun CartItemRow(
             .padding(12.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Image Placeholder
+        // 1. Image (Left)
         AsyncImage(
             model = item.imageUrl,
             contentDescription = item.name,
@@ -128,40 +128,49 @@ fun CartItemRow(
             contentScale = ContentScale.Crop
         )
 
-        // Info and Price
+        // 2. Content Column (Text Info + Quantity Controls + Delete)
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.name,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 2,
-                fontSize = 14.sp
-            )
-            Spacer(Modifier.height(4.dp))
-            Text(
-                text = "Ціна: ${format.format(item.unitPrice)}",
-                color = MaterialTheme.colorScheme.error, // Red like in frontend
-                fontSize = 12.sp
-            )
-            Text(
-                text = "Сума: ${format.format(item.total)}",
-                color = MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-        }
 
-        // Quantity Controls and Delete
-        Column(
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.SpaceBetween
-        ) {
-            IconButton(onClick = onDelete) {
-                Icon(Icons.Default.Delete, contentDescription = "Видалити", tint = Color.Gray)
+            // A. Top Row: Name and Delete Button
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                // Name (Left side of content row)
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = item.name,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        fontSize = 14.sp
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Ціна: ${format.format(item.unitPrice)}",
+                        color = MaterialTheme.colorScheme.error,
+                        fontSize = 12.sp
+                    )
+                    Text(
+                        text = "Сума: ${format.format(item.total)}",
+                        color = MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 14.sp
+                    )
+                }
+
+                // Delete Button (Far right of content row)
+                IconButton(onClick = onDelete) {
+                    Icon(Icons.Default.Delete, contentDescription = "Видалити", tint = Color.Gray)
+                }
             }
-            Spacer(Modifier.height(8.dp))
+
+            Spacer(Modifier.height(12.dp)) // Збільшений відступ між інфо та контролами
+
+            // B. Bottom Row: Quantity Controls
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
+                    .fillMaxWidth(0.6f) // Обмежуємо ширину, щоб не займати весь простір
                     .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
             ) {
                 IconButton(
@@ -172,7 +181,7 @@ fun CartItemRow(
                 }
                 Text(
                     text = item.quantity.toString(),
-                    modifier = Modifier.width(20.dp),
+                    modifier = Modifier.weight(1f),
                     textAlign = androidx.compose.ui.text.style.TextAlign.Center
                 )
                 IconButton(
