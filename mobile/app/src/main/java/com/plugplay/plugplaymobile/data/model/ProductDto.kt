@@ -27,5 +27,9 @@ data class ProductDto(
     val pictureUrls: List<String>?, // <-- ЗМІНА
 
     @SerializedName("category")
-    val category: CategoryDto?
+    val category: CategoryDto?,
+
+    // [ДОДАНО] Поле для повного списку відгуків
+    @SerializedName("reviews")
+    val reviews: List<ReviewDto>?
 )

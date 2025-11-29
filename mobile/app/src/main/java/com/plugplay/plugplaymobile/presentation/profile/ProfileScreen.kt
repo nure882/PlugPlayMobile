@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -134,6 +135,9 @@ fun ProfileScreen(
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val profileState by profileViewModel.state.collectAsState()
 
+    // ДОДАНО: Стан для Snackbar
+    val snackbarHostState = remember { SnackbarHostState() }
+
     LaunchedEffect(isLoggedIn) {
         profileViewModel.onAuthStatusChanged(isLoggedIn)
     }
@@ -144,9 +148,9 @@ fun ProfileScreen(
     val lastName = remember { mutableStateOf("") }
     val phone = remember { mutableStateOf("") }
     val email = remember { mutableStateOf("") }
-    val currentPassword = remember { mutableStateOf("") }
-    val newPassword = remember { mutableStateOf("") }
-    val confirmNewPassword = remember { mutableStateOf("") }
+    // УДАЛЕНО: val currentPassword = remember { mutableStateOf("") }
+    // УДАЛЕНО: val newPassword = remember { mutableStateOf("") }
+    // УДАЛЕНО: val confirmNewPassword = remember { mutableStateOf("") }
 
     // Стан для секцій, "My Account" закрыта за замовчуванням
     val openSection = remember { mutableStateOf("") }
@@ -159,9 +163,9 @@ fun ProfileScreen(
             phone.value = profile.phoneNumber
             email.value = profile.email
         }
-        currentPassword.value = ""
-        newPassword.value = ""
-        confirmNewPassword.value = ""
+        // УДАЛЕНО: currentPassword.value = ""
+        // УДАЛЕНО: newPassword.value = ""
+        // УДАЛЕНО: confirmNewPassword.value = ""
         profileViewModel.resetUpdateState() // Скидаємо помилки
     }
 
@@ -170,17 +174,17 @@ fun ProfileScreen(
         resetFields()
     }
 
-    // Обробка успішного оновлення (скидаємо поля паролів)
+    // ДОДАНО: LaunchedEffect для відображення Snackbar та скидання полів
     LaunchedEffect(profileState.updateSuccess) {
         if (profileState.updateSuccess) {
-            currentPassword.value = ""
-            newPassword.value = ""
-            confirmNewPassword.value = ""
+            snackbarHostState.showSnackbar("Profile updated successfully!")
             profileViewModel.resetUpdateState()
+            // Викликаємо resetFields() після успішного оновлення,
+            // щоб поля вводу отримали нові значення з profileState.profile
+            resetFields()
         }
     }
 
-    val passwordsMatch = remember { derivedStateOf { newPassword.value == confirmNewPassword.value } }
 
     // [НОВА ЛОГІКА] Кнопка "Save Changes" активна, якщо є зміни
     val isSaveEnabled = remember {
@@ -190,12 +194,10 @@ fun ProfileScreen(
                     firstName.value != profile.firstName ||
                             lastName.value != profile.lastName ||
                             phone.value != profile.phoneNumber ||
-                            email.value != profile.email ||
-                            newPassword.value.isNotBlank()
+                            email.value != profile.email // <--- ВИПРАВЛЕННЯ: Тепер враховує email
                     )
 
-            !profileState.isUpdating && hasChanges &&
-                    (!newPassword.value.isNotBlank() || (newPassword.value.length >= 8 && passwordsMatch.value && currentPassword.value.isNotBlank()))
+            !profileState.isUpdating && hasChanges
         }
     }
 
@@ -217,16 +219,14 @@ fun ProfileScreen(
     // [НОВА ЛОГІКА] Обробник для "Save Changes"
     fun onSaveClick() {
         if (isSaveEnabled.value) {
-            val newPass = if (newPassword.value.isNotBlank() && currentPassword.value.isNotBlank() && passwordsMatch.value) newPassword.value else null
-            val currentPass = if (newPass != null) currentPassword.value else null
-
+            // Пароли всегда null, так как удалены из UI
             profileViewModel.updateProfile(
                 firstName = firstName.value,
                 lastName = lastName.value,
                 phoneNumber = phone.value,
                 email = email.value,
-                currentPassword = currentPass,
-                newPassword = newPass
+                currentPassword = null,
+                newPassword = null
             )
         }
     }
@@ -244,82 +244,8 @@ fun ProfileScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-
-        // [НОВА ЛОГІКА] Нижня панель з кнопками
-        bottomBar = {
-            if (isLoggedIn) {
-                AnimatedVisibility(
-                    visible = openSection.value == "Edit Credentials",
-                    enter = slideInVertically(
-                        initialOffsetY = { it }  // старт снизу экрана
-                    ) + fadeIn(),
-                    exit = slideOutVertically(
-                        targetOffsetY = { it }  // уходит вниз
-                    ) + fadeOut()
-                ) {
-                    BottomAppBar(containerColor = Color.White) {
-
-                        val disableButtons = isCancelLoading.value || profileState.isUpdating
-
-                        // CANCEL BUTTON
-                        Button(
-                            onClick = { onCancelClick() },
-                            enabled = isSaveEnabled.value && !profileState.isUpdating && !isCancelLoading.value,
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSaveEnabled.value) Color(0xFF2A1036) else Color(0xFFE0E0E0),
-                                disabledContainerColor = Color(0xFFE0E0E0),
-                                contentColor = if (isSaveEnabled.value) Color.White else Color.Gray,
-                                disabledContentColor = Color.Gray
-                            )
-                        ) {
-                            if (isCancelLoading.value) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    color = Color.Gray,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("Cancel", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-
-                        Spacer(Modifier.width(16.dp))
-
-                        // SAVE BUTTON
-                        Button(
-                            onClick = { onSaveClick() },
-                            enabled = isSaveEnabled.value && !disableButtons,
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSaveEnabled.value) MaterialTheme.colorScheme.primary else Color(0xFFE0E0E0),
-                                disabledContainerColor = Color(0xFFE0E0E0),
-                                contentColor = if (isSaveEnabled.value) Color.White else Color.Gray,
-                                disabledContentColor = Color.Gray
-                            )
-                        ) {
-                            if (profileState.isUpdating) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    color = Color.Gray,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("Save Changes", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-
-
-
+        // ДОДАНО: SnackbarHost
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         // --- [НОВИЙ МАКЕТ] ---
         LazyColumn(
@@ -391,12 +317,9 @@ fun ProfileScreen(
                                 fontSize = 16.sp,
                                 color = Color.DarkGray
                             )
-
-
                         }
                     }
                 }
-
 
 
                 // 2. Contacts
@@ -430,7 +353,7 @@ fun ProfileScreen(
                 }
 
 
-                // 3. Delivery Addresses (Заглушка)
+                // 3. Delivery Addresses (Виправлено)
                 item {
                     ExpandableSection(
                         title = "Delivery Addresses",
@@ -441,10 +364,8 @@ fun ProfileScreen(
                                 if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
                         }
                     ) {
-                        Text(
-                            text = "Тут будуть налаштування персональних даних (стать, дата народження).",
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        // НОВА СЕКЦІЯ: Форма додавання адреси
+                        AddAddressForm()
                     }
                 }
                 // 4. My Orders (Заглушка)
@@ -459,7 +380,7 @@ fun ProfileScreen(
                         }
                     ) {
                         Text(
-                            text = "Тут будуть налаштування персональних даних (стать, дата народження).",
+                            text = "Тут буде історія ваших замовлень.",
                             modifier = Modifier.padding(16.dp)
                         )
                     }
@@ -468,7 +389,7 @@ fun ProfileScreen(
                 item {
                     ExpandableSection(
                         title = "Edit Credentials",
-                        subtitle = "Edit account information and login credentials",
+                        subtitle = "Edit account information", // Описание стало проще
                         isExpanded = openSection.value == "Edit Credentials",
                         onClick = {
                             openSection.value =
@@ -481,13 +402,21 @@ fun ProfileScreen(
                             lastName = lastName,
                             phone = phone,
                             email = email,
-                            currentPassword = currentPassword,
-                            newPassword = newPassword,
-                            confirmNewPassword = confirmNewPassword,
-                            passwordsMatch = passwordsMatch.value,
-                            error = profileState.error,
-                            onLogoutClick = { authViewModel.logout() }
+                            error = profileState.error
+                            // УДАЛЕНО: все параметры, связанные с паролями и onLogoutClick
                         )
+
+                        // НОВЫЙ БЛОК: кнопки Save/Cancel (если нужно)
+                        // Если вы хотите, чтобы кнопки Save/Cancel были внутри секции:
+                        if (openSection.value == "Edit Credentials") {
+                            SaveCancelButtons(
+                                isSaveEnabled = isSaveEnabled.value,
+                                isUpdating = profileState.isUpdating,
+                                isCancelLoading = isCancelLoading.value,
+                                onSaveClick = ::onSaveClick,
+                                onCancelClick = ::onCancelClick
+                            )
+                        }
                     }
                 }
 
@@ -504,7 +433,170 @@ fun ProfileScreen(
     }
 }
 
-// --- [НОВІ КОМПОНЕНТИ ДИЗАЙНУ] ---
+// --- НОВИЙ КОМПОНЕНТ ФОРМИ АДРЕСИ (згідно скріншоту) ---
+@Composable
+fun AddAddressForm() {
+    // Стан для полів
+    val city = remember { mutableStateOf("") }
+    val street = remember { mutableStateOf("") }
+    val house = remember { mutableStateOf("") }
+    val apartment = remember { mutableStateOf("") }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .background(Color.White)
+    ) {
+        // Заголовок
+        Text(
+            "Add New Address",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        // Рядок 1: City & Street
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = city.value,
+                onValueChange = { city.value = it },
+                label = { Text("City") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            OutlinedTextField(
+                value = street.value,
+                onValueChange = { street.value = it },
+                label = { Text("Street") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // Рядок 2: House & Apartment
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            OutlinedTextField(
+                value = house.value,
+                onValueChange = { house.value = it },
+                label = { Text("House") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+            OutlinedTextField(
+                value = apartment.value,
+                onValueChange = { apartment.value = it },
+                label = { Text("Apartment (optional)") },
+                singleLine = true,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        // Кнопка "Add Address"
+        OutlinedButton(
+            onClick = { /* TODO: Implement saving address */ },
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = MaterialTheme.colorScheme.primary,
+                containerColor = Color.Transparent
+            ),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
+        ) {
+            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(8.dp))
+            Text("Add Address", fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+
+// --- [НОВЫЙ КОМПОНЕНТ ДЛЯ КНОПОК] ---
+@Composable
+fun SaveCancelButtons(
+    isSaveEnabled: Boolean,
+    isUpdating: Boolean,
+    isCancelLoading: Boolean,
+    onSaveClick: () -> Unit,
+    onCancelClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .background(Color.White), // Фон кнопок
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        val disableButtons = isCancelLoading || isUpdating
+        val colorScheme = MaterialTheme.colorScheme
+
+        // CANCEL BUTTON
+        Button(
+            onClick = onCancelClick,
+            enabled = isSaveEnabled && !disableButtons,
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isSaveEnabled) Color(0xFF2A1036) else Color(0xFFE0E0E0),
+                disabledContainerColor = Color(0xFFE0E0E0),
+                contentColor = if (isSaveEnabled) Color.White else Color.Gray,
+                disabledContentColor = Color.Gray
+            )
+        ) {
+            if (isCancelLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = Color.Gray,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Cancel", fontWeight = FontWeight.SemiBold)
+            }
+        }
+
+        Spacer(Modifier.width(16.dp))
+
+        // SAVE BUTTON
+        Button(
+            onClick = onSaveClick,
+            enabled = isSaveEnabled && !disableButtons,
+            modifier = Modifier.weight(1f).height(48.dp),
+            shape = RoundedCornerShape(12.dp),
+            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = if (isSaveEnabled) colorScheme.primary else Color(0xFFE0E0E0),
+                disabledContainerColor = Color(0xFFE0E0E0),
+                contentColor = if (isSaveEnabled) Color.White else Color.Gray,
+                disabledContentColor = Color.Gray
+            )
+        ) {
+            if (isUpdating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = Color.Gray,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Save Changes", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+// --- [КОМПОНЕНТЫ ДИЗАЙНА БЕЗ ИЗМЕНЕНИЙ В СИГНАТУРЕ] ---
 
 /**
  * Компонент для секції, що розкривається (акордеон)
@@ -561,15 +653,9 @@ fun MyAccountSection(
     lastName: MutableState<String>,
     phone: MutableState<String>,
     email: MutableState<String>,
-    currentPassword: MutableState<String>,
-    newPassword: MutableState<String>,
-    confirmNewPassword: MutableState<String>,
-    passwordsMatch: Boolean,
-    error: String?,
-    onLogoutClick: () -> Unit
+    error: String?
 ) {
-    var passVisible by remember { mutableStateOf(false) }
-    var confirmPassVisible by remember { mutableStateOf(false) }
+    // Удалены passVisible и confirmPassVisible
 
     Column(
         modifier = Modifier
@@ -577,8 +663,7 @@ fun MyAccountSection(
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // [ЛОГІКА ПЕРЕНЕСЕНА СЮДИ]
-        // Поля завжди редаговані
+        // [ОСТАВЛЕНО] Поля завжди редаговані
         OutlinedTextField(
             value = firstName.value,
             onValueChange = { firstName.value = it },
@@ -608,63 +693,10 @@ fun MyAccountSection(
             modifier = Modifier.fillMaxWidth()
         )
 
-        Divider(Modifier.padding(vertical = 8.dp))
+        // УДАЛЕНО: Divider, Text("Зміна паролю"), поля паролей и кнопка "Вийти з акаунту"
 
-        // Зміна паролю
-        Text("Зміна паролю", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-
-        OutlinedTextField(
-            value = currentPassword.value,
-            onValueChange = { currentPassword.value = it },
-            label = { Text("Поточний пароль") },
-            singleLine = true,
-            visualTransformation = if (passVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passVisible = !passVisible }) {
-                    Icon(if (passVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = newPassword.value,
-            onValueChange = { newPassword.value = it },
-            label = { Text("Новий пароль (min 8)") },
-            singleLine = true,
-            visualTransformation = if (confirmPassVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { confirmPassVisible = !confirmPassVisible }) {
-                    Icon(if (confirmPassVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = confirmNewPassword.value,
-            onValueChange = { confirmNewPassword.value = it },
-            label = { Text("Підтвердити новий пароль") },
-            singleLine = true,
-            visualTransformation = if (confirmPassVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            isError = newPassword.value.isNotBlank() && !passwordsMatch,
-            modifier = Modifier.fillMaxWidth()
-        )
-        if (newPassword.value.isNotBlank() && !passwordsMatch) {
-            Text("Паролі не співпадають", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
         if (error != null) {
             Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-
-        Divider(Modifier.padding(vertical = 8.dp))
-
-        // Кнопка "Вийти"
-        OutlinedButton(
-            onClick = onLogoutClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-        ) {
-            Text("Вийти з акаунту")
         }
     }
 }

@@ -37,6 +37,7 @@ import com.plugplay.plugplaymobile.R // Потрібен для R.drawable...
 import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
+import java.util.Locale
 
 // --- ДАНІ-ЗАГЛУШКИ ДЛЯ ДИЗАЙНУ ---
 
@@ -164,10 +165,12 @@ fun ProductGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 1. БАНЕР (на всю ширину)
+        // 1. БАНЕР (на всю ширину) - ВИДАЛЕНО
+        /*
         item(span = { GridItemSpan(2) }) {
             BannerCard(modifier = Modifier.padding(vertical = 8.dp))
         }
+        */
 
         // 2. ЗАГОЛОВОК КАТЕГОРІЙ (на всю ширину)
         item(span = { GridItemSpan(2) }) {
@@ -220,14 +223,9 @@ fun ProductItem(
                     // Використовуємо заглушку на випадок помилки Coil
                     error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
-                Badge(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .padding(8.dp),
-                    containerColor = Color(0xFF00A046)
-                ) {
-                    Text("NEW", color = Color.White, fontWeight = FontWeight.Bold)
-                }
+
+
+
                 IconButton(
                     onClick = { /* TODO: Add to favorites */ },
                     modifier = Modifier
@@ -260,30 +258,12 @@ fun ProductItem(
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(Modifier.height(8.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Filled.Star,
-                        contentDescription = "Рейтинг",
-                        tint = Color(0xFFFFC107),
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = "4.8",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = " (156)",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.Gray
-                    )
+
                 }
             }
         }
     }
-}
+
 
 @Composable
 fun BannerCard(modifier: Modifier = Modifier) {

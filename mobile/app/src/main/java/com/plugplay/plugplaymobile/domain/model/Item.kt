@@ -9,5 +9,9 @@ data class Item(
     val imageUrls: List<String>,
     val isAvailable: Boolean = true,
     val brand: String,
-    val category: String
+    val category: String,
+
+    // [ДОБАВЛЕНО] Поля для отображения рейтинга
+    val averageRating: Double = 0.0,
+    val reviewCount: Int = 0
 )

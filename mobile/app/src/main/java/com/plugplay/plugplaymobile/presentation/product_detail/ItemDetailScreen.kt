@@ -108,97 +108,84 @@ fun ItemDetailScreen(
             )
         }
     ) { innerPadding ->
-        Box(
+        // ВИПРАВЛЕНО: Використовуємо лише LazyColumn для заповнення всього доступного простору
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
+                .background(Color.White), // Встановлюємо загальний БІЛИЙ фон
+            contentPadding = PaddingValues(bottom = 32.dp)
         ) {
             when {
                 state.isLoading -> {
-                    CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    item {
+                        Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
+                            CircularProgressIndicator()
+                        }
+                    }
                 }
                 state.error != null -> {
-                    Text(
-                        text = state.error.toString(),
-                        color = MaterialTheme.colorScheme.error,
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .padding(16.dp)
-                    )
+                    item {
+                        Text(
+                            text = state.error.toString(),
+                            color = MaterialTheme.colorScheme.error,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        )
+                    }
                 }
                 item != null -> {
-                    // [ОНОВЛЕНО] Передаємо логіку Add to Cart
-                    ItemDetailContent(
-                        item = item,
-                        isInCart = isInCart,
-                        onAddToCart = {
-                            cartViewModel.addToCart(item.id, 1)
-                        },
-                        onBuyClick = {
-                            cartViewModel.addToCart(item.id, 1)
-                            isCartOpen = true
+                    // --- Секція 1: Зображення ---
+                    item {
+                        ImagePager(item.imageUrls)
+                    }
+
+                    // --- Секція 2: Назва, ціна, варіанти ---
+                    item {
+                        Column(
+                            Modifier
+                                .background(Color.White)
+                                .padding(16.dp)
+                        ) {
+                            TitleAndPrice(item)
+                            Spacer(Modifier.height(24.dp))
+                            VariantSelectors() // Заглушка для кольору та пам'яті
                         }
-                    )
+                    }
+
+                    // --- Секція 3: Кнопки ---
+                    item {
+                        // [ОНОВЛЕНО] Викликаємо оновлений ActionButtons
+                        ActionButtons(
+                            item = item,
+                            isInCart = isInCart,
+                            onAddToCart = {
+                                cartViewModel.addToCart(item.id, 1)
+                            },
+                            onBuyClick = {
+                                cartViewModel.addToCart(item.id, 1)
+                                isCartOpen = true
+                            }
+                        )
+                    }
+
+                    // --- Секція 4: Доставка та Гарантія ---
+                    item {
+                        InfoSection()
+                    }
+
+                    // --- Секція 5: Опис ---
+                    item {
+                        DescriptionSection(item)
+                    }
                 }
             }
         }
     }
 }
 
-// [ОНОВЛЕНО] Сигнатура функції
-@Composable
-fun ItemDetailContent(
-    item: Item,
-    isInCart: Boolean,
-    onAddToCart: () -> Unit,
-    onBuyClick: () -> Unit
-) {
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFFF4F4F4)),
-        contentPadding = PaddingValues(bottom = 32.dp)
-    ) {
-        // --- Секція 1: Зображення ---
-        item {
-            ImagePager(item.imageUrls)
-        }
-
-        // --- Секція 2: Назва, ціна, варіанти ---
-        item {
-            Column(
-                Modifier
-                    .background(Color.White)
-                    .padding(16.dp)
-            ) {
-                TitleAndPrice(item)
-                Spacer(Modifier.height(24.dp))
-                VariantSelectors() // Заглушка для кольору та пам'яті
-            }
-        }
-
-        // --- Секція 3: Кнопки ---
-        item {
-            // [ОНОВЛЕНО] Викликаємо оновлений ActionButtons
-            ActionButtons(
-                item = item,
-                isInCart = isInCart,
-                onAddToCart = onAddToCart,
-                onBuyClick = onBuyClick
-            )
-        }
-
-        // --- Секція 4: Доставка та Гарантія ---
-        item {
-            InfoSection()
-        }
-
-        // --- Секція 5: Опис ---
-        item {
-            DescriptionSection(item)
-        }
-    }
-}
+// [УСУНЕНО] ItemDetailContent, його логіка перенесена в ItemDetailScreen
 
 
 // [НОВИЙ КОМПОНЕНТ] Кнопки "Купити" / "В корзину"
@@ -210,7 +197,7 @@ fun ActionButtons(
     onBuyClick: () -> Unit
 ) {
     Column(
-        Modifier
+        modifier = Modifier
             .fillMaxWidth()
             .background(Color.White)
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 8.dp)
@@ -251,7 +238,7 @@ fun ActionButtons(
     }
 }
 
-// ... (ImagePager, TitleAndPrice, VariantSelectors, InfoSection, InfoRow, DescriptionSection - без змін)
+// ВИПРАВЛЕНО: Усунення сірої області
 @Composable
 fun ImagePager(imageUrls: List<String>) {
     // В якості заглушки для дизайну використовуємо перше зображення
@@ -262,27 +249,19 @@ fun ImagePager(imageUrls: List<String>) {
         modifier = Modifier
             .fillMaxWidth()
             .height(400.dp)
-            .background(Color.White),
+            .background(Color.White), // Гарантуємо білий фон
         contentAlignment = Alignment.Center
     ) {
         // TODO: Після цього кроку рекомендується впровадити HorizontalPager
         AsyncImage(
             model = mainImageUrl, // <--- URL-адреса
             contentDescription = "Зображення товару",
-            modifier = Modifier.fillMaxSize(),
+            // ВИПРАВЛЕНО: Використовуємо .fillMaxWidth() для того, щоб зображення займало всю ширину
+            // Це повинно усунути проблему з білим простором, який проступає
+            modifier = Modifier.fillMaxWidth().fillMaxHeight(),
             contentScale = ContentScale.Crop,
             error = painterResource(id = R.drawable.ic_launcher_foreground)
         )
-
-        // "Like" кнопка
-        IconButton(
-            onClick = { /*TODO*/ },
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(16.dp)
-        ) {
-            Icon(Icons.Outlined.FavoriteBorder, contentDescription = "В обране")
-        }
 
         // "Like" кнопка
         IconButton(
@@ -298,6 +277,7 @@ fun ImagePager(imageUrls: List<String>) {
     }
 }
 
+// ВИПРАВЛЕНО: TitleAndPrice без старої ціни та знижки, без зайвих відступів
 @Composable
 fun TitleAndPrice(item: Item) {
     val currencyFormat = NumberFormat.getCurrencyInstance(Locale("uk", "UA"))
@@ -311,14 +291,27 @@ fun TitleAndPrice(item: Item) {
 
     Spacer(Modifier.height(8.dp))
 
-    // Рейтинг та Код товару
+    // [ОНОВЛЕНО] Рейтинг (динамічний) та прибрано Код товару
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
-        Text(" 4.7 (1044 відгуки)", style = MaterialTheme.typography.bodySmall, color = Color.Gray) // Заглушка
-        Spacer(Modifier.width(8.dp))
-        Text("|", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-        Spacer(Modifier.width(8.dp))
-        Text("Код: ${item.id}", style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+        // Якщо є відгуки, показуємо рейтинг
+        if (item.reviewCount > 0) {
+            Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
+            Text(
+                // Форматуємо середній рейтинг до одного знаку після коми
+                text = " ${String.format("%.1f", item.averageRating)} (${item.reviewCount} відгук${if (item.reviewCount != 1) "и" else ""})",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        } else {
+            // Якщо немає відгуків
+            Text(
+                text = "Немає відгуків",
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
+
+        // [ВИДАЛЕНО] Код товару та статичні відгуки
     }
 
     Spacer(Modifier.height(16.dp))
@@ -336,29 +329,14 @@ fun TitleAndPrice(item: Item) {
 
     Spacer(Modifier.height(16.dp))
 
-    // Ціна
+    // Ціна (ТІЛЬКИ АКТУАЛЬНА ЦІНА)
     Row(verticalAlignment = Alignment.Bottom) {
         Text(
-            text = currencyFormat.format(item.price), // ₴33,999
+            text = currencyFormat.format(item.price), // 41 999,58 грн
             style = MaterialTheme.typography.headlineLarge,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary
         )
-        Spacer(Modifier.width(8.dp))
-
-        // "Стара" ціна
-        Text(
-            text = currencyFormat.format(item.price * 1.1), // Заглушка
-            style = MaterialTheme.typography.titleMedium,
-            color = Color.Gray,
-            textDecoration = TextDecoration.LineThrough
-        )
-        Spacer(Modifier.width(8.dp))
-
-        // Знижка
-        Badge(containerColor = MaterialTheme.colorScheme.error) {
-            Text("-10%", fontWeight = FontWeight.Bold) // Заглушка
-        }
     }
 }
 
