@@ -1,10 +1,12 @@
-import {useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import AccordionSection from '../components/profile/AccordionSection.tsx';
-import {PlusCircle, Trash2, Pencil, Check, X} from 'lucide-react';
-import {Address} from '../models/Address.ts';
-import {validateName, validateEmail, validatePhone} from '../utils/validation.ts';
-import {useGetUserByTokenQuery, useUpdateUserByTokenMutation} from '../api/userInfoApi.ts';
-import {storage} from '../utils/StorageService';
+import OrderHistoryCard from '../components/profile/OrderHistoryCard.tsx';
+import { PlusCircle, Trash2, Pencil, Check, X } from 'lucide-react';
+import { Address } from '../models/Address.ts';
+import { mockOrders } from '../models/Order.ts';
+import { validateName, validateEmail, validatePhone } from '../utils/validation.ts';
+import { useGetUserByTokenQuery, useUpdateUserByTokenMutation } from '../api/userInfoApi.ts';
+import { storage } from '../utils/StorageService';
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
 
@@ -22,7 +24,7 @@ type Errors = {
 
 const initialErrors: Errors = {
   firstName: '', lastName: '', phone: '', email: '',
-  address: {city: '', street: '', house: ''}
+  address: { city: '', street: '', house: '' }
 };
 
 export default function Profile() {
@@ -32,7 +34,7 @@ export default function Profile() {
   const [email, setEmail] = useState('');
 
   const [addresses, setAddresses] = useState<Address[]>([
-    {city: '', street: '', house: '', apartments: ''}
+    { city: '', street: '', house: '', apartments: '' }
   ]);
   const [newAddress, setNewAddress] = useState<Address>({
     id: undefined, city: '', street: '', house: '', apartments: ''
@@ -46,11 +48,11 @@ export default function Profile() {
   const [errors, setErrors] = useState<Errors>(initialErrors);
   const [addressEditErrors, setAddressEditErrors] = useState<{ [key: string]: string }>({});
 
-  const [initialData, setInitialData] = useState({firstName: '', lastName: '', phone, email});
+  const [initialData, setInitialData] = useState({ firstName: '', lastName: '', phone, email });
 
   const token = storage.getAccessToken();
 
-  const {data: tokenUser, isLoading, isError, refetch} = useGetUserByTokenQuery(token ?? '', {skip: !token});
+  const { data: tokenUser, isLoading, isError, refetch } = useGetUserByTokenQuery(token ?? '', { skip: !token });
   const [updateUserByToken] = useUpdateUserByTokenMutation();
 
 
@@ -63,7 +65,7 @@ export default function Profile() {
       setEmail(tokenUser.email);
       setPhone(tokenUser.phoneNumber)
       setAddresses(tokenUser.addresses)
-      setInitialData(prev => ({...prev, firstName: tokenUser.firstName, lastName: tokenUser.lastName}));
+      setInitialData(prev => ({ ...prev, firstName: tokenUser.firstName, lastName: tokenUser.lastName }));
     }
   }, [tokenUser, isEditing]);
 
@@ -83,17 +85,17 @@ export default function Profile() {
         if (!validateEmail(value)) errorMessage = 'Invalid email format';
         break;
     }
-    setErrors(prev => ({...prev, [fieldName]: errorMessage}));
+    setErrors(prev => ({ ...prev, [fieldName]: errorMessage }));
   };
 
   const handleChange = (setter: React.Dispatch<React.SetStateAction<string>>, fieldName: keyof Omit<Errors, 'address'>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    const {value} = e.target;
+    const { value } = e.target;
     setter(value);
     validateField(fieldName, value);
   };
 
   const validateForm = (): boolean => {
-    const newErrors: Errors = {...initialErrors, address: errors.address};
+    const newErrors: Errors = { ...initialErrors, address: errors.address };
 
     if (!validateName(firstName)) newErrors.firstName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
     if (!validateName(lastName)) newErrors.lastName = 'Only Latin/Cyrillic letters and numbers, 2-30 characters';
@@ -106,7 +108,7 @@ export default function Profile() {
   };
 
   const handleStartEdit = () => {
-    setInitialData({firstName, lastName, phone, email});
+    setInitialData({ firstName, lastName, phone, email });
     setIsEditing(true);
   };
 
@@ -150,7 +152,7 @@ export default function Profile() {
   };
 
   const handleAddAddress = () => {
-    const addressErrors = {city: '', street: '', house: ''};
+    const addressErrors = { city: '', street: '', house: '' };
     let isValid = true;
     if (!newAddress.city) {
       addressErrors.city = 'City is required';
@@ -166,13 +168,13 @@ export default function Profile() {
     }
 
     if (!isValid) {
-      setErrors(prev => ({...prev, address: addressErrors}));
+      setErrors(prev => ({ ...prev, address: addressErrors }));
       return;
     }
 
     setAddresses(prev => [...prev, newAddress]);
-    setNewAddress({city: '', street: '', house: '', apartments: ''});
-    setErrors(prev => ({...prev, address: initialErrors.address}));
+    setNewAddress({ city: '', street: '', house: '', apartments: '' });
+    setErrors(prev => ({ ...prev, address: initialErrors.address }));
   };
 
   const handleDeleteAddress = (index: number) => {
@@ -181,7 +183,7 @@ export default function Profile() {
 
   const handleEditAddress = (index: number) => {
     setEditIndex(index);
-    setEditedAddress({...addresses[index]});
+    setEditedAddress({ ...addresses[index] });
     setAddressEditErrors({});
   };
 
@@ -214,6 +216,14 @@ export default function Profile() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleCancelOrder = (orderId: number) => {
+    // TODO: Implement API call to cancel order
+    console.log(`Cancelling order #${orderId}`);
+    // In a real implementation, you would call an API endpoint here
+    // Example: await cancelOrderMutation({ orderId });
+    // Then refetch orders or update local state
+  };
+
   if (isLoading) {
     return LoadingMessage("profile page");
   }
@@ -240,7 +250,7 @@ export default function Profile() {
                 {isEditing ? (
                   <>
                     <input value={firstName} onChange={handleChange(setFirstName, 'firstName')}
-                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.firstName && <p className="text-red-500 text-xs mt-1">{errors.firstName}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{firstName}</div>}
@@ -250,7 +260,7 @@ export default function Profile() {
                 {isEditing ? (
                   <>
                     <input value={lastName} onChange={handleChange(setLastName, 'lastName')}
-                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.lastName && <p className="text-red-500 text-xs mt-1">{errors.lastName}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{lastName}</div>}
@@ -265,7 +275,7 @@ export default function Profile() {
                 {isEditing ? (
                   <>
                     <input value={phone} onChange={handleChange(setPhone, 'phone')}
-                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.phone && <p className="text-red-500 text-xs mt-1">{errors.phone}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{phone}</div>}
@@ -275,7 +285,7 @@ export default function Profile() {
                 {isEditing ? (
                   <>
                     <input value={email} onChange={handleChange(setEmail, 'email')}
-                           className="w-full px-3 py-2 border rounded-lg border-gray-300"/>
+                      className="w-full px-3 py-2 border rounded-lg border-gray-300" />
                     {errors.email && <p className="text-red-500 text-xs mt-1">{errors.email}</p>}
                   </>
                 ) : <div className="text-sm text-gray-700">{email}</div>}
@@ -306,9 +316,8 @@ export default function Profile() {
                                   city: e.target.value,
                                 })
                               }
-                              className={`w-full px-3 py-2 border rounded-lg ${
-                                addressEditErrors.city ? "border-red-500" : "border-gray-300"
-                              }`}
+                              className={`w-full px-3 py-2 border rounded-lg ${addressEditErrors.city ? "border-red-500" : "border-gray-300"
+                                }`}
                               placeholder="Enter city"
                             />
                             {addressEditErrors.city && (
@@ -328,9 +337,8 @@ export default function Profile() {
                                   street: e.target.value,
                                 })
                               }
-                              className={`w-full px-3 py-2 border rounded-lg ${
-                                addressEditErrors.street ? "border-red-500" : "border-gray-300"
-                              }`}
+                              className={`w-full px-3 py-2 border rounded-lg ${addressEditErrors.street ? "border-red-500" : "border-gray-300"
+                                }`}
                               placeholder="Enter street"
                             />
                             {addressEditErrors.street && (
@@ -350,9 +358,8 @@ export default function Profile() {
                                   house: e.target.value,
                                 })
                               }
-                              className={`w-full px-3 py-2 border rounded-lg ${
-                                addressEditErrors.house ? "border-red-500" : "border-gray-300"
-                              }`}
+                              className={`w-full px-3 py-2 border rounded-lg ${addressEditErrors.house ? "border-red-500" : "border-gray-300"
+                                }`}
                               placeholder="Enter house number"
                             />
                             {addressEditErrors.house && (
@@ -384,14 +391,14 @@ export default function Profile() {
                             className="text-green-600 hover:text-green-700"
                             aria-label="Save address"
                           >
-                            <Check className="w-4 h-4 inline-block mr-1"/> Save
+                            <Check className="w-4 h-4 inline-block mr-1" /> Save
                           </button>
                           <button
                             onClick={handleAddressCancelEdit}
                             className="text-gray-600 hover:text-gray-700"
                             aria-label="Cancel editing"
                           >
-                            <X className="w-4 h-4 inline-block mr-1"/> Cancel
+                            <X className="w-4 h-4 inline-block mr-1" /> Cancel
                           </button>
                         </div>
                       </>
@@ -412,14 +419,14 @@ export default function Profile() {
                               className="text-blue-600 hover:text-blue-700"
                               aria-label="Edit address"
                             >
-                              <Pencil className="w-4 h-4"/>
+                              <Pencil className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDeleteAddress(index)}
                               className="text-red-600 hover:text-red-700"
                               aria-label="Delete address"
                             >
-                              <Trash2 className="w-4 h-4"/>
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         )}
@@ -436,7 +443,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">City</label>
                       <input
                         value={newAddress.city}
-                        onChange={e => setNewAddress(prev => ({...prev, city: e.target.value}))}
+                        onChange={e => setNewAddress(prev => ({ ...prev, city: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter city"
                       />
@@ -446,7 +453,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">Street</label>
                       <input
                         value={newAddress.street}
-                        onChange={e => setNewAddress(prev => ({...prev, street: e.target.value}))}
+                        onChange={e => setNewAddress(prev => ({ ...prev, street: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter street"
                       />
@@ -456,7 +463,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">House</label>
                       <input
                         value={newAddress.house}
-                        onChange={e => setNewAddress(prev => ({...prev, house: e.target.value}))}
+                        onChange={e => setNewAddress(prev => ({ ...prev, house: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter house number"
                       />
@@ -466,7 +473,7 @@ export default function Profile() {
                       <label className="block text-sm font-medium text-black mb-1">Apartment (optional)</label>
                       <input
                         value={newAddress.apartments}
-                        onChange={e => setNewAddress(prev => ({...prev, apartments: e.target.value}))}
+                        onChange={e => setNewAddress(prev => ({ ...prev, apartments: e.target.value }))}
                         className="w-full px-3 py-2 border rounded-lg border-gray-300"
                         placeholder="Enter apartment number"
                       />
@@ -476,7 +483,7 @@ export default function Profile() {
                     onClick={handleAddAddress}
                     className="mt-4 flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-sm font-medium"
                   >
-                    <PlusCircle className="w-4 h-4"/>
+                    <PlusCircle className="w-4 h-4" />
                     <span>Add Address</span>
                   </button>
                 </div>
@@ -485,7 +492,11 @@ export default function Profile() {
           </AccordionSection>
 
           <AccordionSection title="My Orders" subtitle="Your order history">
-            <p className="text-sm text-gray-500">Your orders will appear here</p>
+            <div className="space-y-4">
+              {mockOrders.map((order) => (
+                <OrderHistoryCard key={order.id} order={order} onCancelOrder={handleCancelOrder} />
+              ))}
+            </div>
           </AccordionSection>
         </div>
 
@@ -493,20 +504,20 @@ export default function Profile() {
           {isEditing ? (
             <>
               <button onClick={handleCancel}
-                      className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel
+                className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50">Cancel
               </button>
               <button onClick={handleSave} disabled={isSaving}
-                      className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 
+                className={`px-4 py-2 text-white rounded-lg disabled:opacity-50 
                       ${addressEditIndex !== null || editedAddress
-                        ? 'bg-blue-900 hover:bg-blue-900 cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-700'
-                      }`}>
+                    ? 'bg-blue-900 hover:bg-blue-900 cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-700'
+                  }`}>
                 {isSaving ? 'Saving...' : 'Save Changes'}
               </button>
             </>
           ) : (
             <button onClick={handleStartEdit}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Edit</button>
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">Edit</button>
           )}
         </div>
       </div>
