@@ -1,5 +1,5 @@
-import {baseApi} from './baseApi.ts';
-import {Product} from "../models/Product.ts";
+import { baseApi } from './baseApi.ts';
+import { Product } from "../models/Product.ts";
 import AttributeGroup from "../models/AttributeGroup.ts";
 
 interface FilterProductsResponse {
@@ -37,14 +37,14 @@ export const productsApi = baseApi.injectEndpoints({
       }
     >({
       query: ({
-                categoryId,
-                minPrice,
-                maxPrice,
-                filter: filterText,
-                sort,
-                page = 1,
-                pageSize = 20,
-              }) => ({
+        categoryId,
+        minPrice,
+        maxPrice,
+        filter: filterText,
+        sort,
+        page = 1,
+        pageSize = 20,
+      }) => ({
         url: `products/filter/${categoryId}`,
         method: 'GET',
         params: {
@@ -56,10 +56,10 @@ export const productsApi = baseApi.injectEndpoints({
           pageSize,
         },
       }),
-      providesTags: [{type: 'Products'} as any],
+      providesTags: [{ type: 'Products' } as any],
     }),
     getAttributeGroups: builder.mutation<AttributeGroup[], { categoryId: number; productIds?: number[] }>({
-      query: ({categoryId, productIds}) => {
+      query: ({ categoryId, productIds }) => {
         const body = productIds && productIds.length ? productIds : undefined;
 
         return {
@@ -75,6 +75,16 @@ export const productsApi = baseApi.injectEndpoints({
         method: 'GET',
       }),
     }),
+    searchProducts: builder.query<Product[], { query: string; page?: number; pageSize?: number }>({
+      query: ({ query, page = 1, pageSize = 20 }) => ({
+        url: `products/search/${encodeURIComponent(query)}`,
+        method: 'GET',
+        params: {
+          page,
+          pageSize,
+        },
+      }),
+    }),
   }),
 });
 
@@ -83,4 +93,5 @@ export const {
   useGetProductByIdQuery,
   useFilterProductsQuery,
   useGetAttributeGroupsMutation,
+  useSearchProductsQuery,
 } = productsApi;

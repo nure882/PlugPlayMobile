@@ -1,23 +1,32 @@
-import {Link, useNavigate} from 'react-router-dom';
-import {ShoppingCart, User, Search, LogOut} from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { ShoppingCart, User, Search, LogOut } from 'lucide-react';
 import logoUrl from '../../../assets/logo.svg';
-import {useState} from 'react';
-import {useAuth} from '../../context/AuthContext.tsx';
-import {Menu} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../../context/AuthContext.tsx';
+import { Menu } from 'lucide-react';
 import CategoriesSidebar from "../products/CategoriesSidebar.tsx";
-import {useCartContext} from '../../context/CartContext.tsx';
+import { useCartContext } from '../../context/CartContext.tsx';
+import { useAppDispatch, useAppSelector } from '../../app/configureStore';
+import { setSearchQuery } from '../../app/slices/filterSlice';
 
 interface HeaderProps {
   onCategorySelect: (categoryId: number | null) => void;
 }
 
-export default function Header({onCategorySelect}: HeaderProps) {
+export default function Header({ onCategorySelect }: HeaderProps) {
   const navigate = useNavigate();
-  const {user, logout, isLoggingOut} = useAuth();
-  const [searchQuery, setSearchQuery] = useState('');
+  const dispatch = useAppDispatch();
+  const { user, logout, isLoggingOut } = useAuth();
+  const reduxSearchQuery = useAppSelector((state) => state.filter?.searchQuery || '');
+  const [searchQuery, setSearchQueryLocal] = useState(reduxSearchQuery);
   const [isCategoriesOpen, setIsCategoriesOpen] = useState(false);
 
-  const {openCart, closeCart} = useCartContext();
+  const { openCart, closeCart } = useCartContext();
+
+  // Sync local state with Redux state
+  useEffect(() => {
+    setSearchQueryLocal(reduxSearchQuery);
+  }, [reduxSearchQuery]);
 
   const handleSignOut = async () => {
     await logout();
@@ -28,7 +37,9 @@ export default function Header({onCategorySelect}: HeaderProps) {
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    // console.log('Search query:', searchQuery);
+    dispatch(setSearchQuery(searchQuery.trim()));
+    onCategorySelect(null);
+    navigate('/');
   };
 
   const handleCategorySelect = (categoryId: number | null) => {
@@ -45,7 +56,7 @@ export default function Header({onCategorySelect}: HeaderProps) {
               onClick={() => setIsCategoriesOpen(true)}
               className="flex items-center gap-2 px-3 py-2 mr-4 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
             >
-              <Menu className="w-5 h-5"/>
+              <Menu className="w-5 h-5" />
               <span className="font-medium">Categories</span>
             </button>
             <CategoriesSidebar
@@ -54,7 +65,7 @@ export default function Header({onCategorySelect}: HeaderProps) {
               onCategorySelect={handleCategorySelect}
             />
             <Link to="/" onClick={() => handleCategorySelect(null)} className="flex items-center gap-2">
-              <img src={logoUrl} alt="Plug&Play logo" className="h-8 w-8"/>
+              <img src={logoUrl} alt="Plug&Play logo" className="h-8 w-8" />
               <span className="text-2xl font-bold text-black">Plug&Play</span>
             </Link>
           </div>
@@ -65,10 +76,10 @@ export default function Header({onCategorySelect}: HeaderProps) {
                 type="text"
                 placeholder="Search products..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => setSearchQueryLocal(e.target.value)}
                 className="w-full px-4 py-2 pl-10 pr-4 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"/>
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
             </form>
           </div>
 
@@ -77,13 +88,13 @@ export default function Header({onCategorySelect}: HeaderProps) {
               onClick={openCart}
               className="p-2 text-gray-700 hover:text-black transition-colors"
             >
-              <ShoppingCart className="w-6 h-6"/>
+              <ShoppingCart className="w-6 h-6" />
             </button>
 
             {user ? (
               <>
                 <Link to="/profile" className="p-2 text-gray-700 hover:text-black transition-colors">
-                  <User className="w-6 h-6"/>
+                  <User className="w-6 h-6" />
                 </Link>
                 <button
                   onClick={handleSignOut}
@@ -91,7 +102,7 @@ export default function Header({onCategorySelect}: HeaderProps) {
                   className="flex items-center gap-2 bg-gray-100 text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-200 transition-colors font-medium"
                 >
                   {isLoggingOut ? 'Signing out...' : 'Sign Out'}
-                  <LogOut className="w-4 h-4"/>
+                  <LogOut className="w-4 h-4" />
                 </button>
               </>
             ) : (
