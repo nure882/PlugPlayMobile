@@ -3,10 +3,9 @@ import AccordionSection from '../components/profile/AccordionSection.tsx';
 import OrderHistoryCard from '../components/profile/OrderHistoryCard.tsx';
 import { PlusCircle, Trash2, Pencil, Check, X } from 'lucide-react';
 import { Address } from '../models/Address.ts';
-//import { mockOrders } from '../models/Order.ts';
 import { validateName, validateEmail, validatePhone } from '../utils/validation.ts';
 import { useGetUserByTokenQuery, useUpdateUserByTokenMutation } from '../api/userInfoApi.ts';
-import { useGetOrderByIdQuery, useGetUserOrdersQuery, useGetOrderItemsQuery, useCancelOrderMutation } from '../api/orderApi.ts';
+import { useGetUserOrdersQuery, useCancelOrderMutation } from '../api/orderApi.ts';
 import { useGetAllProductsQuery } from '../api/productsApi.ts';
 import { storage } from '../utils/StorageService';
 import { OrderItemWithDetails } from '../models/Order.ts';
@@ -70,6 +69,8 @@ export default function Profile() {
     isError: isOrdersError,
     refetch: refetchOrders,
   } = useGetUserOrdersQuery(tokenUser?.id ?? skipToken);
+
+  const [cancelOrderMutation] = useCancelOrderMutation();
 
   const {
       data: products,
@@ -256,12 +257,9 @@ export default function Profile() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleCancelOrder = (orderId: number) => {
-    // TODO: Implement API call to cancel order
-    console.log(`Cancelling order #${orderId}`);
-    // In a real implementation, you would call an API endpoint here
-    // Example: await cancelOrderMutation({ orderId });
-    // Then refetch orders or update local state
+  const handleCancelOrder = async (orderId: number) => {
+    await cancelOrderMutation(orderId);
+    refetchOrders();
   };
 
   if (isLoading || isLoadingOrders || isLoadingProducts) {
