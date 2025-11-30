@@ -3,6 +3,7 @@ import OrderItem from "./OrderItem.ts";
 import DeliveryMethod from "./enums/DeliveryMethod.ts";
 import OrderStatus from "./enums/OrderStatus.ts";
 import PaymentMethod from "./enums/PaymentMethod.ts";
+import PaymentStatus from "./enums/PaymentStatus.ts";
 
 // Extended OrderItem with UI-specific properties
 export interface OrderItemWithDetails extends OrderItem {
@@ -20,7 +21,7 @@ export interface Order {
     deliveryMethod: DeliveryMethod;
     paymentMethod: PaymentMethod;
     deliveryAddressId: number;
-    paymentStatus: number;
+    paymentStatus: PaymentStatus;
     transactionId: number;
     paymentCreated: string;
     paymentProcessed: string;

@@ -25,7 +25,7 @@ export const OrderStatusInfo: Record<OrderStatus, {
   },
   [OrderStatus.Delivered]: {
     label: "Delivered",
-    displayColor: 'bg green-200 text-green-900'
+    displayColor: 'bg-purple-100 text-purple-700'
   },
   [OrderStatus.Cancelled]: {
     label: "Cancelled",
