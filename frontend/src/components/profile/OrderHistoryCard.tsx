@@ -1,10 +1,15 @@
 import { useState } from 'react';
 import { ChevronDown, X } from 'lucide-react';
-import { Order, getStatusColor } from '../../models/Order';
+import { Order} from '../../models/Order';
+import DeliveryMethod, {DeliveryMethodInfo} from '../../models/enums/DeliveryMethod';
+import PaymentMethod, {PaymentMethodInfo} from '../../models/enums/PaymentMethod';
+import OrderStatus, { OrderStatusInfo } from '../../models/enums/OrderStatus';
+import { Address } from '../../models/Address';
 
 interface OrderHistoryCardProps {
     order: Order;
     onCancelOrder?: (orderId: number) => void;
+    addresses : Address[];
 }
 
 function formatHryvnia(amount?: number) {
@@ -12,10 +17,10 @@ function formatHryvnia(amount?: number) {
     return `₴${v.toFixed(2)}`;
 }
 
-export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryCardProps) {
+export default function OrderHistoryCard({ order, onCancelOrder, addresses }: OrderHistoryCardProps) {
     const [isExpanded, setIsExpanded] = useState(false);
 
-    const canCancelOrder = order.status === 'Processing' || order.status === 'Shipped';
+    const canCancelOrder = order.status ===  OrderStatus.Created || order.status === OrderStatus.Approved;
 
     const handleCancelOrder = (e: React.MouseEvent) => {
         e.stopPropagation();
@@ -23,6 +28,20 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
             onCancelOrder(order.id);
         }
     };
+
+     const getformattedAddress = (addressId: number) => {
+        const address = findAddress(addressId);
+        
+        return address
+          ? `${address.city}, ${address.street} ${address.house} ${
+              address.apartments && `, Apt ${address.apartments}`
+            }`
+          : "Address information not available";
+    }
+
+    const findAddress = (addressId: number) => {
+        return addresses.find((a) => a.id == addressId);
+    }
 
     return (
         <div className="border border-gray-200 rounded-lg overflow-hidden bg-white">
@@ -39,11 +58,9 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
                         </div>
                         <div className="flex items-center gap-2">
                             <span
-                                className={`px-3 py-1 rounded text-xs font-medium ${getStatusColor(
-                                    order.status
-                                )}`}
+                                className={`px-3 py-1 rounded text-xs font-medium ${OrderStatusInfo[order.status].displayColor}`}
                             >
-                                {order.status}
+                                {OrderStatusInfo[order.status].label}
                             </span>
                             <ChevronDown
                                 className={`w-5 h-5 text-gray-400 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''
@@ -76,19 +93,19 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
                     {/* Delivery Method */}
                     <div>
                         <p className="text-xs text-gray-500 mb-1">Delivery Method</p>
-                        <p className="text-sm text-gray-900">{order.deliveryMethod}</p>
+                        <p className="text-sm text-gray-900">{DeliveryMethodInfo[order.deliveryMethod].label}</p>
                     </div>
 
                     {/* Full Address */}
                     <div>
                         <p className="text-xs text-gray-500 mb-1">Full Address</p>
-                        <p className="text-sm text-gray-900">{order.fullAddress}</p>
+                        <p className="text-sm text-gray-900">{getformattedAddress(order.deliveryAddressId)}</p>
                     </div>
 
                     {/* Payment Type */}
                     <div>
-                        <p className="text-xs text-gray-500 mb-1">Payment Type</p>
-                        <p className="text-sm text-gray-900">{order.paymentType}</p>
+                        <p className="text-xs text-gray-500 mb-1">Payment Method</p>
+                        <p className="text-sm text-gray-900">{PaymentMethodInfo[order.paymentMethod].label}</p>
                     </div>
 
                     {/* Order Items */}
@@ -109,7 +126,10 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
                                     <div className="text-right">
                                         <p className="text-sm text-gray-700">Qty: {item.quantity}</p>
                                         <p className="text-sm font-medium text-gray-900">
-                                            {formatHryvnia(item.price)}
+                                            Price: {formatHryvnia(item.price)}
+                                        </p>
+                                        <p className="text-sm font-medium text-gray-900">
+                                            Total: {formatHryvnia((item.price ?? 0) * item.quantity)}
                                         </p>
                                     </div>
                                 </div>
@@ -122,12 +142,12 @@ export default function OrderHistoryCard({ order, onCancelOrder }: OrderHistoryC
                         <div className="flex justify-between text-sm mb-1">
                             <span className="text-gray-600">Subtotal</span>
                             <span className="text-gray-900">
-                                {formatHryvnia(order.totalAmount - (order.shipmentCost ?? 0))}
+                                {formatHryvnia(order.totalAmount - (DeliveryMethodInfo[order.deliveryMethod].price))}
                             </span>
                         </div>
                         <div className="flex justify-between text-sm mb-2">
                             <span className="text-gray-600">Shipment Cost</span>
-                            <span className="text-gray-900">{formatHryvnia(order.shipmentCost)}</span>
+                            <span className="text-gray-900">{formatHryvnia(DeliveryMethodInfo[order.deliveryMethod].price)}</span>
                         </div>
                         <div className="flex justify-between text-base font-semibold pt-2 border-t border-gray-200">
                             <span className="text-gray-900">Total</span>

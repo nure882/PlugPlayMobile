@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import AccordionSection from '../components/profile/AccordionSection.tsx';
 import OrderHistoryCard from '../components/profile/OrderHistoryCard.tsx';
 import { PlusCircle, Trash2, Pencil, Check, X } from 'lucide-react';
@@ -7,7 +7,9 @@ import { Address } from '../models/Address.ts';
 import { validateName, validateEmail, validatePhone } from '../utils/validation.ts';
 import { useGetUserByTokenQuery, useUpdateUserByTokenMutation } from '../api/userInfoApi.ts';
 import { useGetOrderByIdQuery, useGetUserOrdersQuery, useGetOrderItemsQuery, useCancelOrderMutation } from '../api/orderApi.ts';
+import { useGetAllProductsQuery } from '../api/productsApi.ts';
 import { storage } from '../utils/StorageService';
+import { OrderItemWithDetails } from '../models/Order.ts';
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
 import { skipToken } from '@reduxjs/toolkit/query';
@@ -54,10 +56,45 @@ export default function Profile() {
 
   const token = storage.getAccessToken();
 
-  const { data: tokenUser, isLoading, isError, refetch } = useGetUserByTokenQuery(token ?? '', { skip: !token });
+  const {
+    data: tokenUser,
+    isLoading,
+    isError,
+    refetch,
+  } = useGetUserByTokenQuery(token ?? "", { skip: !token });
   const [updateUserByToken] = useUpdateUserByTokenMutation();
 
-  const {data: orders, isLoading : isLoadingOrders, isError: isOrdersError} = useGetUserOrdersQuery(tokenUser?.id ?? skipToken);
+  const {
+    data: orders,
+    isLoading: isLoadingOrders,
+    isError: isOrdersError,
+    refetch: refetchOrders,
+  } = useGetUserOrdersQuery(tokenUser?.id ?? skipToken);
+
+  const {
+      data: products,
+      isLoading: isLoadingProducts,
+      isError: isProductsError,
+  } = useGetAllProductsQuery();
+
+  const enrichedOrders = useMemo(() => {
+    if (!orders || !products) return [];
+
+    return orders.map((order) => ({
+      ...order,
+      orderItems: order.orderItems.map((item) => {
+        const product = products.find((p) => p.id === item.productId);
+
+        const enriched: OrderItemWithDetails = {
+          ...item,
+          productName: product?.name ?? "Unknown product",
+          price: product?.price ?? 0,
+        };
+
+        return enriched;
+      }),
+    }));
+  }, [orders, products]);
 
   useEffect(() => {
     if (tokenUser && !isEditing) {
@@ -227,11 +264,11 @@ export default function Profile() {
     // Then refetch orders or update local state
   };
 
-  if (isLoading || isLoadingOrders) {
+  if (isLoading || isLoadingOrders || isLoadingProducts) {
     return LoadingMessage("profile page");
   }
 
-  if (isError || isOrdersError) {
+  if (isError || isOrdersError || isProductsError) {
     return ErrorMessage("error loading personal page", "couldn't retrieve data from the database")
   }
 
@@ -496,8 +533,8 @@ export default function Profile() {
 
           <AccordionSection title="My Orders" subtitle="Your order history">
             <div className="space-y-4">
-              {orders && orders.map((order) => (
-                <OrderHistoryCard key={order.id} order={order} onCancelOrder={handleCancelOrder} />
+              {enrichedOrders && enrichedOrders.map((order) => (
+                <OrderHistoryCard key={order.id} order={order} onCancelOrder={handleCancelOrder} addresses={addresses} />
               ))}
             </div>
           </AccordionSection>
