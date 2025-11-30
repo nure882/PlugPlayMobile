@@ -1,5 +1,6 @@
 import {baseApi} from './baseApi.ts';
 import OrderItem from "../models/OrderItem";
+import { Order } from '../models/Order.ts';
 
 export interface PlaceOrderRequest {
   userId: number;
@@ -28,7 +29,28 @@ export const orderApi = baseApi.injectEndpoints({
         body: order,
       }),
     }),
-  }),
+    getUserOrders: builder.query<Order[], number>({
+      query: (userId) => `order/user/${userId}`,
+    }),
+    getOrderItems: builder.query<OrderItem[], number>({
+      query: (orderId) => `order/${orderId}/order_items`,
+    }),
+    getOrderById: builder.query<Order, number>({
+      query: (orderId) => `order/${orderId}`,
+    }),
+    cancelOrder: builder.mutation<void, number>({
+      query: (orderId) => ({
+        url: `order/cancel/${orderId}`,
+        method: "PUT",
+      })
+    }),
+  })
 });
 
-export const { usePlaceOrderMutation } = orderApi;
+export const {
+  usePlaceOrderMutation,
+  useGetUserOrdersQuery,
+  useGetOrderItemsQuery,
+  useGetOrderByIdQuery,
+  useCancelOrderMutation,
+} = orderApi;
