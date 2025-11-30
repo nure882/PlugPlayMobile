@@ -3,12 +3,14 @@ import AccordionSection from '../components/profile/AccordionSection.tsx';
 import OrderHistoryCard from '../components/profile/OrderHistoryCard.tsx';
 import { PlusCircle, Trash2, Pencil, Check, X } from 'lucide-react';
 import { Address } from '../models/Address.ts';
-import { mockOrders } from '../models/Order.ts';
+//import { mockOrders } from '../models/Order.ts';
 import { validateName, validateEmail, validatePhone } from '../utils/validation.ts';
 import { useGetUserByTokenQuery, useUpdateUserByTokenMutation } from '../api/userInfoApi.ts';
+import { useGetOrderByIdQuery, useGetUserOrdersQuery, useGetOrderItemsQuery, useCancelOrderMutation } from '../api/orderApi.ts';
 import { storage } from '../utils/StorageService';
 import LoadingMessage from '../components/common/LoadingMessage.tsx';
 import ErrorMessage from '../components/common/ErrorMessage.tsx';
+import { skipToken } from '@reduxjs/toolkit/query';
 
 type Errors = {
   firstName: string;
@@ -55,6 +57,7 @@ export default function Profile() {
   const { data: tokenUser, isLoading, isError, refetch } = useGetUserByTokenQuery(token ?? '', { skip: !token });
   const [updateUserByToken] = useUpdateUserByTokenMutation();
 
+  const {data: orders, isLoading : isLoadingOrders, isError: isOrdersError} = useGetUserOrdersQuery(tokenUser?.id ?? skipToken);
 
   useEffect(() => {
     if (tokenUser && !isEditing) {
@@ -224,11 +227,11 @@ export default function Profile() {
     // Then refetch orders or update local state
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingOrders) {
     return LoadingMessage("profile page");
   }
 
-  if (isError) {
+  if (isError || isOrdersError) {
     return ErrorMessage("error loading personal page", "couldn't retrieve data from the database")
   }
 
@@ -493,7 +496,7 @@ export default function Profile() {
 
           <AccordionSection title="My Orders" subtitle="Your order history">
             <div className="space-y-4">
-              {mockOrders.map((order) => (
+              {orders && orders.map((order) => (
                 <OrderHistoryCard key={order.id} order={order} onCancelOrder={handleCancelOrder} />
               ))}
             </div>
