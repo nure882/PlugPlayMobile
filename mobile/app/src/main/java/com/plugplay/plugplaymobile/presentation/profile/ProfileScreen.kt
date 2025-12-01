@@ -6,7 +6,6 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -16,8 +15,6 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Visibility
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -26,8 +23,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -55,10 +50,9 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 
 /**
  * Клас адреси користувача.
- * Усі поля, крім apartments, вважаються обов'язковими.
  */
 data class UserAddress(
-    val id: Int? = null, // ID для існуючої адреси. Null для нової.
+    val id: Int? = null,
     val city: String,
     val street: String,
     val house: String,
@@ -66,27 +60,28 @@ data class UserAddress(
 )
 
 /**
- * Оновлений UserProfile, що містить список адрес.
- * Припускаємо, що оригінальний UserProfile оновлено.
- */
-// Вважаємо, що оригінальний UserProfile виглядав так:
-// data class UserProfile(
-//     val id: Int,
-//     val firstName: String,
-//     val lastName: String,
-//     val phoneNumber: String,
-//     val email: String,
-//     val addresses: List<UserAddress> = emptyList() // <-- ДОДАНО ЦЕ ПОЛЕ
-// )
-// Якщо ваш оригінальний UserProfile не містить addresses, вам потрібно буде його оновити.
-
-/**
  * Заглушка для репозиторію
  */
-interface AuthRepository // Заглушка для коректної ін'єкції
+interface AuthRepository
+
+interface GetProfileUseCase {
+    suspend operator fun invoke(): Result<UserProfile>
+}
+interface UpdateProfileUseCase {
+    suspend operator fun invoke(
+        firstName: String,
+        lastName: String,
+        phoneNumber: String,
+        email: String,
+        currentPassword: String? = null,
+        newPassword: String? = null,
+        addresses: List<UserAddress> = emptyList()
+    ): Result<UserProfile>
+}
+
 
 // =========================================================================
-// [STATE] (Залишається без змін)
+// [STATE]
 // =========================================================================
 data class ProfileState(
     val profile: UserProfile? = null,
@@ -97,15 +92,12 @@ data class ProfileState(
 )
 
 // =========================================================================
-// [VIEWMODEL] (ОНОВЛЕНО ДЛЯ РОБОТИ З АДРЕСАМИ)
+// [VIEWMODEL]
 // =========================================================================
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
-    // Припускаємо, що UpdateProfileUseCase тепер приймає список адрес
     private val updateProfileUseCase: UpdateProfileUseCase,
-    // Ін'єкція для отримання повного профілю, якщо потрібно,
-    // хоча в цьому прикладі вона не використовується для прямого виклику
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -133,7 +125,6 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    // [ОНОВЛЕНО] Сигнатура updateProfile: тепер приймає адреси
     fun updateProfile(
         firstName: String,
         lastName: String,
@@ -141,7 +132,7 @@ class ProfileViewModel @Inject constructor(
         email: String,
         currentPassword: String? = null,
         newPassword: String? = null,
-        addresses: List<UserAddress> // <-- ДОДАНО ЦЕЙ АРГУМЕНТ
+        addresses: List<UserAddress> = emptyList()
     ) {
         _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
         viewModelScope.launch {
@@ -166,10 +157,8 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    // [НОВА ФУНКЦІЯ] Для додавання адреси
     fun addAddress(city: String, street: String, house: String, apartment: String?) {
-        val currentProfile = state.value.profile
-        if (currentProfile == null) {
+        val currentProfile = state.value.profile ?: run {
             _state.update { it.copy(error = "User profile not loaded. Cannot add address.") }
             return
         }
@@ -180,39 +169,26 @@ class ProfileViewModel @Inject constructor(
         }
 
         val newAddress = UserAddress(
-            id = null,
-            city = city,
-            street = street,
-            house = house,
-            apartments = apartment?.ifBlank { null }
+            id = null, city = city, street = street, house = house, apartments = apartment?.ifBlank { null }
         )
 
-        // Збираємо новий список адрес: старі + нова
         val addressesToSend = currentProfile.addresses + listOf(newAddress)
 
-        // Викликаємо оновлений загальний метод updateProfile з новим списком адрес,
-        // зберігаючи інші поля профілю без змін
         updateProfile(
             firstName = currentProfile.firstName,
             lastName = currentProfile.lastName,
             phoneNumber = currentProfile.phoneNumber,
             email = currentProfile.email,
-            // Скидаємо паролі, якщо вони не міняються
-            currentPassword = null,
-            newPassword = null,
             addresses = addressesToSend
         )
     }
 
-    // [ОНОВЛЕНА ФУНКЦІЯ] Для видалення адреси
     fun deleteAddress(addressId: Int) {
-        val currentProfile = state.value.profile
-        if (currentProfile == null) {
+        val currentProfile = state.value.profile ?: run {
             _state.update { it.copy(error = "User profile not loaded. Cannot delete address.") }
             return
         }
 
-        // Перевіряємо, чи є ID у адреси, якщо ні, то ігноруємо
         if (currentProfile.addresses.none { it.id == addressId }) {
             _state.update { it.copy(error = "Address with ID $addressId not found.") }
             return
@@ -220,15 +196,11 @@ class ProfileViewModel @Inject constructor(
 
         val addressesToSend = currentProfile.addresses.filter { it.id != addressId }
 
-        // Викликаємо оновлений загальний метод updateProfile з новим (відфільтрованим) списком адрес
         updateProfile(
             firstName = currentProfile.firstName,
             lastName = currentProfile.lastName,
             phoneNumber = currentProfile.phoneNumber,
             email = currentProfile.email,
-            // Скидаємо паролі, якщо вони не міняються
-            currentPassword = null,
-            newPassword = null,
             addresses = addressesToSend
         )
     }
@@ -245,7 +217,7 @@ class ProfileViewModel @Inject constructor(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
-    onNavigateToCatalog: () -> Unit, // Назад
+    onNavigateToCatalog: () -> Unit,
     onNavigateToLogin: () -> Unit,
     authViewModel: AuthViewModel = hiltViewModel(),
     profileViewModel: ProfileViewModel = hiltViewModel()
@@ -253,7 +225,7 @@ fun ProfileScreen(
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val profileState by profileViewModel.state.collectAsState()
 
-    val profile = profileState.profile // Локальна змінна для Smart Cast
+    val profile = profileState.profile
 
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -261,98 +233,32 @@ fun ProfileScreen(
         profileViewModel.onAuthStatusChanged(isLoggedIn)
     }
 
+    // Редаговані поля (залишаємо для Edit Credentials, якщо ви вирішите його повернути)
     val firstName = remember { mutableStateOf("") }
     val lastName = remember { mutableStateOf("") }
     val phone = remember { mutableStateOf("") }
     val email = remember { mutableStateOf("") }
+
+    // Прибираємо стани паролів, оскільки Edit Credentials видалено
     val currentPassword = remember { mutableStateOf("") }
     val newPassword = remember { mutableStateOf("") }
     val confirmNewPassword = remember { mutableStateOf("") }
-
-    val openSection = remember { mutableStateOf("") }
     val passwordsMatch = remember { derivedStateOf { newPassword.value == confirmNewPassword.value } }
 
-    fun resetFields() {
-        profile?.let { p ->
-            firstName.value = p.firstName
-            lastName.value = p.lastName
-            phone.value = p.phoneNumber
-            email.value = p.email
-        }
-        currentPassword.value = ""
-        newPassword.value = ""
-        confirmNewPassword.value = ""
-    }
+    val openSection = remember { mutableStateOf("") }
 
+    // Ініціалізація полів при завантаженні профілю
     LaunchedEffect(profile) {
         if (profile != null) {
-            resetFields()
+            // Присвоюємо значення локальним станам
+            firstName.value = profile.firstName
+            lastName.value = profile.lastName
+            phone.value = profile.phoneNumber
+            email.value = profile.email
             profileViewModel.resetUpdateState()
         }
     }
 
-    LaunchedEffect(profileState.updateSuccess) {
-        if (profileState.updateSuccess) {
-            // Показуємо Snackbar лише для загального оновлення профілю (не адреси)
-            if (openSection.value == "Edit Credentials") {
-                snackbarHostState.showSnackbar("Profile updated successfully!")
-            } else if (openSection.value == "Delivery Addresses") {
-                // Можна додати окреме повідомлення для адреси, якщо потрібно
-                snackbarHostState.showSnackbar("Address list updated successfully!")
-            }
-
-            resetFields()
-            profileViewModel.resetUpdateState()
-        }
-    }
-
-
-    val isSaveEnabled = remember {
-        derivedStateOf {
-            val p = profile
-            val hasProfileChanges = p != null && (
-                    firstName.value != p.firstName ||
-                            lastName.value != p.lastName ||
-                            phone.value != p.phoneNumber ||
-                            email.value != p.email
-                    )
-
-            val hasPasswordChanges = newPassword.value.isNotBlank() && passwordsMatch.value && currentPassword.value.isNotBlank()
-
-            !profileState.isUpdating && (hasProfileChanges || hasPasswordChanges) &&
-                    (!newPassword.value.isNotBlank() || (newPassword.value.length >= 8 && passwordsMatch.value && currentPassword.value.isNotBlank()))
-        }
-    }
-
-
-    val isCancelLoading = remember { mutableStateOf(false) }
-
-    fun onCancelClick() {
-        isCancelLoading.value = true
-        profileViewModel.viewModelScope.launch {
-            kotlinx.coroutines.delay(500)
-            resetFields()
-            isCancelLoading.value = false
-        }
-    }
-
-    fun onSaveClick() {
-        if (isSaveEnabled.value) {
-            val newPass = if (newPassword.value.isNotBlank() && currentPassword.value.isNotBlank() && passwordsMatch.value) newPassword.value else null
-            val currentPass = if (newPass != null) currentPassword.value else null
-
-            profileViewModel.updateProfile(
-                firstName = firstName.value,
-                lastName = lastName.value,
-                phoneNumber = phone.value,
-                email = email.value,
-                currentPassword = currentPass,
-                newPassword = newPass,
-                // **ВАЖЛИВО:** Передаємо поточні адреси, щоб вони не були видалені
-                addresses = profile?.addresses ?: emptyList()
-            )
-        }
-    }
 
     Scaffold(
         containerColor = Color(0xFFF4F7F8),
@@ -369,74 +275,7 @@ fun ProfileScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) },
 
-        bottomBar = {
-            if (isLoggedIn) {
-                AnimatedVisibility(
-                    // Показуємо BottomBar лише для Edit Credentials
-                    visible = openSection.value == "Edit Credentials",
-                    enter = slideInVertically(initialOffsetY = { it }) + fadeIn(),
-                    exit = slideOutVertically(targetOffsetY = { it }) + fadeOut()
-                ) {
-                    BottomAppBar(containerColor = Color.White) {
-
-                        val disableButtons = isCancelLoading.value || profileState.isUpdating
-
-                        // CANCEL BUTTON
-                        Button(
-                            onClick = { onCancelClick() },
-                            enabled = isSaveEnabled.value && !disableButtons,
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSaveEnabled.value) Color(0xFF2A1036) else Color(0xFFE0E0E0),
-                                disabledContainerColor = Color(0xFFE0E0E0),
-                                contentColor = if (isSaveEnabled.value) Color.White else Color.Gray,
-                                disabledContentColor = Color.Gray
-                            )
-                        ) {
-                            if (isCancelLoading.value) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    color = Color.Gray,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("Cancel", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-
-                        Spacer(Modifier.width(16.dp))
-
-                        // SAVE BUTTON
-                        Button(
-                            onClick = { onSaveClick() },
-                            enabled = isSaveEnabled.value && !disableButtons,
-                            modifier = Modifier.weight(1f).height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isSaveEnabled.value) MaterialTheme.colorScheme.primary else Color(0xFFE0E0E0),
-                                disabledContainerColor = Color(0xFFE0E0E0),
-                                contentColor = if (isSaveEnabled.value) Color.White else Color.Gray,
-                                disabledContentColor = Color.Gray
-                            )
-                        ) {
-                            if (profileState.isUpdating) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(22.dp),
-                                    color = Color.Gray,
-                                    strokeWidth = 2.dp
-                                )
-                            } else {
-                                Text("Save Changes", fontWeight = FontWeight.SemiBold)
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    ) { padding ->
+        ) { padding ->
         if (!isLoggedIn) {
             Box(
                 modifier = Modifier
@@ -446,7 +285,7 @@ fun ProfileScreen(
             ) {
                 NotLoggedInPlaceholder(onNavigateToLogin)
             }
-        } else if (profileState.isLoading) {
+        } else if (profileState.isLoading || profile == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -491,7 +330,7 @@ fun ProfileScreen(
 
                             Text("First Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                             Text(
-                                text = firstName.value.ifBlank { "—" },
+                                text = profile.firstName.ifBlank { "—" },
                                 fontSize = 16.sp,
                                 color = Color.DarkGray
                             )
@@ -500,7 +339,7 @@ fun ProfileScreen(
 
                             Text("Last Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                             Text(
-                                text = lastName.value.ifBlank { "—" },
+                                text = profile.lastName.ifBlank { "—" },
                                 fontSize = 16.sp,
                                 color = Color.DarkGray
                             )
@@ -527,18 +366,18 @@ fun ProfileScreen(
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(phone.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+                            Text(profile.phoneNumber.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
 
                             Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
 
                             Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(email.value.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+                            Text(profile.email.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
                         }
                     }
                 }
 
 
-                // 3. Delivery Addresses (ОНОВЛЕНО)
+                // 3. Delivery Addresses
                 item {
                     ExpandableSection(
                         title = "Delivery Addresses",
@@ -549,12 +388,10 @@ fun ProfileScreen(
                                 if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
                         }
                     ) {
-                        if (profile != null) {
-                            AddressList(
-                                addresses = profile.addresses,
-                                onDeleteAddress = profileViewModel::deleteAddress
-                            )
-                        }
+                        AddressList(
+                            addresses = profile.addresses,
+                            onDeleteAddress = profileViewModel::deleteAddress
+                        )
 
                         // Форма додавання адреси
                         AddAddressForm(
@@ -583,37 +420,22 @@ fun ProfileScreen(
                         )
                     }
                 }
-                // 5. Edit Credentials (Редагування)
-                item {
-                    ExpandableSection(
-                        title = "Edit Credentials",
-                        subtitle = "Edit account information and login credentials",
-                        isExpanded = openSection.value == "Edit Credentials",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "Edit Credentials") "" else "Edit Credentials"
-                        }
-                    ) {
-                        MyAccountSection(
-                            firstName = firstName,
-                            lastName = lastName,
-                            phone = phone,
-                            email = email,
-                            currentPassword = currentPassword,
-                            newPassword = newPassword,
-                            confirmNewPassword = confirmNewPassword,
-                            passwordsMatch = passwordsMatch.value,
-                            error = profileState.error,
-                            onLogoutClick = { authViewModel.logout() }
-                        )
-                    }
-                }
 
-                // --- Соціальні мережі ---
+                // [НОВИЙ ЕЛЕМЕНТ] Кнопка виходу з акаунту
                 item {
-                    Spacer(Modifier.height(24.dp))
-                    SocialAccountsCard()
-                    Spacer(Modifier.height(24.dp))
+                    Spacer(Modifier.height(32.dp))
+                    OutlinedButton(
+                        onClick = { authViewModel.logout() },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Вийти з акаунту", fontWeight = FontWeight.SemiBold)
+                    }
+                    Spacer(Modifier.height(32.dp))
                 }
             }
         }
@@ -625,9 +447,6 @@ fun ProfileScreen(
 // [КОМПОНЕНТИ АДРЕСИ]
 // =========================================================================
 
-/**
- * Компонент для форми додавання нової адреси.
- */
 @Composable
 fun AddAddressForm(
     viewModel: ProfileViewModel = hiltViewModel(),
@@ -641,16 +460,14 @@ fun AddAddressForm(
     val profileState by viewModel.state.collectAsState()
     val lastUpdateSuccess by rememberUpdatedState(profileState.updateSuccess)
 
-    // Обробка успішного додавання адреси
     LaunchedEffect(lastUpdateSuccess) {
         if (lastUpdateSuccess && profileState.error == null) {
-            // Очищення полів форми
             city.value = ""
             street.value = ""
             house.value = ""
             apartment.value = ""
 
-            onAddressAdded() // Виклик callback для закриття секції
+            onAddressAdded()
             viewModel.resetUpdateState()
         }
     }
@@ -680,22 +497,14 @@ fun AddAddressForm(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedTextField(
-                value = city.value,
-                onValueChange = { city.value = it },
-                label = { Text("City") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !isUpdating
+                value = city.value, onValueChange = { city.value = it },
+                label = { Text("City") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
             )
             OutlinedTextField(
-                value = street.value,
-                onValueChange = { street.value = it },
-                label = { Text("Street") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !isUpdating
+                value = street.value, onValueChange = { street.value = it },
+                label = { Text("Street") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
             )
         }
 
@@ -706,22 +515,14 @@ fun AddAddressForm(
             horizontalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             OutlinedTextField(
-                value = house.value,
-                onValueChange = { house.value = it },
-                label = { Text("House") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !isUpdating
+                value = house.value, onValueChange = { house.value = it },
+                label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
             )
             OutlinedTextField(
-                value = apartment.value,
-                onValueChange = { apartment.value = it },
-                label = { Text("Apartment (optional)") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                enabled = !isUpdating
+                value = apartment.value, onValueChange = { apartment.value = it },
+                label = { Text("Apartment (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
             )
         }
 
@@ -730,24 +531,17 @@ fun AddAddressForm(
         Button(
             onClick = {
                 viewModel.addAddress(
-                    city = city.value,
-                    street = street.value,
-                    house = house.value,
-                    apartment = apartment.value.ifBlank { null }
+                    city = city.value, street = street.value, house = house.value, apartment = apartment.value.ifBlank { null }
                 )
             },
             enabled = isAddButtonEnabled.value && !isUpdating,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = MaterialTheme.colorScheme.primary
-            ),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             if (isUpdating) {
                 CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp),
-                    color = Color.White,
-                    strokeWidth = 2.dp
+                    modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp
                 )
             } else {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -815,15 +609,13 @@ fun SavedAddressCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
-                    .padding(end = 40.dp) // Зменшуємо простір для тексту
+                    .padding(end = 40.dp)
             ) {
-                // Основний рядок: Street, House, Apartment
                 Text(
                     text = "${address.street}, ${address.house}${if (address.apartments.isNullOrBlank()) "" else ", apt ${address.apartments}"}",
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 16.sp
                 )
-                // Другий рядок: City
                 Text(
                     text = address.city,
                     color = Color.Gray,
@@ -832,14 +624,11 @@ fun SavedAddressCard(
                 )
             }
 
-            // КНОПКА ВИДАЛЕННЯ
             val addressId = address.id
             if (addressId != null) {
                 IconButton(
-                    onClick = {
-                        onDeleteClick(addressId)
-                    },
-                    enabled = !isUpdating, // Деактивуємо під час будь-якого оновлення
+                    onClick = { onDeleteClick(addressId) },
+                    enabled = !isUpdating,
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
@@ -856,123 +645,6 @@ fun SavedAddressCard(
     }
 }
 
-
-// =========================================================================
-// [ІНШІ КОМПОНЕНТИ] (Залишаються без змін)
-// =========================================================================
-
-/**
- * Вміст для секції "My Account" (Тепер Edit Credentials)
- */
-@Composable
-fun MyAccountSection(
-    firstName: MutableState<String>,
-    lastName: MutableState<String>,
-    phone: MutableState<String>,
-    email: MutableState<String>,
-    currentPassword: MutableState<String>,
-    newPassword: MutableState<String>,
-    confirmNewPassword: MutableState<String>,
-    passwordsMatch: Boolean,
-    error: String?,
-    onLogoutClick: () -> Unit
-) {
-    var passVisible by remember { mutableStateOf(false) }
-    var confirmPassVisible by remember { mutableStateOf(false) }
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        OutlinedTextField(
-            value = firstName.value,
-            onValueChange = { firstName.value = it },
-            label = { Text("Ім'я") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = lastName.value,
-            onValueChange = { lastName.value = it },
-            label = { Text("Прізвище") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = phone.value,
-            onValueChange = { phone.value = it },
-            label = { Text("Телефон") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = email.value,
-            onValueChange = { email.value = it },
-            label = { Text("Email") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        Divider(Modifier.padding(vertical = 8.dp))
-
-        Text("Зміна паролю", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-
-        OutlinedTextField(
-            value = currentPassword.value,
-            onValueChange = { currentPassword.value = it },
-            label = { Text("Поточний пароль") },
-            singleLine = true,
-            visualTransformation = if (passVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { passVisible = !passVisible }) {
-                    Icon(if (passVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = newPassword.value,
-            onValueChange = { newPassword.value = it },
-            label = { Text("Новий пароль (min 8)") },
-            singleLine = true,
-            visualTransformation = if (confirmPassVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            trailingIcon = {
-                IconButton(onClick = { confirmPassVisible = !confirmPassVisible }) {
-                    Icon(if (confirmPassVisible) Icons.Default.Visibility else Icons.Default.VisibilityOff, null)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-        OutlinedTextField(
-            value = confirmNewPassword.value,
-            onValueChange = { confirmNewPassword.value = it },
-            label = { Text("Підтвердити новий пароль") },
-            singleLine = true,
-            visualTransformation = if (confirmPassVisible) VisualTransformation.None else PasswordVisualTransformation(),
-            isError = newPassword.value.isNotBlank() && !passwordsMatch,
-            modifier = Modifier.fillMaxWidth()
-        )
-        if (newPassword.value.isNotBlank() && !passwordsMatch) {
-            Text("Паролі не співпадають", color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-        if (error != null) {
-            Text(error, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-        }
-
-        Divider(Modifier.padding(vertical = 8.dp))
-
-        OutlinedButton(
-            onClick = onLogoutClick,
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error)
-        ) {
-            Text("Вийти з акаунту")
-        }
-    }
-}
 
 /**
  * Компонент для секції, що розкривається (акордеон)
@@ -1016,54 +688,6 @@ fun ExpandableSection(
                     content()
                 }
             }
-        }
-    }
-}
-
-
-/**
- * Картка для підключення соціальних акаунтів
- */
-@Composable
-fun SocialAccountsCard() {
-    Text(
-        "Connect Social Accounts",
-        style = MaterialTheme.typography.titleLarge,
-        fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(bottom = 8.dp)
-    )
-    Text(
-        text = "Connect your accounts to sync with social networks and log in to the site using Google",
-        style = MaterialTheme.typography.bodyMedium,
-        color = Color.Gray,
-        modifier = Modifier.padding(bottom = 16.dp)
-    )
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column {
-            // Припускаємо, що R.drawable.google_g_logo існує
-            SocialRow(icon = R.drawable.google_g_logo, "Google", "Sync contacts")
-        }
-    }
-}
-
-@Composable
-fun SocialRow(icon: Int, title: String, subtitle: String) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable { /* TODO */ }
-            .padding(16.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(painter = painterResource(id = icon), contentDescription = title, modifier = Modifier.size(24.dp))
-        Spacer(Modifier.width(16.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
         }
     }
 }
