@@ -89,6 +89,7 @@ sealed class PaymentMethod(val title: String, val subtitle: String, val icon: Im
 @Composable
 fun CheckoutScreen(
     onNavigateBack: () -> Unit,
+    onOrderConfirmed: () -> Unit, // <--- ДОДАНО: новий колбек
     viewModel: CheckoutViewModel = hiltViewModel()
 ) {
     val checkoutState by viewModel.state.collectAsState()
@@ -167,7 +168,8 @@ fun CheckoutScreen(
                 item {
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        onClick = { /* TODO: Submit Order */ },
+                        // [ОНОВЛЕНО] При натисканні імітуємо успішне оформлення замовлення та викликаємо навігацію
+                        onClick = { onOrderConfirmed() },
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {

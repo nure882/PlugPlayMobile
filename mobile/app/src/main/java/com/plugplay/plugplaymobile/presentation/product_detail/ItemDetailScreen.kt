@@ -42,6 +42,7 @@ fun ItemDetailScreen(
     itemId: String,
     navController: NavController,
     onNavigateToCheckout: () -> Unit,
+    onNavigateToProfile: () -> Unit, // <--- ДОДАНО: Новий аргумент
     viewModel: ItemDetailViewModel = hiltViewModel(),
     cartViewModel: CartViewModel = hiltViewModel()
 ) {
@@ -88,7 +89,7 @@ fun ItemDetailScreen(
                     IconButton(onClick = { /* TODO: Пошук */ }) {
                         Icon(Icons.Outlined.Search, contentDescription = "Пошук")
                     }
-                    IconButton(onClick = { /* TODO: Профіль */ }) {
+                    IconButton(onClick = onNavigateToProfile) { // <--- ВИПРАВЛЕНО: Призначено обробник
                         Icon(Icons.Outlined.Person, contentDescription = "Профіль")
                     }
                     IconButton(onClick = { isCartOpen = true }) {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.ClickableText // [НОВИЙ ІМПОРТ]
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack // <--- ДОДАНО: Імпорт для кнопки "Назад"
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -31,10 +32,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.plugplay.plugplaymobile.R // 💡 Потрібен для R.drawable...
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
+    onNavigateBack: () -> Unit, // <--- ДОДАНО: Новий аргумент
     viewModel: AuthViewModel = hiltViewModel()
 ) {
     val email = remember { mutableStateOf("") }
@@ -52,7 +55,17 @@ fun LoginScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color(0xFFF4F7F8) // Світло-сірий фон
+        containerColor = Color(0xFFF4F7F8), // Світло-сірий фон
+        topBar = { // <--- ДОДАНО TopAppBar
+            TopAppBar(
+                title = { Text("Sign In") },
+                navigationIcon = {
+                    IconButton(onClick = onNavigateBack) { // <--- ВИКОРИСТАННЯ КОЛБЕКУ
+                        Icon(Icons.Filled.ArrowBack, contentDescription = "Назад до реєстрації")
+                    }
+                }
+            )
+        }
     ) { paddingValues ->
         Column(
             modifier = Modifier

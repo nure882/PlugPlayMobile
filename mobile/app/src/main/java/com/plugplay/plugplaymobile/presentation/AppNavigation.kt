@@ -12,7 +12,8 @@ import com.plugplay.plugplaymobile.presentation.auth.RegisterScreen
 import com.plugplay.plugplaymobile.presentation.product_list.ProductListScreen
 import com.plugplay.plugplaymobile.presentation.profile.ProfileScreen
 import com.plugplay.plugplaymobile.presentation.product_detail.ItemDetailScreen
-import com.plugplay.plugplaymobile.presentation.checkout.CheckoutScreen // [НОВИЙ ІМПОРТ]
+import com.plugplay.plugplaymobile.presentation.checkout.CheckoutScreen
+import com.plugplay.plugplaymobile.presentation.checkout.OrderConfirmationScreen
 
 object Routes {
     const val PRODUCT_LIST = "product_list"
@@ -20,7 +21,8 @@ object Routes {
     const val LOGIN = "login"
     const val REGISTER = "register"
     const val ITEM_DETAIL = "detail_list/{itemId}"
-    const val CHECKOUT = "checkout" // <-- НОВИЙ МАРШРУТ
+    const val CHECKOUT = "checkout"
+    const val ORDER_CONFIRMATION = "order_confirmation"
 }
 
 fun createItemDetailRoute(itemId: String) = "detail_list/$itemId"
@@ -46,7 +48,7 @@ fun AppNavigation(
                 onNavigateToItemDetail = { itemId ->
                     navController.navigate(createItemDetailRoute(itemId))
                 },
-                onNavigateToCheckout = { // [НОВИЙ КОЛБЕК]
+                onNavigateToCheckout = {
                     navController.navigate(Routes.CHECKOUT)
                 }
             )
@@ -64,7 +66,7 @@ fun AppNavigation(
             )
         }
 
-        // Login Screen (без змін)
+        // Login Screen
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
@@ -75,6 +77,9 @@ fun AppNavigation(
                 },
                 onNavigateToRegister = {
                     navController.navigate(Routes.REGISTER)
+                },
+                onNavigateBack = { // <--- ВИКОРИСТАННЯ: popBackStack для повернення на Register
+                    navController.popBackStack()
                 }
             )
         }
@@ -112,8 +117,11 @@ fun AppNavigation(
                 ItemDetailScreen(
                     itemId = itemId,
                     navController = navController,
-                    onNavigateToCheckout = { // [НОВИЙ КОЛБЕК]
+                    onNavigateToCheckout = {
                         navController.navigate(Routes.CHECKOUT)
+                    },
+                    onNavigateToProfile = { // <--- ДОДАНО: передаємо функцію для навігації на екран профілю
+                        navController.navigate(Routes.PROFILE)
                     }
                 )
             } else {
@@ -121,11 +129,27 @@ fun AppNavigation(
             }
         }
 
-        // [НОВИЙ КОМПОЗАБЛ] Checkout Screen
+        // Checkout Screen
         composable(Routes.CHECKOUT) {
             CheckoutScreen(
                 onNavigateBack = {
                     navController.popBackStack()
+                },
+                onOrderConfirmed = {
+                    navController.navigate(Routes.ORDER_CONFIRMATION) {
+                        // Видаляємо Checkout з бек-стеку
+                        popUpTo(Routes.CHECKOUT) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                }
+            )
+        }
+
+        // Order Confirmation Screen
+        composable(Routes.ORDER_CONFIRMATION) {
+            OrderConfirmationScreen(
+                onNavigateToCatalog = {
+                    navController.popBackStack(Routes.PRODUCT_LIST, inclusive = false)
                 }
             )
         }
