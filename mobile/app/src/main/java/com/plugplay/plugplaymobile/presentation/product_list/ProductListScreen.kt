@@ -1,13 +1,13 @@
 package com.plugplay.plugplaymobile.presentation.product_list
 
-import androidx.compose.animation.AnimatedContent // [НОВИЙ ІМПОРТ]
-import androidx.compose.animation.core.tween // [НОВИЙ ІМПОРТ]
-import androidx.compose.animation.fadeIn // [НОВИЙ ІМПОРТ]
-import androidx.compose.animation.fadeOut // [НОВИЙ ІМПОРТ]
-import androidx.compose.animation.togetherWith // [НОВИЙ ІМПОРТ]
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border // [НОВИЙ ІМПОРТ]
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -18,11 +18,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.FavoriteBorder
-import androidx.compose.material.icons.outlined.Person // [НОВИЙ ІМПОРТ]
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.ShoppingCart
 import androidx.compose.material3.*
@@ -35,11 +36,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
-import com.plugplay.plugplaymobile.R // Потрібен для R.drawable...
+import com.plugplay.plugplaymobile.R
 import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
@@ -69,16 +72,19 @@ val categoryItems = listOf(
 fun ProductListScreen(
     onNavigateToProfile: () -> Unit,
     onNavigateToItemDetail: (itemId: String) -> Unit,
-    onNavigateToCheckout: () -> Unit, // [НОВИЙ АРГУМЕНТ]
+    onNavigateToCheckout: () -> Unit,
     viewModel: ProductListViewModel = hiltViewModel(),
-    cartViewModel: CartViewModel = hiltViewModel() // [НОВИЙ VIEWMODEL]
+    cartViewModel: CartViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
-    val cartState by cartViewModel.state.collectAsState() // [CART STATE]
+    val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
 
     // Стан для відображення діалогу кошика
     var isCartOpen by remember { mutableStateOf(false) }
+
+    // [НОВЕ] Стан для відображення модального вікна фільтра
+    val isFilterModalVisible by viewModel.isFilterModalVisible.collectAsState()
 
     // [НОВЕ] Отримуємо поточний ключ фільтра для AnimatedContent
     val currentFilterKey by viewModel.currentCategoryId.collectAsState()
@@ -90,6 +96,15 @@ fun ProductListScreen(
         onNavigateToCheckout = {
             isCartOpen = false
             onNavigateToCheckout()
+        }
+    )
+
+    // [ОНОВЛЕНО] Модальне вікно для фільтрів
+    FilterModal(
+        isOpen = isFilterModalVisible,
+        onClose = viewModel::toggleFilterModal,
+        onApply = { minPrice, maxPrice, isSortAscending -> // <--- ОНОВЛЕНО СИГНАТУРУ
+            viewModel.applyFilters(minPrice, maxPrice, isSortAscending)
         }
     )
 
@@ -190,7 +205,9 @@ fun ProductListScreen(
                             // Передаємо порожній модифікатор, оскільки всі відступи вже оброблені
                             modifier = Modifier,
                             onItemClick = onNavigateToItemDetail,
-                            viewModel = viewModel
+                            viewModel = viewModel,
+                            // [НОВЕ] Передаємо обробник кліку для фільтра
+                            onFilterClick = viewModel::toggleFilterModal
                         )
                     }
                     ProductListState.Idle -> { /* Нічого */ }
@@ -208,7 +225,9 @@ fun ProductGrid(
     products: List<Product>,
     modifier: Modifier,
     onItemClick: (itemId: String) -> Unit,
-    viewModel: ProductListViewModel // <--- ДОДАНО VIEWMODEL
+    viewModel: ProductListViewModel, // <--- ВИКОРИСТОВУЄМО VIEWMODEL
+    // [НОВИЙ АРГУМЕНТ]
+    onFilterClick: () -> Unit
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2), // 2 колонки
@@ -233,7 +252,12 @@ fun ProductGrid(
 
         // 4. ЗАГОЛОВОК "ДЛЯ ТЕБЕ" (на всю ширину)
         item(span = { GridItemSpan(2) }) {
-            SectionHeader(title = "For you", showFilter = true)
+            SectionHeader(
+                title = "For you",
+                showFilter = true,
+                // [ЗМІНА] Передаємо обробник кліку
+                onFilterClick = onFilterClick
+            )
         }
 
         // 5. СПИСОК ТОВАРІВ
@@ -353,7 +377,9 @@ fun BannerCard(modifier: Modifier = Modifier) {
 fun SectionHeader(
     title: String,
     showFilter: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    // [ЗМІНА] Додаємо обробник кліку
+    onFilterClick: () -> Unit = {}
 ) {
     Row(
         modifier = modifier
@@ -368,7 +394,8 @@ fun SectionHeader(
             fontWeight = FontWeight.Bold
         )
         if (showFilter) {
-            TextButton(onClick = { /* TODO: Фільтри */ }) {
+            // [ЗМІНА] Використовуємо onFilterClick
+            TextButton(onClick = onFilterClick) {
                 Text("Filters")
             }
         }
@@ -437,5 +464,180 @@ fun CategoryIconItem(item: CategoryItem, isSelected: Boolean, onClick: () -> Uni
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
+    }
+}
+
+// --- НОВИЙ КОМПОНЕНТ: МОДАЛЬНЕ ВІКНО ФІЛЬТРІВ (ОНОВЛЕНО ДЛЯ ЦІНИ ТА СОРТУВАННЯ) ---
+
+@Composable
+fun FilterModal(
+    isOpen: Boolean,
+    onClose: () -> Unit,
+    // [ОНОВЛЕНО]: Тепер приймає опціональний Boolean для сортування (true=Asc, false=Desc, null=None)
+    onApply: (minPrice: Double?, maxPrice: Double?, isSortAscending: Boolean?) -> Unit,
+    viewModel: ProductListViewModel = hiltViewModel()
+) {
+    if (!isOpen) return
+
+    val currentMinPrice by viewModel.minPrice.collectAsState()
+    val currentMaxPrice by viewModel.maxPrice.collectAsState()
+    val currentSort by viewModel.isPriceSortAscending.collectAsState() // <--- НОВЕ: Стан сортування
+
+    // Стан для полів введення ціни
+    val minPriceText = remember { mutableStateOf(currentMinPrice?.toString() ?: "") }
+    val maxPriceText = remember { mutableStateOf(currentMaxPrice?.toString() ?: "") }
+
+    // Стан для перемикача сортування (true=Asc, false=Desc, null=No Sort)
+    var isSortAscending by remember { mutableStateOf(currentSort) }
+
+    LaunchedEffect(currentMinPrice, currentMaxPrice, currentSort) {
+        minPriceText.value = currentMinPrice?.toString() ?: ""
+        maxPriceText.value = currentMaxPrice?.toString() ?: ""
+        isSortAscending = currentSort
+    }
+
+    Dialog(onDismissRequest = onClose) {
+        Card(
+            modifier = Modifier
+                .fillMaxHeight(0.8f)
+                .fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                // Header
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Product Filters", style = MaterialTheme.typography.headlineSmall)
+                    IconButton(onClick = onClose) {
+                        Icon(Icons.Default.Close, contentDescription = "Закрити")
+                    }
+                }
+                Divider()
+
+                // Content (Price Range UI & Sorting)
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    // --- 1. Фільтр за ціною ---
+                    Text(
+                        "Price Range",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        OutlinedTextField(
+                            value = minPriceText.value,
+                            onValueChange = { minPriceText.value = it.filter { c -> c.isDigit() || c == '.' } },
+                            label = { Text("From (₴)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        OutlinedTextField(
+                            value = maxPriceText.value,
+                            onValueChange = { maxPriceText.value = it.filter { c -> c.isDigit() || c == '.' } },
+                            label = { Text("To (₴)") },
+                            singleLine = true,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                    }
+
+                    // --- 2. Сортування ---
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Sort by Price",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+
+                    // Radio Button: No Sort / Ascending / Descending
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Radio Button: No Sort
+                        FilterRadioButton(
+                            label = "No Sort",
+                            selected = isSortAscending == null,
+                            onClick = { isSortAscending = null }
+                        )
+
+                        // Radio Button: Ascending
+                        FilterRadioButton(
+                            label = "Ascending",
+                            selected = isSortAscending == true,
+                            onClick = { isSortAscending = true }
+                        )
+
+                        // Radio Button: Descending
+                        FilterRadioButton(
+                            label = "Descending",
+                            selected = isSortAscending == false,
+                            onClick = { isSortAscending = false }
+                        )
+                    }
+                }
+
+                // Footer
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            // Парсинг значень та виклик onApply
+                            val minPrice = minPriceText.value.toDoubleOrNull()
+                            val maxPrice = maxPriceText.value.toDoubleOrNull()
+                            // Передаємо всі три параметри
+                            onApply(minPrice, maxPrice, isSortAscending)
+                        },
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Apply Filters", fontWeight = FontWeight.Bold)
+                    }
+                    OutlinedButton(
+                        onClick = onClose,
+                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            }
+        }
+    }
+}
+
+// [НОВИЙ ДОПОМІЖНИЙ КОМПОНЕНТ]
+@Composable
+fun RowScope.FilterRadioButton(label: String, selected: Boolean, onClick: () -> Unit) {
+    Row(
+        modifier = Modifier
+            .weight(1f)
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(selected = selected, onClick = onClick)
+        Spacer(Modifier.width(4.dp))
+        Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }
