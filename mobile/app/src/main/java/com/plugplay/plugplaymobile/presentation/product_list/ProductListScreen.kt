@@ -44,11 +44,11 @@ import java.util.Locale
 // Заглушка для іконок категорій
 data class CategoryItem(val name: String, val icon: Int) // Використовуйте R.drawable.ic_...
 val categoryItems = listOf(
-    CategoryItem("Смартфони", R.drawable.ic_launcher_foreground), // TODO: Замініть на реальні іконки
-    CategoryItem("Навушники", R.drawable.ic_launcher_foreground),
-    CategoryItem("Ноутбуки", R.drawable.ic_launcher_foreground),
-    CategoryItem("Годинники", R.drawable.ic_launcher_foreground),
-    CategoryItem("Камери", R.drawable.ic_launcher_foreground),
+    // Я залишив існуючі заглушки, але ви можете замінити їх на реальні
+    CategoryItem("Смартфони", R.drawable.smartphone_logo),
+    CategoryItem("Навушники", R.drawable.headphones_logo),
+    CategoryItem("Ноутбуки", R.drawable.laptop_logo),
+    CategoryItem("Камери", R.drawable.camera_logo),
 )
 
 // --- ОСНОВНИЙ ЕКРАН ---
@@ -84,11 +84,28 @@ fun ProductListScreen(
             // [ОНОВЛЕНО TopAppBar]
             TopAppBar(
                 title = {
-                    Text(
-                        "Plug & Play",
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    // ПОЧАТОК ЗМІНИ: Заміна тексту на два графічні ресурси
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Ресурс 1: Іконка "Plug" (вилка, logo.png)
+                        Icon(
+                            painter = painterResource(id = R.drawable.logo_plug), // <-- Використовуйте R.drawable.logo_plug
+                            contentDescription = "Plug Logo Icon",
+                            tint = MaterialTheme.colorScheme.primary, // Можна стилізувати кольором теми
+                            modifier = Modifier.size(32.dp)
+                        )
+                        Spacer(Modifier.width(8.dp))
+                        // Ресурс 2: Текст "Plug & Play" (file (1).png)
+
+                            // ПОЧАТОК ЗМІНИ: Повернення тексту "Plug & Play" та зміна кольору на чорний
+                        Text(
+                            "Plug & Play",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Black // <-- ТУТ ЗМІНА
+                        )
+                    }
+                    // КІНЕЦЬ ЗМІНИ
                 },
                 actions = {
                     IconButton(onClick = { /* TODO: Пошук */ }) {
@@ -259,10 +276,10 @@ fun ProductItem(
                     fontWeight = FontWeight.Bold
                 )
 
-                }
             }
         }
     }
+}
 
 
 @Composable

@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource // [НОВИЙ ІМПОРТ]
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation // [НОВИЙ ІМПОРТ]
 import androidx.compose.ui.text.input.VisualTransformation // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.text.style.TextAlign // ВИПРАВЛЕННЯ: Додано імпорт TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -247,30 +248,38 @@ fun ProfileScreen(
         // ДОДАНО: SnackbarHost
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        // --- [НОВИЙ МАКЕТ] ---
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(horizontal = 16.dp),
-        ) {
+        // --- ЗМІНА СТРУКТУРИ: Умовний рендеринг для центрування ---
 
-            // Якщо не залогінений
-            if (!isLoggedIn) {
-                item {
-                    NotLoggedInPlaceholder(onNavigateToLogin)
-                }
+        // 1. Якщо не залогінений: абсолютне центрування
+        if (!isLoggedIn) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding), // Враховуємо відступ TopAppBar
+                contentAlignment = Alignment.Center
+            ) {
+                NotLoggedInPlaceholder(onNavigateToLogin)
             }
-            // Якщо помилка завантаження
-            else if (profileState.isLoading) {
-                item {
-                    Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
-                    }
-                }
+        }
+        // 2. Якщо залогінений, але йде завантаження: абсолютне центрування
+        else if (profileState.isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator()
             }
-            // Якщо все добре, показуємо секції
-            else {
+        }
+        // 3. Якщо залогінений і успіх: прокручуваний контент
+        else {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .padding(horizontal = 16.dp),
+            ) {
                 item {
                     Text(
                         text = "Manage your personal details, delivery addresses, and account preferences",
@@ -713,7 +722,7 @@ fun SocialAccountsCard() {
         modifier = Modifier.padding(bottom = 8.dp)
     )
     Text(
-        text = "Connect your accounts to sync with social networks and log in to the site using Facebook, Google, or Apple",
+        text = "Connect your accounts to sync with social networks and log in to the site using Google",
         style = MaterialTheme.typography.bodyMedium,
         color = Color.Gray,
         modifier = Modifier.padding(bottom = 16.dp)
@@ -724,12 +733,8 @@ fun SocialAccountsCard() {
         colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column {
-            // TODO: Використовуйте реальні іконки
-            SocialRow(icon = R.drawable.ic_launcher_foreground, "Facebook", "Connect to social networks")
-            Divider(color = Color(0xFFF0F0F0))
-            SocialRow(icon = R.drawable.ic_launcher_foreground, "Google", "Sync contacts")
-            Divider(color = Color(0xFFF0F0F0))
-            SocialRow(icon = R.drawable.ic_launcher_foreground, "Apple", "Sync contacts")
+
+            SocialRow(icon = R.drawable.google_g_logo, "Google", "Sync contacts")
         }
     }
 }
@@ -760,17 +765,19 @@ fun SocialRow(icon: Int, title: String, subtitle: String) {
 fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
     Column(
         modifier = Modifier
-            .fillMaxSize()
-            .padding(vertical = 64.dp), // Додаємо відступи
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp), // Залишаємо горизонтальний відступ для тексту
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
         Text(
             "Ви не авторизовані.",
-            style = MaterialTheme.typography.titleLarge
+            style = MaterialTheme.typography.titleLarge,
+            textAlign = TextAlign.Center
         )
         Text(
             "Увійдіть, щоб керувати своїм профілем.",
+            textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
         )
         Button(
