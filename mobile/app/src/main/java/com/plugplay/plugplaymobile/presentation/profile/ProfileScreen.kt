@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Visibility // [НОВИЙ ІМПОРТ]
 import androidx.compose.material.icons.filled.VisibilityOff // [НОВИЙ ІМПОРТ]
+import androidx.compose.material.icons.filled.Delete // <--- НОВИЙ ІМПОРТ
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,6 +38,8 @@ import com.plugplay.plugplaymobile.domain.usecase.GetProfileUseCase
 import com.plugplay.plugplaymobile.domain.usecase.UpdateProfileUseCase
 import androidx.lifecycle.ViewModel
 import com.plugplay.plugplaymobile.R // [НОВИЙ ІМПОРТ]
+import com.plugplay.plugplaymobile.domain.model.UserAddress // <--- НОВИЙ ІМПОРТ
+import com.plugplay.plugplaymobile.domain.repository.AuthRepository // <--- НОВИЙ ІМПОРТ
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -46,7 +49,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import dagger.hilt.android.lifecycle.HiltViewModel
 
-// [STATE] (Залишається без змін)
+// [STATE]
 data class ProfileState(
     val profile: UserProfile? = null,
     val isLoading: Boolean = false,
@@ -55,11 +58,12 @@ data class ProfileState(
     val updateSuccess: Boolean = false
 )
 
-// [VIEWMODEL] (Залишається без змін)
+// [VIEWMODEL]
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
     private val updateProfileUseCase: UpdateProfileUseCase,
+    private val authRepository: AuthRepository // <--- ДОДАНО ДЛЯ ОТРИМАННЯ ПОВНОГО ПРОФІЛЮ
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(ProfileState())
@@ -88,17 +92,19 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    // [ОНОВЛЕНО] Сигнатура updateProfile: тепер приймає адреси
     fun updateProfile(
         firstName: String,
         lastName: String,
         phoneNumber: String,
         email: String,
         currentPassword: String? = null,
-        newPassword: String? = null
+        newPassword: String? = null,
+        addresses: List<UserAddress> = emptyList() // <--- НОВИЙ АРГУМЕНТ
     ) {
         _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
         viewModelScope.launch {
-            updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword)
+            updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword, addresses)
                 .onSuccess { updatedProfile ->
                     _state.update {
                         it.copy(
@@ -119,6 +125,68 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    // [НОВА ФУНКЦІЯ] Для додавання адреси
+    fun addAddress(city: String, street: String, house: String, apartment: String?) {
+        val currentProfile = state.value.profile
+        if (currentProfile == null) {
+            _state.update { it.copy(error = "User profile not loaded. Cannot add address.") }
+            return
+        }
+
+        // Перевірка на заповненість обов'язкових полів
+        if (city.isBlank() || street.isBlank() || house.isBlank()) {
+            _state.update { it.copy(error = "City, street, and house number are required.") }
+            return
+        }
+
+        val newAddress = UserAddress(
+            id = null, // null для нової адреси - критично для бекенду
+            city = city,
+            street = street,
+            house = house,
+            apartments = apartment?.ifBlank { null }
+        )
+
+        // Збираємо новий список адрес: старі + нова
+        val addressesToSend = currentProfile.addresses + listOf(newAddress)
+
+        // Викликаємо оновлений загальний метод updateProfile з новим списком адрес,
+        // зберігаючи інші поля профілю без змін
+        updateProfile(
+            firstName = currentProfile.firstName,
+            lastName = currentProfile.lastName,
+            phoneNumber = currentProfile.phoneNumber,
+            email = currentProfile.email,
+            addresses = addressesToSend
+        )
+    }
+
+    // [ОНОВЛЕНА ФУНКЦІЯ] Для видалення адреси
+    fun deleteAddress(addressId: Int) {
+        val currentProfile = state.value.profile
+        if (currentProfile == null) {
+            _state.update { it.copy(error = "User profile not loaded. Cannot delete address.") }
+            return
+        }
+
+        // Перевіряємо, чи є ID у адреси, якщо ні, то ігноруємо
+        if (currentProfile.addresses.none { it.id == addressId }) {
+            _state.update { it.copy(error = "Address with ID $addressId not found.") }
+            return
+        }
+
+        val addressesToSend = currentProfile.addresses.filter { it.id != addressId }
+
+        // Викликаємо оновлений загальний метод updateProfile з новим (відфільтрованим) списком адрес
+        updateProfile(
+            firstName = currentProfile.firstName,
+            lastName = currentProfile.lastName,
+            phoneNumber = currentProfile.phoneNumber,
+            email = currentProfile.email,
+            addresses = addressesToSend
+        )
+    }
+
     fun resetUpdateState() {
         _state.update { it.copy(updateSuccess = false, error = null) }
     }
@@ -135,6 +203,9 @@ fun ProfileScreen(
 ) {
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val profileState by profileViewModel.state.collectAsState()
+
+    // [FIX]: Витягуємо profile в локальну змінну для безпечного Smart Cast
+    val profile = profileState.profile
 
     // ДОДАНО: Стан для Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
@@ -158,11 +229,11 @@ fun ProfileScreen(
 
     // Функція для скидання полів до оригінальних значень
     fun resetFields() {
-        profileState.profile?.let { profile ->
-            firstName.value = profile.firstName
-            lastName.value = profile.lastName
-            phone.value = profile.phoneNumber
-            email.value = profile.email
+        profile?.let { p ->
+            firstName.value = p.firstName
+            lastName.value = p.lastName
+            phone.value = p.phoneNumber
+            email.value = p.email
         }
         // УДАЛЕНО: currentPassword.value = ""
         // УДАЛЕНО: newPassword.value = ""
@@ -171,7 +242,7 @@ fun ProfileScreen(
     }
 
     // Ініціалізація та скидання полів при зміні профілю
-    LaunchedEffect(profileState.profile) {
+    LaunchedEffect(profile) { // Використовуємо локальну змінну profile
         resetFields()
     }
 
@@ -179,10 +250,14 @@ fun ProfileScreen(
     LaunchedEffect(profileState.updateSuccess) {
         if (profileState.updateSuccess) {
             snackbarHostState.showSnackbar("Profile updated successfully!")
-            profileViewModel.resetUpdateState()
+
             // Викликаємо resetFields() після успішного оновлення,
             // щоб поля вводу отримали нові значення з profileState.profile
-            resetFields()
+            // Примітка: для додавання/видалення адреси ми також хочемо закрити Delivery Addresses
+            if (openSection.value != "Delivery Addresses") {
+                profileViewModel.resetUpdateState()
+                resetFields()
+            }
         }
     }
 
@@ -190,12 +265,12 @@ fun ProfileScreen(
     // [НОВА ЛОГІКА] Кнопка "Save Changes" активна, якщо є зміни
     val isSaveEnabled = remember {
         derivedStateOf {
-            val profile = profileState.profile
-            val hasChanges = profile != null && (
-                    firstName.value != profile.firstName ||
-                            lastName.value != profile.lastName ||
-                            phone.value != profile.phoneNumber ||
-                            email.value != profile.email // <--- ВИПРАВЛЕННЯ: Тепер враховує email
+            val p = profile
+            val hasChanges = p != null && (
+                    firstName.value != p.firstName ||
+                            lastName.value != p.lastName ||
+                            phone.value != p.phoneNumber ||
+                            email.value != p.email // <--- ВИПРАВЛЕННЯ: Тепер враховує email
                     )
 
             !profileState.isUpdating && hasChanges
@@ -227,7 +302,9 @@ fun ProfileScreen(
                 phoneNumber = phone.value,
                 email = email.value,
                 currentPassword = null,
-                newPassword = null
+                newPassword = null,
+                // Передаємо поточні адреси, щоб бекенд їх не видалив
+                addresses = profile?.addresses ?: emptyList()
             )
         }
     }
@@ -373,8 +450,24 @@ fun ProfileScreen(
                                 if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
                         }
                     ) {
-                        // НОВА СЕКЦІЯ: Форма додавання адреси
-                        AddAddressForm()
+                        // [НОВИЙ ВМІСТ] Спочатку список адрес, потім форма додавання
+                        if (profile != null) { // Використовуємо локальну змінну profile
+                            // --- ОНОВЛЕННЯ: Передаємо callback для видалення ---
+                            AddressList(
+                                addresses = profile.addresses,
+                                onDeleteAddress = profileViewModel::deleteAddress
+                            )
+                        }
+
+                        // --- ОНОВЛЕНИЙ ВИКЛИК ---
+                        AddAddressForm(
+                            viewModel = profileViewModel,
+                            onAddressAdded = {
+                                // Закрити секцію після успішного додавання адреси
+                                openSection.value = ""
+                            }
+                        ) // Форма додавання
+                        // --- КІНЕЦЬ ОНОВЛЕНОГО ВИКЛИКУ ---
                     }
                 }
                 // 4. My Orders (Заглушка)
@@ -429,7 +522,7 @@ fun ProfileScreen(
                     }
                 }
 
-                // ... і т.д. для інших секцій (Delivery Addresses...)
+                // ... і т.т. для інших секцій (Delivery Addresses...)
 
                 // --- Соціальні мережі ---
                 item {
@@ -444,12 +537,49 @@ fun ProfileScreen(
 
 // --- НОВИЙ КОМПОНЕНТ ФОРМИ АДРЕСИ (згідно скріншоту) ---
 @Composable
-fun AddAddressForm() {
+fun AddAddressForm(
+    viewModel: ProfileViewModel = hiltViewModel(),
+    // --- ЗМІНА ТУТ: Додано callback для закриття секції ---
+    onAddressAdded: () -> Unit
+) {
     // Стан для полів
     val city = remember { mutableStateOf("") }
     val street = remember { mutableStateOf("") }
     val house = remember { mutableStateOf("") }
     val apartment = remember { mutableStateOf("") }
+
+    // Стан ViewModel
+    val profileState by viewModel.state.collectAsState()
+
+    // --- ДОДАНО LaunchedEffect для обробки успіху ---
+    val lastUpdateSuccess by rememberUpdatedState(profileState.updateSuccess)
+
+    LaunchedEffect(lastUpdateSuccess) {
+        if (lastUpdateSuccess) {
+            // Очищення полів форми
+            city.value = ""
+            street.value = ""
+            house.value = ""
+            apartment.value = ""
+
+            // Виклик callback для закриття секції
+            onAddressAdded()
+
+            // Скидаємо прапорець, щоб уникнути повторного спрацьовування
+            viewModel.resetUpdateState()
+        }
+    }
+    // --- КІНЕЦЬ LaunchedEffect ---
+
+    // Логіка активації кнопки
+    val isAddButtonEnabled = remember {
+        derivedStateOf {
+            city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank()
+        }
+    }
+
+    // Перевірка, чи йде оновлення
+    val isUpdating = profileState.isUpdating
 
     Column(
         modifier = Modifier
@@ -476,7 +606,8 @@ fun AddAddressForm() {
                 label = { Text("City") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isUpdating
             )
             OutlinedTextField(
                 value = street.value,
@@ -484,7 +615,8 @@ fun AddAddressForm() {
                 label = { Text("Street") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isUpdating
             )
         }
 
@@ -501,7 +633,8 @@ fun AddAddressForm() {
                 label = { Text("House") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isUpdating
             )
             OutlinedTextField(
                 value = apartment.value,
@@ -509,7 +642,8 @@ fun AddAddressForm() {
                 label = { Text("Apartment (optional)") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isUpdating
             )
         }
 
@@ -517,7 +651,16 @@ fun AddAddressForm() {
 
         // Кнопка "Add Address"
         OutlinedButton(
-            onClick = { /* TODO: Implement saving address */ },
+            onClick = {
+                viewModel.addAddress(
+                    city = city.value,
+                    street = street.value,
+                    house = house.value,
+                    apartment = apartment.value.ifBlank { null }
+                )
+                // ВИДАЛЕНО локальне очищення полів
+            },
+            enabled = isAddButtonEnabled.value && !isUpdating, // <-- ДОДАНО ПЕРЕВІРКУ
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.primary,
@@ -525,9 +668,17 @@ fun AddAddressForm() {
             ),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
         ) {
-            Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Add Address", fontWeight = FontWeight.SemiBold)
+            if (isUpdating) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(18.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Add Address", fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -787,6 +938,107 @@ fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
                 .height(50.dp)
         ) {
             Text("Log in / Register")
+        }
+    }
+}
+
+// --- ОНОВЛЕНИЙ КОМПОНЕНТ: Список збережених адрес ---
+@Composable
+fun AddressList(
+    addresses: List<UserAddress>,
+    // --- ЗМІНА: Отримуємо callback для видалення ---
+    onDeleteAddress: (Int) -> Unit,
+    profileViewModel: ProfileViewModel = hiltViewModel()
+) {
+    val isUpdating = profileViewModel.state.collectAsState().value.isUpdating
+
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (addresses.isEmpty()) {
+            Text(
+                "You have no saved addresses yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        } else {
+            addresses.forEach { address ->
+                SavedAddressCard(
+                    address = address,
+                    onDeleteClick = onDeleteAddress,
+                    isUpdating = isUpdating
+                )
+            }
+        }
+    }
+}
+
+// --- ОНОВЛЕНИЙ КОМПОНЕНТ: Картка однієї адреси з кнопкою видалення ---
+@Composable
+fun SavedAddressCard(
+    address: UserAddress,
+    onDeleteClick: (Int) -> Unit,
+    isUpdating: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFF9F9F9)),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+    ) {
+        // Use Box to position the delete button in the top right corner
+        Box(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    // Зменшуємо простір для тексту, щоб звільнити місце для кнопки
+                    .padding(end = 40.dp)
+            ) {
+                // Основний рядок: Street, House, Apartment
+                Text(
+                    text = "${address.street}, ${address.house}${if (address.apartments.isNullOrBlank()) "" else ", apt ${address.apartments}"}",
+                    fontWeight = FontWeight.SemiBold,
+                    fontSize = 16.sp
+                )
+                // Другий рядок: City (та інша додаткова інформація, наприклад, країна/індекс)
+                Text(
+                    text = address.city,
+                    color = Color.Gray,
+                    fontSize = 14.sp,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+
+            // --- КНОПКА ВИДАЛЕННЯ ---
+            // ID має бути присутнім, щоб мати можливість видалити адресу
+            val addressId = address.id
+            if (addressId != null) {
+                IconButton(
+                    onClick = {
+                        // Викликаємо функцію видалення з ID, який буде відправлено на бекенд
+                        onDeleteClick(addressId)
+                    },
+                    // Деактивуємо кнопку під час оновлення (додавання/видалення іншої адреси)
+                    enabled = !isUpdating,
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(32.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.Delete, // Іконка видалення
+                        contentDescription = "Видалити адресу",
+                        tint = MaterialTheme.colorScheme.error // Червоний колір
+                    )
+                }
+            }
+            // --- КІНЕЦЬ КНОПКИ ВИДАЛЕННЯ ---
         }
     }
 }

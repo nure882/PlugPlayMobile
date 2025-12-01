@@ -1,9 +1,11 @@
 package com.plugplay.plugplaymobile.data.repository
 
 import com.plugplay.plugplaymobile.data.local.AuthLocalDataSource
-import com.plugplay.plugplaymobile.data.model.* import com.plugplay.plugplaymobile.data.remote.ShopApiService
+import com.plugplay.plugplaymobile.data.model.*
+import com.plugplay.plugplaymobile.data.remote.ShopApiService
 import com.plugplay.plugplaymobile.domain.model.AuthData
 import com.plugplay.plugplaymobile.domain.model.UserProfile
+import com.plugplay.plugplaymobile.domain.model.UserAddress // <--- НОВИЙ ІМПОРТ
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -91,14 +93,15 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    // [ВИПРАВЛЕНО] Використовуємо userId як Int
+    // [ОНОВЛЕНО] Метод updateProfile тепер приймає адреси та відправляє їх у DTO
     override suspend fun updateProfile(
         firstName: String,
         lastName: String,
         phoneNumber: String,
         email: String,
         currentPassword: String?,
-        newPassword: String?
+        newPassword: String?,
+        addresses: List<UserAddress> // <--- ЗМІНА СИГНАТУРИ
     ): Result<UserProfile> {
         val userId = localDataSource.userId.first()
         if (userId == null) {
@@ -112,6 +115,7 @@ class AuthRepositoryImpl @Inject constructor(
                     lastName = lastName,
                     phoneNumber = phoneNumber,
                     email = email,
+                    addresses = addresses.map { it.toDto() }, // <--- ВАЖЛИВА ЗМІНА: Мапимо та передаємо адреси
                     currentPassword = currentPassword,
                     newPassword = newPassword
                 )

@@ -21,10 +21,13 @@ fun CartItemDto.toDomain(): CartItem {
     val price = this.unitPrice ?: 0.0
     val imgUrl = this.productImage ?: "https://example.com/placeholder.jpg"
 
+    // [ВИПРАВЛЕННЯ] Більш надійна перевірка назви: якщо null або empty, використовуємо заглушку
+    val name = this.productName.orEmpty().ifEmpty { "Без назви" }
+
     return CartItem(
         id = this.id.toLong(),
         productId = this.productId.toString(), // Domain model uses String ID
-        name = this.productName ?: "Без назви",
+        name = name,
         imageUrl = imgUrl,
         unitPrice = price,
         quantity = this.quantity,
@@ -36,13 +39,11 @@ fun CartItemDto.toDomain(): CartItem {
 class CartRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService,
     private val localDataSource: CartLocalDataSource,
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository // Використовуємо для гідратації назв
 ) : CartRepository {
 
     override fun getCartItems(userId: Int?): Flow<List<CartItem>> {
-        // Завжди повертаємо Flow з локального сховища, оскільки воно є єдиним джерелом стану для UI.
-        // Оновлення цього сховища відбувається в мутуючих методах (addToCart, delete, update)
-        // через виклик API + refreshLocalCart.
+        // Завжди повертаємо Flow з локального сховища
         return localDataSource.guestCart
     }
 
@@ -66,6 +67,7 @@ class CartRepositoryImpl @Inject constructor(
         } else {
             // [LOCAL] Логіка для гостя (має бути схожа на фронтенд)
             runCatching {
+                // Використовуємо ProductRepository для отримання назви/зображення
                 val product = productRepository.getProductById(productId).getOrThrow()
                 val cart = localDataSource.value.toMutableList()
                 val existingItem = cart.find { it.productId == productId }
@@ -173,15 +175,35 @@ class CartRepositoryImpl @Inject constructor(
 
     /**
      * Helper для оновлення локального кешу після успішного API-виклику.
+     * Включає логіку для завантаження назви/зображення, якщо вони відсутні в DTO кошика (що є причиною "Без назви").
      */
     private suspend fun refreshLocalCart(userId: Int) {
         try {
-            apiService.getCartItems(userId)
-                .body()
-                ?.map { it.toDomain() }
-                ?.let { newCartItems ->
-                    localDataSource.saveGuestCart(newCartItems)
+            val dtos = apiService.getCartItems(userId).body()
+
+            val newCartItems = dtos?.map { dto ->
+                var domainItem = dto.toDomain()
+
+                // Перевірка, чи не отримали ми "Без назви" або пусту назву з API
+                if (domainItem.name.isBlank() || domainItem.name == "Без назви") {
+                    productRepository.getProductById(domainItem.productId)
+                        .onSuccess { fullItem ->
+                            domainItem = domainItem.copy(
+                                name = fullItem.name,
+                                imageUrl = fullItem.imageUrls.firstOrNull() ?: domainItem.imageUrl,
+                                unitPrice = fullItem.price // Оновлюємо ціну, якщо потрібно
+                            )
+                        }
+                        .onFailure {
+                            // Якщо не вдалося завантажити деталі, залишаємо як є
+                            println("ERROR: Failed to fetch full product details for cart item ${domainItem.productId}")
+                        }
                 }
+                domainItem
+            } ?: emptyList()
+
+            localDataSource.saveGuestCart(newCartItems)
+
         } catch (e: Exception) {
             println("ERROR: Failed to refresh local cart after API mutation: ${e.message}")
         }

@@ -26,6 +26,7 @@ import androidx.compose.material.icons.outlined.ArrowDropDown // [ДОДАНО �
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import com.plugplay.plugplaymobile.domain.model.UserProfile
+import com.plugplay.plugplaymobile.domain.model.UserAddress // <--- НОВИЙ ІМПОРТ
 import kotlinx.coroutines.flow.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -34,6 +35,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import java.text.NumberFormat
+import java.util.Locale
 
 // --- СТАН І VIEWMODEL ---
 
@@ -181,14 +184,33 @@ fun CheckoutScreen(
     }
 }
 
-// --- ФОРМА АВТОРИЗОВАНОГО КОРИСТУВАЧА (ЗА СКРІНШОТОМ) ---
+// --- ФОРМА АВТОРИЗОВАНОГО КОРИСТУВАЧА (ОНОВЛЕНО ДЛЯ АДРЕС) ---
 @Composable
 fun ShippingInformationForm(profile: UserProfile?) {
+
+    // [MODIFIED LOGIC]: Отримання та мапінг адрес з профілю
+    val addresses = remember(profile?.addresses) {
+        profile?.addresses.orEmpty()
+            .filter { it.street.isNotBlank() && it.city.isNotBlank() } // Фільтруємо неповні
+            .map {
+                // Форматування адреси для відображення в Dropdown
+                "${it.street}, ${it.house}${if (it.apartments.isNullOrBlank()) "" else ", apt ${it.apartments}"}, ${it.city}"
+            }
+    }
+
+    // Default selected address: Placeholder if none exist
+    val addressOptions = remember(addresses) {
+        if (addresses.isEmpty()) {
+            listOf("Select address")
+        } else {
+            addresses
+        }
+    }
+
     // Стан для Dropdown (вибору адреси)
     var isExpanded by remember { mutableStateOf(false) }
-    // NOTE: Тут ми симулюємо, що адреси ще не налаштовані, тому адреса лише "Select address"
-    val addresses = listOf("Select address")
-    var selectedAddress by remember { mutableStateOf(addresses.first()) }
+    var selectedAddress by remember { mutableStateOf(addressOptions.first()) } // Використовуємо динамічні опції
+
 
     Column(
         modifier = Modifier
@@ -211,12 +233,12 @@ fun ShippingInformationForm(profile: UserProfile?) {
         ) {
             InputDisplayCard(
                 label = "First name",
-                value = profile?.firstName ?: "skritiy po", // Mocked value
+                value = profile?.firstName ?: "N/A",
                 modifier = Modifier.weight(1f)
             )
             InputDisplayCard(
                 label = "Last name",
-                value = profile?.lastName ?: "lol", // Mocked value
+                value = profile?.lastName ?: "N/A",
                 modifier = Modifier.weight(1f)
             )
         }
@@ -228,12 +250,12 @@ fun ShippingInformationForm(profile: UserProfile?) {
         ) {
             InputDisplayCard(
                 label = "Email",
-                value = profile?.email ?: "lolket@gmail.com", // Mocked value
+                value = profile?.email ?: "N/A",
                 modifier = Modifier.weight(1f)
             )
             InputDisplayCard(
                 label = "Phone number",
-                value = profile?.phoneNumber ?: "deifn", // Mocked value
+                value = profile?.phoneNumber ?: "N/A",
                 modifier = Modifier.weight(1f)
             )
         }
@@ -246,15 +268,14 @@ fun ShippingInformationForm(profile: UserProfile?) {
             modifier = Modifier.padding(top = 8.dp)
         )
 
-        // Використовуємо OutlinedTextField для імітації Dropdown, як на скріншоті.
-        // NOTE: Це спрощена реалізація, яка відповідає візуальному макету image_6a164f.png
+        // Використовуємо OutlinedTextField для імітації Dropdown.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .border(1.dp, Color.Gray, RoundedCornerShape(12.dp))
-                .clickable { isExpanded = true }
+                .clickable(onClick = { isExpanded = true })
                 .background(Color(0xFFF0F0F0)), // Light Gray background for input fields
             contentAlignment = Alignment.CenterStart
         ) {
@@ -274,7 +295,7 @@ fun ShippingInformationForm(profile: UserProfile?) {
                 onDismissRequest = { isExpanded = false },
                 modifier = Modifier.fillMaxWidth(0.9f)
             ) {
-                addresses.forEach { address ->
+                addressOptions.forEach { address -> // Використовуємо динамічні опції
                     DropdownMenuItem(
                         text = { Text(address) },
                         onClick = {
@@ -285,13 +306,15 @@ fun ShippingInformationForm(profile: UserProfile?) {
                 }
             }
         }
-        // [ПОПЕРЕДЖЕННЯ ПРО АДРЕСУ]
-        Text(
-            "You have no addresses to select from. Please configure them in your profile.",
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 4.dp)
-        )
+        // [ПОПЕРЕДЖЕННЯ ПРО АДРЕСУ] - Показуємо, якщо список адрес порожній
+        if (addresses.isEmpty()) {
+            Text(
+                "You have no addresses to select from. Please configure them in your profile.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
     }
 }
 
