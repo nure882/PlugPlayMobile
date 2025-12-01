@@ -7,10 +7,11 @@ import javax.inject.Inject
 /**
  * Use Case для отримання списку всіх товарів.
  */
-class GetProductsUseCase @Inject constructor( // ВИПРАВЛЕНО: Клас GetProductsUseCase
+class GetProductsUseCase @Inject constructor(
     private val repository: ProductRepository
 ) {
-    suspend operator fun invoke(): Result<List<Product>> {
-        return repository.getProducts()
+    // [ЗМІНЕНО] Приймає необов'язковий categoryId
+    suspend operator fun invoke(categoryId: Int? = null): Result<List<Product>> {
+        return repository.getProducts(categoryId) // <--- ПЕРЕДАЄМО
     }
 }

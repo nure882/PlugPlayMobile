@@ -1,7 +1,13 @@
 package com.plugplay.plugplaymobile.presentation.product_list
 
+import androidx.compose.animation.AnimatedContent // [НОВИЙ ІМПОРТ]
+import androidx.compose.animation.core.tween // [НОВИЙ ІМПОРТ]
+import androidx.compose.animation.fadeIn // [НОВИЙ ІМПОРТ]
+import androidx.compose.animation.fadeOut // [НОВИЙ ІМПОРТ]
+import androidx.compose.animation.togetherWith // [НОВИЙ ІМПОРТ]
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.border // [НОВИЙ ІМПОРТ]
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -41,14 +47,19 @@ import java.util.Locale
 
 // --- ДАНІ-ЗАГЛУШКИ ДЛЯ ДИЗАЙНУ ---
 
-// Заглушка для іконок категорій
-data class CategoryItem(val name: String, val icon: Int) // Використовуйте R.drawable.ic_...
+// [ЗМІНЕНО] Додайте categoryId (Int) до моделі
+data class CategoryItem(val name: String, val icon: Int, val categoryId: Int)
+
+// [ЗМІНЕНО] Використовуйте реальні ID категорій:
 val categoryItems = listOf(
-    // Я залишив існуючі заглушки, але ви можете замінити їх на реальні
-    CategoryItem("Смартфони", R.drawable.smartphone_logo),
-    CategoryItem("Навушники", R.drawable.headphones_logo),
-    CategoryItem("Ноутбуки", R.drawable.laptop_logo),
-    CategoryItem("Камери", R.drawable.camera_logo),
+    // ID 23 - Smartphones
+    CategoryItem("Smartphones", R.drawable.smartphone_logo, 23),
+    // ID 35 - Headphones & Earbuds
+    CategoryItem("Headphones", R.drawable.headphones_logo, 35),
+    // ID 2 - Laptops
+    CategoryItem("Laptops", R.drawable.laptop_logo, 2),
+    // ID 52 - Cameras & Photography
+    CategoryItem("Cameras", R.drawable.camera_logo, 52),
 )
 
 // --- ОСНОВНИЙ ЕКРАН ---
@@ -68,6 +79,9 @@ fun ProductListScreen(
 
     // Стан для відображення діалогу кошика
     var isCartOpen by remember { mutableStateOf(false) }
+
+    // [НОВЕ] Отримуємо поточний ключ фільтра для AnimatedContent
+    val currentFilterKey by viewModel.currentCategoryId.collectAsState()
 
     // [ДОДАНО] Діалог кошика
     ShoppingCartDialog(
@@ -98,7 +112,7 @@ fun ProductListScreen(
                         Spacer(Modifier.width(8.dp))
                         // Ресурс 2: Текст "Plug & Play" (file (1).png)
 
-                            // ПОЧАТОК ЗМІНИ: Повернення тексту "Plug & Play" та зміна кольору на чорний
+                        // ПОЧАТОК ЗМІНИ: Повернення тексту "Plug & Play" та зміна кольору на чорний
                         Text(
                             "Plug & Play",
                             fontWeight = FontWeight.Bold,
@@ -140,39 +154,61 @@ fun ProductListScreen(
         // [ВИДАЛЕНО] bottomBar
     ) { padding ->
 
-        // Обробка станів (Завантаження, Помилка)
-        when (state) {
-            is ProductListState.Loading -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding).wrapContentSize(Alignment.Center)) {
-                    CircularProgressIndicator()
+        // [НОВИЙ КОНТЕЙНЕР АНІМАЦІЇ]
+        // AnimatedContent анімує перехід, коли змінюється currentFilterKey
+        AnimatedContent(
+            targetState = currentFilterKey, // Ключ, який запускає анімацію (ID категорії або null)
+            transitionSpec = {
+                // Плавний перехід: старий екран зникає, новий з'являється одночасно
+                (fadeIn(animationSpec = tween(300))
+                    .togetherWith(fadeOut(animationSpec = tween(300))))
+            },
+            label = "CategoryFilterFade"
+        ) { targetCategory -> // targetCategory - це значення currentFilterKey
+
+            // Вміст, який анімується
+            Box(Modifier.fillMaxSize().padding(padding)) {
+
+                // Обробка станів (Завантаження, Помилка)
+                when (state) {
+                    is ProductListState.Loading -> {
+                        // Показуємо індикатор завантаження
+                        CircularProgressIndicator(Modifier.align(Alignment.Center))
+                    }
+                    is ProductListState.Error -> {
+                        Box(Modifier.fillMaxSize().wrapContentSize(Alignment.Center)) {
+                            Text(
+                                text = "Помилка: ${(state as ProductListState.Error).message}",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
+                    is ProductListState.Success -> {
+                        // [НОВИЙ МАКЕТ] Використовуємо LazyVerticalGrid
+                        ProductGrid(
+                            products = (state as ProductListState.Success).products,
+                            // Передаємо порожній модифікатор, оскільки всі відступи вже оброблені
+                            modifier = Modifier,
+                            onItemClick = onNavigateToItemDetail,
+                            viewModel = viewModel
+                        )
+                    }
+                    ProductListState.Idle -> { /* Нічого */ }
                 }
             }
-            is ProductListState.Error -> {
-                Box(modifier = Modifier.fillMaxSize().padding(padding).wrapContentSize(Alignment.Center)) {
-                    Text(text = "Помилка: ${(state as ProductListState.Error).message}", color = MaterialTheme.colorScheme.error)
-                }
-            }
-            is ProductListState.Success -> {
-                // [НОВИЙ МАКЕТ] Використовуємо LazyVerticalGrid
-                ProductGrid(
-                    products = (state as ProductListState.Success).products,
-                    modifier = Modifier.padding(padding),
-                    onItemClick = onNavigateToItemDetail
-                )
-            }
-            ProductListState.Idle -> { /* Нічого */ }
         }
     }
 }
 
 // --- НОВІ КОМПОНЕНТИ ДИЗАЙНУ ---
-// (Весь код нижче залишається без змін)
+// (Оновлення ProductGrid та CategoryLazyRow)
 
 @Composable
 fun ProductGrid(
     products: List<Product>,
     modifier: Modifier,
-    onItemClick: (itemId: String) -> Unit
+    onItemClick: (itemId: String) -> Unit,
+    viewModel: ProductListViewModel // <--- ДОДАНО VIEWMODEL
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2), // 2 колонки
@@ -182,26 +218,22 @@ fun ProductGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 1. БАНЕР (на всю ширину) - ВИДАЛЕНО
-        /*
-        item(span = { GridItemSpan(2) }) {
-            BannerCard(modifier = Modifier.padding(vertical = 8.dp))
-        }
-        */
-
         // 2. ЗАГОЛОВОК КАТЕГОРІЙ (на всю ширину)
         item(span = { GridItemSpan(2) }) {
-            SectionHeader(title = "Тебе зацікавить")
+            SectionHeader(title = "It would interest you")
         }
 
         // 3. РЯДОК КАТЕГОРІЙ (на всю ширину)
         item(span = { GridItemSpan(2) }) {
-            CategoryLazyRow(modifier = Modifier.padding(vertical = 8.dp))
+            CategoryLazyRow(
+                modifier = Modifier.padding(vertical = 8.dp),
+                viewModel = viewModel // <--- ПЕРЕДАЄМО VIEWMODEL
+            )
         }
 
         // 4. ЗАГОЛОВОК "ДЛЯ ТЕБЕ" (на всю ширину)
         item(span = { GridItemSpan(2) }) {
-            SectionHeader(title = "Для тебе", showFilter = true)
+            SectionHeader(title = "For you", showFilter = true)
         }
 
         // 5. СПИСОК ТОВАРІВ
@@ -240,8 +272,6 @@ fun ProductItem(
                     // Використовуємо заглушку на випадок помилки Coil
                     error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
-
-
 
                 IconButton(
                     onClick = { /* TODO: Add to favorites */ },
@@ -339,36 +369,56 @@ fun SectionHeader(
         )
         if (showFilter) {
             TextButton(onClick = { /* TODO: Фільтри */ }) {
-                Text("Фільтри")
+                Text("Filters")
             }
         }
     }
 }
 
+// [ЗМІНЕНО] CategoryLazyRow тепер приймає ViewModel
 @Composable
-fun CategoryLazyRow(modifier: Modifier = Modifier) {
+fun CategoryLazyRow(modifier: Modifier = Modifier, viewModel: ProductListViewModel = hiltViewModel()) {
+    val selectedCategory by viewModel.currentCategoryId.collectAsState() // Отримуємо поточний фільтр
+
     LazyRow(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(16.dp),
         contentPadding = PaddingValues(horizontal = 4.dp)
     ) {
         items(categoryItems) { item ->
-            CategoryIconItem(item)
+            CategoryIconItem(
+                item = item,
+                isSelected = item.categoryId == selectedCategory, // Порівнюємо ID
+                onClick = { viewModel.setCategoryFilter(item.categoryId) } // <--- ДОДАНО onClick
+            )
         }
     }
 }
 
+// [НОВИЙ/ЗМІНЕНИЙ] CategoryIconItem тепер приймає isSelected та onClick
 @Composable
-fun CategoryIconItem(item: CategoryItem) {
+fun CategoryIconItem(item: CategoryItem, isSelected: Boolean, onClick: () -> Unit) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp)
+        modifier = Modifier
+            .width(80.dp)
+            .clickable(onClick = onClick) // <--- ДОДАНО ОБРОБНИК КЛІКУ
     ) {
         Box(
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(16.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                .background(
+                    if (isSelected) primaryColor.copy(alpha = 0.1f) // Якщо обрано
+                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                )
+                .border(
+                    width = 2.dp,
+                    color = if (isSelected) primaryColor else Color.Transparent, // Рамка для обраного
+                    shape = RoundedCornerShape(16.dp)
+                )
                 .padding(12.dp),
             contentAlignment = Alignment.Center
         ) {
@@ -376,14 +426,14 @@ fun CategoryIconItem(item: CategoryItem) {
                 painter = painterResource(id = item.icon),
                 contentDescription = item.name,
                 modifier = Modifier.fillMaxSize(),
-                tint = MaterialTheme.colorScheme.primary
+                tint = primaryColor
             )
         }
         Spacer(Modifier.height(8.dp))
         Text(
             text = item.name,
             style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.SemiBold,
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold, // Жирний шрифт для обраного
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )

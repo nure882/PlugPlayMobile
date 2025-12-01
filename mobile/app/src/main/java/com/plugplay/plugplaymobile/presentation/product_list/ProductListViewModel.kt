@@ -7,6 +7,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update // [ДОДАНО]
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -18,6 +19,10 @@ class ProductListViewModel @Inject constructor(
     private val _state = MutableStateFlow<ProductListState>(ProductListState.Idle)
     val state: StateFlow<ProductListState> = _state.asStateFlow()
 
+    // [ДОДАНО] Стан для CategoryId. null означає "всі товари"
+    private val _currentCategoryId = MutableStateFlow<Int?>(null)
+    val currentCategoryId: StateFlow<Int?> = _currentCategoryId.asStateFlow() // Додано для UI
+
     init {
         loadProducts()
     }
@@ -26,8 +31,8 @@ class ProductListViewModel @Inject constructor(
         viewModelScope.launch {
             _state.value = ProductListState.Loading
 
-            // ВИПРАВЛЕНО: правильний виклик Use Case
-            getProductsUseCase.invoke()
+            // ВИПРАВЛЕНО: викликаємо Use Case з поточним CategoryId
+            getProductsUseCase.invoke(_currentCategoryId.value) // <--- ЗМІНА ТУТ
                 .onSuccess { products ->
                     _state.value = ProductListState.Success(products)
                 }
@@ -35,5 +40,19 @@ class ProductListViewModel @Inject constructor(
                     _state.value = ProductListState.Error(error.message ?: "Невідома помилка завантаження товарів.")
                 }
         }
+    }
+
+    // [ДОДАНО] Функція для встановлення фільтра/перемикання
+    fun setCategoryFilter(categoryId: Int) {
+        // Логіка для перемикання фільтра
+        val newFilter = if (_currentCategoryId.value == categoryId) {
+            null // Вимкнути фільтр, якщо натиснуто ту саму кнопку
+        } else {
+            categoryId
+        }
+
+        // Оновлюємо фільтр і перезавантажуємо продукти
+        _currentCategoryId.update { newFilter }
+        loadProducts()
     }
 }

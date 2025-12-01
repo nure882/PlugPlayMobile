@@ -9,16 +9,42 @@ import com.plugplay.plugplaymobile.domain.model.Item
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import javax.inject.Inject
 import java.lang.Exception
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 class ProductRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService
 ) : ProductRepository {
 
-    override suspend fun getProducts(): Result<List<Product>> {
-        return runCatching {
-            val productsDtoList = apiService.getProducts()
-            Log.d("ProductRepositoryImpl", "Fetched products: $productsDtoList")
-            productsDtoList.toDomainList()
+    // [ЗМІНЕНО] Реалізація тепер приймає categoryId
+    override suspend fun getProducts(categoryId: Int?): Result<List<Product>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val productsDtoList = if (categoryId == null) {
+                    // Якщо ID категорії немає, використовуємо існуючий ендпоінт "all"
+                    val allProducts = apiService.getProducts()
+                    Log.d("ProductRepositoryImpl", "Fetched all products: ${allProducts.size}")
+                    allProducts
+                } else {
+                    // [НОВИЙ ВИКЛИК] Використовуємо ендпоінт фільтрації
+                    val response = apiService.filterProducts(
+                        categoryId = categoryId,
+                        page = 1,
+                        pageSize = 100
+                    )
+
+                    if (response.isSuccessful && response.body() != null) {
+                        val filteredProducts = response.body()!!.products
+                        Log.d("ProductRepositoryImpl", "Fetched products by category $categoryId: ${filteredProducts.size}")
+                        filteredProducts
+                    } else {
+                        val errorBody = response.errorBody()?.string()
+                        throw Exception(errorBody ?: "Failed to filter products by category: ${response.message()}")
+                    }
+                }
+
+                productsDtoList.toDomainList()
+            }
         }
     }
 

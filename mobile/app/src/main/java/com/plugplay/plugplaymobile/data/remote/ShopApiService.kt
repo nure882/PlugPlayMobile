@@ -11,6 +11,16 @@ interface ShopApiService {
     @GET("api/Products/all")
     suspend fun getProducts(): List<ProductDto>
 
+    // [ДОДАНО] Новий метод для фільтрації товарів за категорією
+    @GET("api/Products/filter/{categoryId}")
+    suspend fun filterProducts(
+        @Path("categoryId") categoryId: Int,
+        @Query("filter") filter: String? = null,
+        @Query("sort") sort: String? = null,
+        @Query("page") page: Int = 1,
+        @Query("pageSize") pageSize: Int = 100 // Встановлюємо достатній розмір сторінки
+    ): Response<FilterProductsResponse>
+
     // [ОНОВЛЕНО] Product ID тепер Int
     @GET("api/Products/{id}")
     suspend fun getProductById(@Path("id") itemId: Int): Response<ProductDto>
