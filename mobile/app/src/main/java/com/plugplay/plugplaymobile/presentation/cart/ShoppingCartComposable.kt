@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.outlined.Delete // [НОВИЙ ІМПОРТ]
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,7 +59,7 @@ fun ShoppingCartDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Корзина", style = MaterialTheme.typography.headlineSmall)
+                    Text("Cart", style = MaterialTheme.typography.headlineSmall)
                     IconButton(onClick = onClose) {
                         Icon(Icons.Default.Close, contentDescription = "Закрити")
                     }
@@ -108,7 +109,22 @@ fun CartItemRow(
     onQuantityChange: (Int) -> Unit,
     onDelete: () -> Unit
 ) {
-    val format = NumberFormat.getCurrencyInstance(Locale("uk", "UA"))
+    // [ОНОВЛЕНО] Використовуємо форматування для числа з "₴"
+    val formattedUnitPrice = remember(item.unitPrice) {
+        val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        "Price: ${format.format(item.unitPrice)} ₴" // <-- ДОДАНО " ₴"
+    }
+
+    val formattedTotal = remember(item.total) {
+        val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        "Total: ${format.format(item.total)} ₴" // <-- ДОДАНО " ₴"
+    }
 
     Row(
         modifier = Modifier
@@ -146,12 +162,12 @@ fun CartItemRow(
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
-                        text = "Ціна: ${format.format(item.unitPrice)}",
+                        text = formattedUnitPrice, // <-- ВИКОРИСТАННЯ НОВОГО ФОРМАТУ
                         color = MaterialTheme.colorScheme.error,
                         fontSize = 12.sp
                     )
                     Text(
-                        text = "Сума: ${format.format(item.total)}",
+                        text = formattedTotal, // <-- ВИКОРИСТАННЯ НОВОГО ФОРМАТУ
                         color = MaterialTheme.colorScheme.error,
                         fontWeight = FontWeight.Bold,
                         fontSize = 14.sp
@@ -194,13 +210,21 @@ fun CartItemRow(
     }
 }
 
+// [ОНОВЛЕНО] Структура CartFooter
 @Composable
 fun CartFooter(
     subtotal: Double,
     onClearCart: () -> Unit,
     onNavigateToCheckout: () -> Unit
 ) {
-    val format = NumberFormat.getCurrencyInstance(Locale("uk", "UA"))
+    // [ОНОВЛЕНО] Використовуємо форматування для числа з "₴"
+    val formattedSubtotal = remember(subtotal) {
+        val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }
+        format.format(subtotal) + " ₴" // <-- ДОДАНО " ₴"
+    }
 
     Column(
         modifier = Modifier
@@ -208,31 +232,58 @@ fun CartFooter(
             .background(Color(0xFFF4F7F8)) // Light gray background
             .padding(16.dp)
     ) {
+        // 1. Total Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column {
-                Text("Загальна сума", color = Color.Gray, fontSize = 14.sp)
+                Text("Total", color = Color.Gray, fontSize = 14.sp)
                 Text(
-                    text = format.format(subtotal),
+                    text = formattedSubtotal,
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary
                 )
             }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // 2. Buttons Column (Симетрично одна під одною)
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // A. Order Now Button
             Button(
                 onClick = onNavigateToCheckout,
                 shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.height(56.dp)
+                modifier = Modifier.fillMaxWidth().height(56.dp)
             ) {
-                Text("Оформити замовлення", fontSize = 16.sp)
+                Text("Order now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
             }
-        }
-        Spacer(Modifier.height(8.dp))
-        TextButton(onClick = onClearCart, modifier = Modifier.align(Alignment.End)) {
-            Text("Очистити корзину", color = MaterialTheme.colorScheme.error)
+
+            // B. Clear Cart Button (ОНОВЛЕНО: Тепер це OutlinedButton з іконкою)
+            OutlinedButton(
+                onClick = onClearCart,
+                shape = RoundedCornerShape(12.dp),
+                modifier = Modifier.fillMaxWidth().height(56.dp),
+                colors = ButtonDefaults.outlinedButtonColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f), // Світло-червоний фон
+                    contentColor = MaterialTheme.colorScheme.error // Червоний текст
+                ),
+                border = null // Прибираємо рамку
+            ) {
+                Icon(
+                    Icons.Outlined.Delete,
+                    contentDescription = "Clear cart icon",
+                    modifier = Modifier.size(24.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Clear cart", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+            }
         }
     }
 }
@@ -244,7 +295,7 @@ fun EmptyCartPlaceholder(modifier: Modifier = Modifier) {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
-        Text("Ваша корзина порожня", style = MaterialTheme.typography.titleLarge)
-        Text("Додайте товари, щоб почати оформлення", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
+        Text("Your cart is empty", style = MaterialTheme.typography.titleLarge)
+        Text("Add products to checkout", color = Color.Gray, modifier = Modifier.padding(top = 8.dp))
     }
 }

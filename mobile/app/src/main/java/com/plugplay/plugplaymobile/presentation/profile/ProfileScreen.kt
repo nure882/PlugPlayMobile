@@ -771,12 +771,12 @@ fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            "Ви не авторизовані.",
+            "You are not authorized",
             style = MaterialTheme.typography.titleLarge,
             textAlign = TextAlign.Center
         )
         Text(
-            "Увійдіть, щоб керувати своїм профілем.",
+            "Sign in to manage your profile",
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
         )
@@ -786,7 +786,7 @@ fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
                 .fillMaxWidth()
                 .height(50.dp)
         ) {
-            Text("Увійти / Зареєструватися")
+            Text("Log in / Register")
         }
     }
 }
