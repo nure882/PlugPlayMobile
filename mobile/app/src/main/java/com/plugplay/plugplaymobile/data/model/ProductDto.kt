@@ -29,7 +29,4 @@ data class ProductDto(
     @SerializedName("category")
     val category: CategoryDto?,
 
-    // [ДОДАНО] Поле для повного списку відгуків
-    @SerializedName("reviews")
-    val reviews: List<ReviewDto>?
 )

@@ -30,14 +30,7 @@ fun List<ProductDto>.toDomainList(): List<Product> {
  */
 fun ProductDto.toDomainItem(): Item {
 
-    // 1. Обчислення рейтингу та кількості відгуків
-    val validReviews = this.reviews.orEmpty().filter { it.rating in 1..5 }
-    val reviewCount = validReviews.size
-    val averageRating = if (reviewCount > 0) {
-        validReviews.map { it.rating.toDouble() }.average()
-    } else {
-        0.0
-    }
+
 
     // [ОНОВЛЕНО] Використовуємо нове поле pictureUrls
     val imageUrls = this.pictureUrls
@@ -58,8 +51,6 @@ fun ProductDto.toDomainItem(): Item {
 
         category = this.category?.name ?: "N/A",
 
-        // [ДОДАНО] Поля для рейтингу
-        averageRating = averageRating,
-        reviewCount = reviewCount
+
     )
 }
