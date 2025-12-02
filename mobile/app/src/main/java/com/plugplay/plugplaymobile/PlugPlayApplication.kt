@@ -1,14 +1,22 @@
 package com.plugplay.plugplaymobile
 
 import android.app.Application
+import android.content.Context
+import com.plugplay.plugplaymobile.util.LocaleHelper // Імпорт вашого хелпера
 import dagger.hilt.android.HiltAndroidApp
+import java.util.Locale
 
-/**
- * Главный класс Application для Hilt.
- * Эта аннотация запускает генерацию всего кода Hilt
- * на уровне приложения.
- */
 @HiltAndroidApp
 class PlugPlayApplication : Application() {
-    // Здесь пока не требуется дополнительная логика.
+
+    override fun onCreate() {
+        super.onCreate()
+        // Примусово ставимо дефолтну локаль Java на англійську
+        Locale.setDefault(Locale.ENGLISH)
+    }
+
+    override fun attachBaseContext(base: Context) {
+        // Прикріплюємо контекст з англійською локаллю ("en")
+        super.attachBaseContext(LocaleHelper.setLocale(base, "en"))
+    }
 }

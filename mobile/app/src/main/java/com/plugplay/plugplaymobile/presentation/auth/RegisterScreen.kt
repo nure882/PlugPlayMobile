@@ -1,7 +1,5 @@
 package com.plugplay.plugplaymobile.presentation.auth
 
-import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -15,8 +13,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -27,7 +23,6 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.plugplay.plugplaymobile.R
 
 @Composable
 fun RegisterScreen(
@@ -37,7 +32,6 @@ fun RegisterScreen(
 ) {
     val firstName = remember { mutableStateOf("") }
     val lastName = remember { mutableStateOf("") }
-    // [ВИПРАВЛЕНО] Перейменував змінну, щоб уникнути плутанини
     val phoneInput = remember { mutableStateOf("") }
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
@@ -58,16 +52,15 @@ fun RegisterScreen(
         derivedStateOf { password.value == confirmPassword.value }
     }
 
-    // [ВИПРАВЛЕНО] Тепер логіка активації кнопки перевіряє 'phoneInput'
     val registerEnabled = remember {
         derivedStateOf {
             firstName.value.isNotBlank() &&
                     lastName.value.isNotBlank() &&
-                    phoneInput.value.isNotBlank() && // <-- ОСЬ ТУТ БУЛО ВИПРАВЛЕННЯ
+                    phoneInput.value.isNotBlank() &&
                     email.value.isNotBlank() &&
                     password.value.length >= 8 &&
                     passwordsMatch.value &&
-                    state !is AuthResultState.Loading // Також перевіряємо, що не йде завантаження
+                    state !is AuthResultState.Loading
         }
     }
 
@@ -132,8 +125,8 @@ fun RegisterScreen(
 
                     // Phone
                     OutlinedTextField(
-                        value = phoneInput.value, // <-- [ВИПРАВЛЕНО]
-                        onValueChange = { phoneInput.value = it }, // <-- [ВИПРАВЛЕНО]
+                        value = phoneInput.value,
+                        onValueChange = { phoneInput.value = it },
                         label = { Text("Phone") },
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
@@ -213,7 +206,6 @@ fun RegisterScreen(
                     // Sign Up Button
                     Button(
                         onClick = {
-                            // [ВИПРАВЛЕНО] Передаємо phoneInput.value
                             viewModel.register(
                                 firstName.value,
                                 lastName.value,
@@ -222,7 +214,7 @@ fun RegisterScreen(
                                 password.value
                             )
                         },
-                        enabled = registerEnabled.value, // <-- [ВИПРАВЛЕНО] Логіка тепер в самій змінній
+                        enabled = registerEnabled.value,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(56.dp),
@@ -240,12 +232,6 @@ fun RegisterScreen(
                             Text("Sign Up", fontSize = 16.sp)
                         }
                     }
-
-                    OrDivider()
-
-                    GoogleSignInButton {
-                        // TODO: Google Sign In logic
-                    }
                 }
             }
 
@@ -255,59 +241,6 @@ fun RegisterScreen(
 
             Spacer(Modifier.height(32.dp))
         }
-    }
-}
-
-// --- ДОПОМІЖНІ КОМПОНЕНТИ (для обох екранів) ---
-// (Ці функції залишаються без змін з минулого разу)
-
-@Composable
-internal fun OrDivider() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 24.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.Center
-    ) {
-        Divider(
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-        )
-        Text(
-            text = " or ",
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-            modifier = Modifier.padding(horizontal = 8.dp)
-        )
-        Divider(
-            modifier = Modifier.weight(1f),
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f)
-        )
-    }
-}
-
-@Composable
-internal fun GoogleSignInButton(onClick: () -> Unit) {
-    OutlinedButton(
-        onClick = onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .height(56.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = ButtonDefaults.outlinedButtonColors(
-            contentColor = MaterialTheme.colorScheme.onSurface
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.2f))
-    ) {
-        // TODO: Додайте реальну іконку Google
-        Text(
-            "G",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(end = 12.dp)
-        )
-        Text("Continue with Google", fontSize = 16.sp)
     }
 }
 
