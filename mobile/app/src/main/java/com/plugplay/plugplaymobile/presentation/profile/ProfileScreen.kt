@@ -1,9 +1,5 @@
 package com.plugplay.plugplaymobile.presentation.profile
 
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
@@ -13,15 +9,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -29,12 +25,11 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.plugplay.plugplaymobile.presentation.auth.AuthViewModel
 import com.plugplay.plugplaymobile.domain.model.UserProfile
+import com.plugplay.plugplaymobile.domain.repository.AuthRepository
+import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.domain.usecase.GetProfileUseCase
 import com.plugplay.plugplaymobile.domain.usecase.UpdateProfileUseCase
 import androidx.lifecycle.ViewModel
-import com.plugplay.plugplaymobile.R
-import com.plugplay.plugplaymobile.domain.model.UserAddress
-import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -44,45 +39,6 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 import dagger.hilt.android.lifecycle.HiltViewModel
 
-// =========================================================================
-// !!! МОДЕЛІ ДЛЯ ПРИКЛАДУ (В РЕАЛЬНОСТІ ВОНИ В DOMAIN ШАРІ) !!!
-// =========================================================================
-
-/**
- * Клас адреси користувача.
- */
-data class UserAddress(
-    val id: Int? = null,
-    val city: String,
-    val street: String,
-    val house: String,
-    val apartments: String? = null
-)
-
-/**
- * Заглушка для репозиторію
- */
-interface AuthRepository
-
-interface GetProfileUseCase {
-    suspend operator fun invoke(): Result<UserProfile>
-}
-interface UpdateProfileUseCase {
-    suspend operator fun invoke(
-        firstName: String,
-        lastName: String,
-        phoneNumber: String,
-        email: String,
-        currentPassword: String? = null,
-        newPassword: String? = null,
-        addresses: List<UserAddress> = emptyList()
-    ): Result<UserProfile>
-}
-
-
-// =========================================================================
-// [STATE]
-// =========================================================================
 data class ProfileState(
     val profile: UserProfile? = null,
     val isLoading: Boolean = false,
@@ -91,9 +47,6 @@ data class ProfileState(
     val updateSuccess: Boolean = false
 )
 
-// =========================================================================
-// [VIEWMODEL]
-// =========================================================================
 @HiltViewModel
 class ProfileViewModel @Inject constructor(
     private val getProfileUseCase: GetProfileUseCase,
@@ -137,14 +90,10 @@ class ProfileViewModel @Inject constructor(
         _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
         viewModelScope.launch {
             updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword, addresses)
-                .onSuccess { updatedProfile ->
-                    _state.update {
-                        it.copy(
-                            profile = updatedProfile,
-                            isUpdating = false,
-                            updateSuccess = true
-                        )
-                    }
+                .onSuccess {
+                    // Встановлюємо успіх і викликаємо перезавантаження
+                    _state.update { it.copy(isUpdating = false, updateSuccess = true) }
+                    loadProfile()
                 }
                 .onFailure { throwable ->
                     _state.update {
@@ -155,6 +104,17 @@ class ProfileViewModel @Inject constructor(
                     }
                 }
         }
+    }
+
+    fun updateAddresses(newAddresses: List<UserAddress>) {
+        val currentProfile = state.value.profile ?: return
+        updateProfile(
+            firstName = currentProfile.firstName,
+            lastName = currentProfile.lastName,
+            phoneNumber = currentProfile.phoneNumber,
+            email = currentProfile.email,
+            addresses = newAddresses
+        )
     }
 
     fun addAddress(city: String, street: String, house: String, apartment: String?) {
@@ -173,14 +133,26 @@ class ProfileViewModel @Inject constructor(
         )
 
         val addressesToSend = currentProfile.addresses + listOf(newAddress)
+        updateAddresses(addressesToSend)
+    }
 
-        updateProfile(
-            firstName = currentProfile.firstName,
-            lastName = currentProfile.lastName,
-            phoneNumber = currentProfile.phoneNumber,
-            email = currentProfile.email,
-            addresses = addressesToSend
-        )
+    fun editAddress(addressId: Int?, city: String, street: String, house: String, apartment: String?) {
+        val currentProfile = state.value.profile ?: return
+        if (addressId == null) return
+
+        val updatedAddresses = currentProfile.addresses.map { address ->
+            if (address.id == addressId) {
+                address.copy(
+                    city = city,
+                    street = street,
+                    house = house,
+                    apartments = apartment?.ifBlank { null }
+                )
+            } else {
+                address
+            }
+        }
+        updateAddresses(updatedAddresses)
     }
 
     fun deleteAddress(addressId: Int) {
@@ -195,24 +167,13 @@ class ProfileViewModel @Inject constructor(
         }
 
         val addressesToSend = currentProfile.addresses.filter { it.id != addressId }
-
-        updateProfile(
-            firstName = currentProfile.firstName,
-            lastName = currentProfile.lastName,
-            phoneNumber = currentProfile.phoneNumber,
-            email = currentProfile.email,
-            addresses = addressesToSend
-        )
+        updateAddresses(addressesToSend)
     }
 
     fun resetUpdateState() {
         _state.update { it.copy(updateSuccess = false, error = null) }
     }
 }
-
-// =========================================================================
-// [COMPOSE COMPONENTS]
-// =========================================================================
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -227,38 +188,19 @@ fun ProfileScreen(
 
     val profile = profileState.profile
 
-    val snackbarHostState = remember { SnackbarHostState() }
+    val isEditingCredentials = remember { mutableStateOf(false) }
+    val openSection = remember { mutableStateOf("") }
 
     LaunchedEffect(isLoggedIn) {
         profileViewModel.onAuthStatusChanged(isLoggedIn)
     }
 
-    // Редаговані поля (залишаємо для Edit Credentials, якщо ви вирішите його повернути)
-    val firstName = remember { mutableStateOf("") }
-    val lastName = remember { mutableStateOf("") }
-    val phone = remember { mutableStateOf("") }
-    val email = remember { mutableStateOf("") }
-
-    // Прибираємо стани паролів, оскільки Edit Credentials видалено
-    val currentPassword = remember { mutableStateOf("") }
-    val newPassword = remember { mutableStateOf("") }
-    val confirmNewPassword = remember { mutableStateOf("") }
-    val passwordsMatch = remember { derivedStateOf { newPassword.value == confirmNewPassword.value } }
-
-    val openSection = remember { mutableStateOf("") }
-
-    // Ініціалізація полів при завантаженні профілю
-    LaunchedEffect(profile) {
-        if (profile != null) {
-            // Присвоюємо значення локальним станам
-            firstName.value = profile.firstName
-            lastName.value = profile.lastName
-            phone.value = profile.phoneNumber
-            email.value = profile.email
+    LaunchedEffect(profileState.updateSuccess) {
+        if (profileState.updateSuccess) {
+            isEditingCredentials.value = false
             profileViewModel.resetUpdateState()
         }
     }
-
 
     Scaffold(
         containerColor = Color(0xFFF4F7F8),
@@ -273,9 +215,8 @@ fun ProfileScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
-
-        ) { padding ->
+        snackbarHost = { SnackbarHost(remember { SnackbarHostState() }) },
+    ) { padding ->
         if (!isLoggedIn) {
             Box(
                 modifier = Modifier
@@ -310,74 +251,41 @@ fun ProfileScreen(
                     )
                 }
 
-                // 1. My Account (Display Only)
                 item {
                     ExpandableSection(
-                        title = "My Account",
-                        subtitle = "Account information and login credentials",
-                        isExpanded = openSection.value == "My Account",
+                        title = "My Details & Contacts",
+                        subtitle = "Account information, email, and phone number",
+                        isExpanded = openSection.value == "My Details",
                         onClick = {
                             openSection.value =
-                                if (openSection.value == "My Account") "" else "My Account"
+                                if (openSection.value == "My Details") "" else "My Details"
+                        },
+                        actionButton = {
+                            if (!isEditingCredentials.value) {
+                                TextButton(
+                                    onClick = { isEditingCredentials.value = true },
+                                    enabled = !profileState.isUpdating
+                                ) {
+                                    Text("Edit")
+                                }
+                            }
                         }
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-
-                            Text("First Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(
-                                text = profile.firstName.ifBlank { "—" },
-                                fontSize = 16.sp,
-                                color = Color.DarkGray
+                        if (isEditingCredentials.value) {
+                            EditCredentialsForm(
+                                profile = profile,
+                                onSave = { fn, ln, ph, em ->
+                                    profileViewModel.updateProfile(fn, ln, ph, em)
+                                },
+                                onCancel = { isEditingCredentials.value = false },
+                                isUpdating = profileState.isUpdating
                             )
-
-                            Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
-
-                            Text("Last Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(
-                                text = profile.lastName.ifBlank { "—" },
-                                fontSize = 16.sp,
-                                color = Color.DarkGray
-                            )
+                        } else {
+                            DisplayCredentials(profile = profile)
                         }
                     }
                 }
 
-
-                // 2. Contacts (Display Only)
-                item {
-                    ExpandableSection(
-                        title = "Contacts",
-                        subtitle = "Email addresses and phone numbers",
-                        isExpanded = openSection.value == "Contacts",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "Contacts") "" else "Contacts"
-                        }
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(profile.phoneNumber.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
-
-                            Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
-
-                            Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                            Text(profile.email.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
-                        }
-                    }
-                }
-
-
-                // 3. Delivery Addresses
                 item {
                     ExpandableSection(
                         title = "Delivery Addresses",
@@ -390,20 +298,17 @@ fun ProfileScreen(
                     ) {
                         AddressList(
                             addresses = profile.addresses,
-                            onDeleteAddress = profileViewModel::deleteAddress
+                            onDeleteAddress = profileViewModel::deleteAddress,
+                            onEditAddress = profileViewModel::editAddress,
                         )
 
-                        // Форма додавання адреси
                         AddAddressForm(
                             viewModel = profileViewModel,
-                            onAddressAdded = {
-                                // Закриваємо секцію після успішного додавання
-                                openSection.value = ""
-                            }
+                            onAddressAdded = { openSection.value = "" }
                         )
                     }
                 }
-                // 4. My Orders (Заглушка)
+
                 item {
                     ExpandableSection(
                         title = "My orders",
@@ -421,7 +326,6 @@ fun ProfileScreen(
                     }
                 }
 
-                // [НОВИЙ ЕЛЕМЕНТ] Кнопка виходу з акаунту
                 item {
                     Spacer(Modifier.height(32.dp))
                     OutlinedButton(
@@ -442,10 +346,119 @@ fun ProfileScreen(
     }
 }
 
+@Composable
+fun DisplayCredentials(profile: UserProfile) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Text("First Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(
+            text = profile.firstName.ifBlank { "—" },
+            fontSize = 16.sp,
+            color = Color.DarkGray
+        )
 
-// =========================================================================
-// [КОМПОНЕНТИ АДРЕСИ]
-// =========================================================================
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+        Text("Last Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(
+            text = profile.lastName.ifBlank { "—" },
+            fontSize = 16.sp,
+            color = Color.DarkGray
+        )
+
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+        Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(profile.phoneNumber.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+
+        Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        Text(profile.email.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
+    }
+}
+
+@Composable
+fun EditCredentialsForm(
+    profile: UserProfile,
+    onSave: (firstName: String, lastName: String, phoneNumber: String, email: String) -> Unit,
+    onCancel: () -> Unit,
+    isUpdating: Boolean
+) {
+    val firstName = remember { mutableStateOf(profile.firstName) }
+    val lastName = remember { mutableStateOf(profile.lastName) }
+    val phone = remember { mutableStateOf(profile.phoneNumber) }
+    val email = remember { mutableStateOf(profile.email) }
+
+    val isSaveEnabled = remember {
+        derivedStateOf {
+            !isUpdating &&
+                    firstName.value.isNotBlank() &&
+                    lastName.value.isNotBlank() &&
+                    phone.value.isNotBlank() &&
+                    email.value.isNotBlank() &&
+                    (firstName.value != profile.firstName ||
+                            lastName.value != profile.lastName ||
+                            phone.value != profile.phoneNumber ||
+                            email.value != profile.email)
+        }
+    }
+
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(
+                value = firstName.value, onValueChange = { firstName.value = it },
+                label = { Text("First Name") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = lastName.value, onValueChange = { lastName.value = it },
+                label = { Text("Last Name") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+        }
+
+        OutlinedTextField(
+            value = phone.value, onValueChange = { phone.value = it },
+            label = { Text("Phone Number") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+        )
+
+        OutlinedTextField(
+            value = email.value, onValueChange = { email.value = it },
+            label = { Text("Email") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+        )
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = onCancel,
+                modifier = Modifier.weight(1f).height(50.dp),
+                shape = RoundedCornerShape(12.dp),
+                enabled = !isUpdating
+            ) {
+                Text("Cancel")
+            }
+
+            Button(
+                onClick = { onSave(firstName.value, lastName.value, phone.value, email.value) },
+                enabled = isSaveEnabled.value,
+                modifier = Modifier.weight(1f).height(50.dp),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                if (isUpdating) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                } else {
+                    Text("Save Changes", fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
 
 @Composable
 fun AddAddressForm(
@@ -466,7 +479,6 @@ fun AddAddressForm(
             street.value = ""
             house.value = ""
             apartment.value = ""
-
             onAddressAdded()
             viewModel.resetUpdateState()
         }
@@ -552,16 +564,15 @@ fun AddAddressForm(
     }
 }
 
-/**
- * Список збережених адрес.
- */
 @Composable
 fun AddressList(
     addresses: List<UserAddress>,
     onDeleteAddress: (Int) -> Unit,
+    onEditAddress: (addressId: Int?, city: String, street: String, house: String, apartment: String?) -> Unit,
     profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
     val isUpdating = profileViewModel.state.collectAsState().value.isUpdating
+    val addressToEdit = remember { mutableStateOf<UserAddress?>(null) }
 
     Column(modifier = Modifier
         .fillMaxWidth()
@@ -577,23 +588,105 @@ fun AddressList(
             )
         } else {
             addresses.forEach { address ->
-                SavedAddressCard(
-                    address = address,
-                    onDeleteClick = onDeleteAddress,
-                    isUpdating = isUpdating
-                )
+                if (addressToEdit.value?.id == address.id) {
+                    EditAddressForm(
+                        address = address,
+                        onSave = { city, street, house, apartment ->
+                            onEditAddress(address.id, city, street, house, apartment)
+                            addressToEdit.value = null
+                        },
+                        onCancel = { addressToEdit.value = null },
+                        isUpdating = isUpdating
+                    )
+                } else {
+                    SavedAddressCard(
+                        address = address,
+                        onDeleteClick = onDeleteAddress,
+                        onEditClick = { addressToEdit.value = address },
+                        isUpdating = isUpdating
+                    )
+                }
             }
         }
     }
 }
 
-/**
- * Картка однієї адреси з кнопкою видалення.
- */
+@Composable
+fun EditAddressForm(
+    address: UserAddress,
+    onSave: (city: String, street: String, house: String, apartment: String?) -> Unit,
+    onCancel: () -> Unit,
+    isUpdating: Boolean
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 4.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFFFFFBEA)),
+        border = BorderStroke(1.dp, Color(0xFFFFCC00))
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Edit Address", fontWeight = FontWeight.Bold)
+
+            val city = remember { mutableStateOf(address.city) }
+            val street = remember { mutableStateOf(address.street) }
+            val house = remember { mutableStateOf(address.house ?: "") }
+            val apartment = remember { mutableStateOf(address.apartments ?: "") }
+
+            OutlinedTextField(
+                value = city.value, onValueChange = { city.value = it },
+                label = { Text("City") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = street.value, onValueChange = { street.value = it },
+                label = { Text("Street") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedTextField(
+                    value = house.value, onValueChange = { house.value = it },
+                    label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                )
+                OutlinedTextField(
+                    value = apartment.value, onValueChange = { apartment.value = it },
+                    label = { Text("Apt (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                )
+            }
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(
+                    onClick = onCancel,
+                    modifier = Modifier.weight(1f).height(40.dp),
+                    enabled = !isUpdating
+                ) {
+                    Text("Cancel")
+                }
+                Button(
+                    onClick = { onSave(city.value, street.value, house.value, apartment.value) },
+                    enabled = !isUpdating && city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank(),
+                    modifier = Modifier.weight(1f).height(40.dp)
+                ) {
+                    if (isUpdating) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
+                    } else {
+                        Text("Save")
+                    }
+                }
+            }
+        }
+    }
+}
+
+
 @Composable
 fun SavedAddressCard(
     address: UserAddress,
     onDeleteClick: (Int) -> Unit,
+    onEditClick: () -> Unit,
     isUpdating: Boolean
 ) {
     Card(
@@ -609,7 +702,7 @@ fun SavedAddressCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
-                    .padding(end = 40.dp)
+                    .padding(end = 90.dp)
             ) {
                 Text(
                     text = "${address.street}, ${address.house}${if (address.apartments.isNullOrBlank()) "" else ", apt ${address.apartments}"}",
@@ -624,21 +717,32 @@ fun SavedAddressCard(
                 )
             }
 
-            val addressId = address.id
-            if (addressId != null) {
+            Row(modifier = Modifier.align(Alignment.TopEnd).padding(4.dp)) {
                 IconButton(
-                    onClick = { onDeleteClick(addressId) },
+                    onClick = onEditClick,
                     enabled = !isUpdating,
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp)
-                        .size(32.dp)
+                    modifier = Modifier.size(32.dp)
                 ) {
                     Icon(
-                        Icons.Filled.Delete,
-                        contentDescription = "Видалити адресу",
-                        tint = MaterialTheme.colorScheme.error
+                        Icons.Default.Edit,
+                        contentDescription = "Редагувати адресу",
+                        tint = MaterialTheme.colorScheme.primary
                     )
+                }
+
+                val addressId = address.id
+                if (addressId != null) {
+                    IconButton(
+                        onClick = { onDeleteClick(addressId) },
+                        enabled = !isUpdating,
+                        modifier = Modifier.size(32.dp)
+                    ) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Видалити адресу",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
                 }
             }
         }
@@ -646,15 +750,13 @@ fun SavedAddressCard(
 }
 
 
-/**
- * Компонент для секції, що розкривається (акордеон)
- */
 @Composable
 fun ExpandableSection(
     title: String,
     subtitle: String,
     isExpanded: Boolean,
     onClick: () -> Unit,
+    actionButton: @Composable (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
     Card(
@@ -677,6 +779,7 @@ fun ExpandableSection(
                     Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                     Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
+                actionButton?.invoke()
                 Icon(
                     imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
                     contentDescription = if (isExpanded) "Згорнути" else "Розгорнути"
@@ -693,9 +796,6 @@ fun ExpandableSection(
 }
 
 
-/**
- * Заглушка, якщо користувач не увійшов
- */
 @Composable
 fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
     Column(
