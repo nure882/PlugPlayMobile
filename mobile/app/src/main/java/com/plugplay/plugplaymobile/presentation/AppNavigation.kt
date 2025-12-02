@@ -54,7 +54,6 @@ fun AppNavigation(
             )
         }
 
-        // Profile Screen (без змін)
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onNavigateToCatalog = {
@@ -66,7 +65,6 @@ fun AppNavigation(
             )
         }
 
-        // Login Screen
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
@@ -78,13 +76,13 @@ fun AppNavigation(
                 onNavigateToRegister = {
                     navController.navigate(Routes.REGISTER)
                 },
-                onNavigateBack = { // <--- ВИКОРИСТАННЯ: popBackStack для повернення на Register
+                onNavigateBack = {
                     navController.popBackStack()
                 }
             )
         }
 
-        // Register Screen (без змін)
+
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -102,7 +100,7 @@ fun AppNavigation(
             )
         }
 
-        // Item Detail Screen
+
         composable(
             route = Routes.ITEM_DETAIL,
             arguments = listOf(
@@ -115,7 +113,7 @@ fun AppNavigation(
 
             if (itemId != null) {
                 ItemDetailScreen(
-                    itemId = itemId,
+
                     navController = navController,
                     onNavigateToCheckout = {
                         navController.navigate(Routes.CHECKOUT)

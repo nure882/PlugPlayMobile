@@ -22,6 +22,8 @@ interface AuthRepository {
 
     suspend fun getProfile(): Result<UserProfile>
 
+    suspend fun loginWithGoogle(googleIdToken: String): Result<AuthData>
+
     suspend fun updateProfile(
         firstName: String,
         lastName: String,
