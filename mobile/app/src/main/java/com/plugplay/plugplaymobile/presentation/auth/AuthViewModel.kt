@@ -17,7 +17,7 @@ import javax.inject.Inject
 @HiltViewModel
 class AuthViewModel @Inject constructor(
     private val loginUseCase: LoginUseCase,
-    private val registerUseCase: RegisterUseCase, // Тип use case оновився
+    private val registerUseCase: RegisterUseCase,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
@@ -50,17 +50,28 @@ class AuthViewModel @Inject constructor(
         }
     }
 
-    // [ВИПРАВЛЕНО] Оновлено для роботи з Result<Unit>
     fun register(firstName: String, lastName: String, phoneNumber: String, email: String, password: String) {
         viewModelScope.launch {
             _state.value = AuthResultState.Loading
             registerUseCase(firstName, lastName, phoneNumber, email, password)
                 .onSuccess {
-                    // Успіх! Просто встановлюємо стан Success.
                     _state.value = AuthResultState.Success
                 }
                 .onFailure { error ->
                     _state.value = AuthResultState.Error(error.message ?: "Помилка реєстрації.")
+                }
+        }
+    }
+
+    fun signInWithGoogle(googleIdToken: String) {
+        viewModelScope.launch {
+            _state.value = AuthResultState.Loading
+            authRepository.loginWithGoogle(googleIdToken)
+                .onSuccess {
+                    _state.value = AuthResultState.Success
+                }
+                .onFailure { error ->
+                    _state.value = AuthResultState.Error(error.message ?: "Помилка входу через Google.")
                 }
         }
     }

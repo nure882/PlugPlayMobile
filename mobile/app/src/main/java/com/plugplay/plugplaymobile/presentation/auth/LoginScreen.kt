@@ -1,16 +1,19 @@
 package com.plugplay.plugplaymobile.presentation.auth
 
-import androidx.compose.foundation.BorderStroke // [НОВИЙ ІМПОРТ]
+import android.app.Activity
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.ClickableText // [НОВИЙ ІМПОРТ]
+import androidx.compose.foundation.text.ClickableText
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack // <--- ДОДАНО: Імпорт для кнопки "Назад"
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
@@ -19,30 +22,83 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.AnnotatedString // [НОВИЙ ІМПОРТ]
-import androidx.compose.ui.text.SpanStyle // [НОВИЙ ІМПОРТ]
-import androidx.compose.ui.text.buildAnnotatedString // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation // [НОВИЙ ІМПОРТ]
-import androidx.compose.ui.text.input.VisualTransformation // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.withStyle // [НОВИЙ ІМПОРТ]
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.plugplay.plugplaymobile.R // 💡 Потрібен для R.drawable...
+import androidx.activity.result.IntentSenderRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.auth.api.identity.SignInClient
+import com.google.android.gms.auth.api.identity.BeginSignInRequest
+import com.google.android.gms.common.api.ApiException
+import com.plugplay.plugplaymobile.R
+
+
+private const val WEB_CLIENT_ID = "YOUR_WEB_CLIENT_ID"
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun LoginScreen(
     onLoginSuccess: () -> Unit,
     onNavigateToRegister: () -> Unit,
-    onNavigateBack: () -> Unit, // <--- ДОДАНО: Новий аргумент
+    onNavigateBack: () -> Unit,
     viewModel: AuthViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val oneTapClient: SignInClient = remember { Identity.getSignInClient(context) }
+
     val email = remember { mutableStateOf("") }
     val password = remember { mutableStateOf("") }
     val passwordVisible = remember { mutableStateOf(false) }
+
+    val googleSignInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            try {
+                val credential = oneTapClient.getSignInCredentialFromIntent(result.data)
+                val idToken = credential.googleIdToken
+                if (idToken != null) {
+                    viewModel.signInWithGoogle(idToken)
+                } else {
+                    // Обробка, якщо токен не отримано
+                }
+            } catch (e: ApiException) {
+                // Обробка помилки отримання токена
+            }
+        }
+    }
+
+    fun startGoogleSignIn() {
+        val signInRequest = BeginSignInRequest.builder()
+            .setGoogleIdTokenRequestOptions(
+                BeginSignInRequest.GoogleIdTokenRequestOptions.builder()
+                    .setSupported(true)
+                    .setServerClientId(WEB_CLIENT_ID)
+                    .setFilterByAuthorizedAccounts(false)
+                    .build()
+            )
+            .setAutoSelectEnabled(false)
+            .build()
+
+        oneTapClient.beginSignIn(signInRequest)
+            .addOnSuccessListener { result ->
+                googleSignInLauncher.launch(
+                    IntentSenderRequest.Builder(result.pendingIntent.intentSender).build()
+                )
+            }
+            .addOnFailureListener { e ->
+                // Обробка, якщо One Tap не підтримується
+            }
+    }
 
     val state by viewModel.state.collectAsState()
 
@@ -55,12 +111,12 @@ fun LoginScreen(
 
     Scaffold(
         modifier = Modifier.fillMaxSize(),
-        containerColor = Color(0xFFF4F7F8), // Світло-сірий фон
-        topBar = { // <--- ДОДАНО TopAppBar
+        containerColor = Color(0xFFF4F7F8),
+        topBar = {
             TopAppBar(
                 title = { Text("Sign In") },
                 navigationIcon = {
-                    IconButton(onClick = onNavigateBack) { // <--- ВИКОРИСТАННЯ КОЛБЕКУ
+                    IconButton(onClick = onNavigateBack) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "Назад до реєстрації")
                     }
                 }
@@ -160,20 +216,17 @@ fun LoginScreen(
                     OrDivider()
 
                     GoogleSignInButton {
-                        // TODO: Google Sign In logic
+                        startGoogleSignIn()
                     }
                 }
             }
 
             Spacer(Modifier.height(24.dp))
 
-            // [ВИПРАВЛЕНО] Тепер ця функція визначена нижче
             ClickableRegisterText(onNavigateToRegister)
         }
     }
 }
-
-
 
 
 @Composable

@@ -5,7 +5,7 @@ import com.plugplay.plugplaymobile.data.model.*
 import com.plugplay.plugplaymobile.data.remote.ShopApiService
 import com.plugplay.plugplaymobile.domain.model.AuthData
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.model.UserAddress // <--- НОВИЙ ІМПОРТ
+import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -56,6 +56,24 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
+    override suspend fun loginWithGoogle(googleIdToken: String): Result<AuthData> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val request = GoogleSignInRequest(googleIdToken)
+                val response = apiService.loginWithGoogle(request)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val authData = response.body()!!.toAuthData()
+                    localDataSource.saveAuthData(authData.token, authData.userId)
+                    authData
+                } else {
+                    val errorBody = response.errorBody()?.string()
+                    throw Exception(errorBody ?: "Google Login failed: ${response.message()}")
+                }
+            }
+        }
+    }
+
     override suspend fun saveAuthData(authData: AuthData) {
         localDataSource.saveAuthData(authData.token, authData.userId)
     }
@@ -68,12 +86,10 @@ class AuthRepositoryImpl @Inject constructor(
         return localDataSource.isLoggedIn
     }
 
-    // [ДОДАНО] Реалізація відсутнього методу
     override fun getUserId(): Flow<Int?> {
         return localDataSource.userId
     }
 
-    // [ВИПРАВЛЕНО] Використовуємо userId як Int
     override suspend fun getProfile(): Result<UserProfile> {
         val userId = localDataSource.userId.first()
         if (userId == null) {
@@ -93,7 +109,6 @@ class AuthRepositoryImpl @Inject constructor(
         }
     }
 
-    // [ОНОВЛЕНО] Метод updateProfile тепер приймає адреси та відправляє їх у DTO
     override suspend fun updateProfile(
         firstName: String,
         lastName: String,
@@ -101,7 +116,7 @@ class AuthRepositoryImpl @Inject constructor(
         email: String,
         currentPassword: String?,
         newPassword: String?,
-        addresses: List<UserAddress> // <--- ЗМІНА СИГНАТУРИ
+        addresses: List<UserAddress>
     ): Result<UserProfile> {
         val userId = localDataSource.userId.first()
         if (userId == null) {
@@ -115,7 +130,7 @@ class AuthRepositoryImpl @Inject constructor(
                     lastName = lastName,
                     phoneNumber = phoneNumber,
                     email = email,
-                    addresses = addresses.map { it.toDto() }, // <--- ВАЖЛИВА ЗМІНА: Мапимо та передаємо адреси
+                    addresses = addresses.map { it.toDto() },
                     currentPassword = currentPassword,
                     newPassword = newPassword
                 )
