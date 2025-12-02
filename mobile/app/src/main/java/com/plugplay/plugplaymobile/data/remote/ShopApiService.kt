@@ -3,6 +3,7 @@ package com.plugplay.plugplaymobile.data.remote
 import com.plugplay.plugplaymobile.data.model.CartItemDto
 import com.plugplay.plugplaymobile.data.model.CreateCartItemDto
 import com.plugplay.plugplaymobile.data.model.FilterProductsResponse
+import com.plugplay.plugplaymobile.data.model.GoogleSignInRequest
 import com.plugplay.plugplaymobile.data.model.LoginRequest
 import com.plugplay.plugplaymobile.data.model.LoginResponse
 import com.plugplay.plugplaymobile.data.model.ProductDto
@@ -35,8 +36,11 @@ interface ShopApiService {
     suspend fun getProductById(@Path("id") itemId: Int): Response<ProductDto>
 
     // Auth API
-    @POST("api/auth/login")
+    @POST("api/Auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
+
+    @POST("Auth/google-login") // Новий ендпоінт
+    suspend fun loginWithGoogle(@Body request: GoogleSignInRequest): Response<LoginResponse>
 
     @POST("api/Auth/register")
     suspend fun register(@Body request: RegisterRequest): Response<Void>
