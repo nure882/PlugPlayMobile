@@ -6,6 +6,8 @@ import com.plugplay.plugplaymobile.data.model.FilterProductsResponse
 import com.plugplay.plugplaymobile.data.model.GoogleSignInRequest
 import com.plugplay.plugplaymobile.data.model.LoginRequest
 import com.plugplay.plugplaymobile.data.model.LoginResponse
+import com.plugplay.plugplaymobile.data.model.PlaceOrderRequest
+import com.plugplay.plugplaymobile.data.model.PlaceOrderResponse
 import com.plugplay.plugplaymobile.data.model.ProductDto
 import com.plugplay.plugplaymobile.data.model.ProfileResponse
 import com.plugplay.plugplaymobile.data.model.RegisterRequest
@@ -75,4 +77,10 @@ interface ShopApiService {
     // DELETE /api/Cart/clear/{userId}
     @DELETE("api/Cart/clear/{userId}")
     suspend fun clearCart(@Path("userId") userId: Int): Response<Void>
+
+    // ------------------ ORDER API ------------------
+
+    // POST /api/Order/place
+    @POST("api/Order/place")
+    suspend fun placeOrder(@Body request: PlaceOrderRequest): Response<PlaceOrderResponse>
 }

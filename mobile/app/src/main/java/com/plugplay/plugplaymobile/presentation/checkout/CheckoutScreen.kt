@@ -8,8 +8,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Done
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -21,18 +19,32 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.material.icons.outlined.Add
-import androidx.compose.material.icons.outlined.ArrowDropDown // [ДОДАНО ІМПОРТ]
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.outlined.ArrowDropDown
+import androidx.compose.material.icons.outlined.Paid
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.model.UserAddress // <--- НОВИЙ ІМПОРТ
+import com.plugplay.plugplaymobile.domain.model.UserAddress
+import com.plugplay.plugplaymobile.domain.model.DeliveryMethod
+import com.plugplay.plugplaymobile.domain.model.PaymentMethod
+import com.plugplay.plugplaymobile.domain.usecase.PlaceOrderUseCase
+import com.plugplay.plugplaymobile.domain.usecase.GetCartItemsUseCase
+import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import kotlinx.coroutines.flow.map
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.text.NumberFormat
@@ -43,64 +55,338 @@ import java.util.Locale
 data class CheckoutState(
     val isLoggedIn: Boolean = false,
     val isLoading: Boolean = true,
-    val profile: UserProfile? = null
+    val isPlacingOrder: Boolean = false,
+    val profile: UserProfile? = null,
+    val error: String? = null
+)
+
+data class DeliveryOption(val method: DeliveryMethod, val title: String, val subtitle: String, val icon: ImageVector)
+data class PaymentOption(val method: PaymentMethod, val title: String, val subtitle: String, val icon: ImageVector)
+
+data class CustomerOrderData(
+    val address: UserAddress,
+    val customerName: String,
+    val customerEmail: String,
+    val customerPhone: String
 )
 
 @HiltViewModel
 class CheckoutViewModel @Inject constructor(
-    authRepository: AuthRepository
+    private val authRepository: AuthRepository,
+    private val placeOrderUseCase: PlaceOrderUseCase,
+    private val getCartItemsUseCase: GetCartItemsUseCase
 ) : ViewModel() {
-    val state: StateFlow<CheckoutState> = authRepository.getAuthStatus()
-        .map { isLoggedIn ->
-            val profile = if (isLoggedIn) {
-                // Тут має бути виклик UseCase, який бере профіль,
-                // але для імітації використовуємо заглушку, якщо profile null
-                authRepository.getProfile().getOrNull()
-            } else {
-                null
-            }
-            CheckoutState(
-                isLoggedIn = isLoggedIn,
-                isLoading = false,
-                profile = profile
-            )
+
+    private val _uiState = MutableStateFlow(CheckoutState(isLoading = true))
+    private val _isPlacingOrder = MutableStateFlow(false)
+
+    val state: StateFlow<CheckoutState> = combine(
+        authRepository.getAuthStatus(),
+        _isPlacingOrder,
+        _uiState
+    ) { isLoggedIn, isPlacing, uiState ->
+        val profile = if (isLoggedIn && uiState.profile == null) {
+            authRepository.getProfile().getOrNull()
+        } else {
+            uiState.profile
         }
+
+        uiState.copy(
+            isLoggedIn = isLoggedIn,
+            isLoading = false,
+            isPlacingOrder = isPlacing,
+            profile = profile
+        )
+    }
         .stateIn(
             viewModelScope,
             SharingStarted.WhileSubscribed(5000),
             CheckoutState(isLoading = true)
         )
+
+
+    fun loadProfileIfNecessary() {
+        if (state.value.isLoggedIn && state.value.profile == null) {
+            viewModelScope.launch {
+                authRepository.getProfile()
+                    .onSuccess { profile ->
+                        _uiState.update { it.copy(profile = profile) }
+                    }
+                    .onFailure { error ->
+                        _uiState.update { it.copy(error = error.message) }
+                    }
+            }
+        }
+    }
+
+    // Оновлена сигнатура: тепер передаємо функцію, яка має викликатися після розміщення замовлення
+    fun placeOrder(
+        deliveryMethod: DeliveryMethod,
+        paymentMethod: PaymentMethod,
+        address: UserAddress,
+        customerName: String,
+        customerEmail: String,
+        customerPhone: String,
+        onOrderPlacedSuccessfully: (PaymentMethod) -> Unit
+    ) {
+        if (_isPlacingOrder.value) return
+
+        _isPlacingOrder.update { true }
+        _uiState.update { it.copy(error = null) }
+
+        viewModelScope.launch {
+            val userId = authRepository.getUserId().first()
+            val cartItems = getCartItemsUseCase(userId).first()
+            val totalPrice = cartItems.sumOf { it.total }
+
+            if (cartItems.isEmpty()) {
+                _uiState.update { it.copy(error = "Cart is empty.") }
+                _isPlacingOrder.update { false }
+                return@launch
+            }
+
+            placeOrderUseCase(
+                userId = userId,
+                cartItems = cartItems,
+                totalPrice = totalPrice,
+                deliveryMethod = deliveryMethod,
+                paymentMethod = paymentMethod,
+                address = address,
+                customerName = customerName,
+                customerEmail = customerEmail,
+                customerPhone = customerPhone
+            )
+                .onSuccess { orderId ->
+                    _isPlacingOrder.update { false }
+                    // ВИКЛИК КОЛБЕКУ З МЕТОДОМ ОПЛАТИ
+                    onOrderPlacedSuccessfully(paymentMethod)
+                }
+                .onFailure { error ->
+                    _isPlacingOrder.update { false }
+                    _uiState.update { it.copy(error = error.message) }
+                }
+        }
+    }
 }
 
 
-// --- МОДЕЛІ-ЗАГЛУШКИ ДЛЯ ДОСТАВКИ/ОПЛАТИ ---
-sealed class DeliveryMethod(val title: String, val subtitle: String, val icon: ImageVector) {
-    object Courier : DeliveryMethod("Courier", "Delivery 1-2 days", Icons.Outlined.LocalShipping)
-    object Post : DeliveryMethod("Post", "Delivery 3-5 days", Icons.Outlined.Inventory)
-    object Premium : DeliveryMethod("Premium Delivery", "Same day delivery", Icons.Outlined.FlashOn)
-    object Pickup : DeliveryMethod("Pickup", "Collect from store", Icons.Outlined.Store)
+// Delivery Options
+val deliveryOptions = listOf(
+    DeliveryOption(DeliveryMethod.Courier, "Courier", "Delivery 1-2 days", Icons.Outlined.LocalShipping),
+    DeliveryOption(DeliveryMethod.Post, "Post", "Delivery 3-5 days", Icons.Outlined.Inventory),
+    DeliveryOption(DeliveryMethod.Premium, "Premium Delivery", "Same day delivery", Icons.Outlined.FlashOn),
+    DeliveryOption(DeliveryMethod.Pickup, "Pickup", "Collect from store", Icons.Outlined.Store)
+)
+
+// Payment Options (GooglePay mock added)
+val paymentOptions = listOf(
+    PaymentOption(PaymentMethod.Card, "Card", "Pay online with card", Icons.Outlined.CreditCard),
+    PaymentOption(PaymentMethod.GooglePay, "Google Pay (Test)", "Secure payment via Google", Icons.Outlined.Paid),
+    PaymentOption(PaymentMethod.CashAfterDelivery, "Cash after delivery", "Pay when you receive", Icons.Outlined.AttachMoney)
+)
+
+// Helper function
+fun Double.formatPrice(): String {
+    val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+    }
+    return format.format(this)
 }
 
-sealed class PaymentMethod(val title: String, val subtitle: String, val icon: ImageVector) {
-    object Card : PaymentMethod("Card", "Pay online with card", Icons.Outlined.CreditCard)
-    object CashAfterDelivery : PaymentMethod("Cash after delivery", "Pay when you receive", Icons.Outlined.AttachMoney)
+// NEW OrderTotalCard
+@Composable
+fun OrderTotalCard(subtotal: Double) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
+    ) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text("Order Summary", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Divider()
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Subtotal:", color = Color.Gray)
+                Text(subtotal.formatPrice() + " ₴")
+            }
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Delivery:", color = Color.Gray)
+                Text("0.00 ₴")
+            }
+            Divider()
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text("Total:", fontWeight = FontWeight.Bold)
+                Text(subtotal.formatPrice() + " ₴", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+            }
+        }
+    }
 }
 
-// --- ОСНОВНИЙ ЕКРАН ---
+// NEW Payment Simulation Dialog
+@Composable
+fun PaymentSimulationDialog(
+    isOpen: Boolean,
+    onPaymentSuccess: () -> Unit,
+    onClose: () -> Unit,
+    total: Double,
+    paymentMethod: PaymentMethod
+) {
+    if (!isOpen) return
+
+    var isLoading by remember { mutableStateOf(true) }
+    var paymentSuccess by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        delay(2000)
+        isLoading = false
+        // Імітуємо успіх оплати
+        paymentSuccess = true
+    }
+
+    Dialog(onDismissRequest = onClose) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(containerColor = Color.White)
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator()
+                    Spacer(Modifier.height(8.dp))
+                    Text("Connecting to Payment Gateway...", style = MaterialTheme.typography.titleMedium)
+                } else if (paymentSuccess) {
+                    Icon(
+                        Icons.Outlined.CheckCircleOutline,
+                        contentDescription = "Success",
+                        tint = Color.Green,
+                        modifier = Modifier.size(64.dp)
+                    )
+                    Text("Payment Successful!", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Amount paid: ${total.formatPrice()} ₴ via ${paymentMethod.name}", color = Color.Gray)
+                    Spacer(Modifier.height(16.dp))
+                    Button(
+                        onClick = onPaymentSuccess,
+                        modifier = Modifier.fillMaxWidth().height(50.dp)
+                    ) {
+                        Text("Continue to Order Confirmation")
+                    }
+                } else {
+                    // Це не повинно відбутися в симуляції, але як заглушка
+                    Text("Payment failed.", color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+    }
+}
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CheckoutScreen(
     onNavigateBack: () -> Unit,
-    onOrderConfirmed: () -> Unit, // <--- ДОДАНО: новий колбек
-    viewModel: CheckoutViewModel = hiltViewModel()
+    onOrderConfirmed: () -> Unit,
+    viewModel: CheckoutViewModel = hiltViewModel(),
+    cartViewModel: CartViewModel = hiltViewModel()
 ) {
     val checkoutState by viewModel.state.collectAsState()
+    val cartState by cartViewModel.state.collectAsState()
     val isLoggedIn = checkoutState.isLoggedIn
 
-    // Стан для обраних методів (перенесено всередину CheckoutScreen)
     var selectedDelivery by remember { mutableStateOf<DeliveryMethod>(DeliveryMethod.Courier) }
     var selectedPayment by remember { mutableStateOf<PaymentMethod>(PaymentMethod.Card) }
+
+    // Стан для модального вікна оплати
+    var showPaymentModal by remember { mutableStateOf(false) }
+    // Зберігаємо обраний метод для передачі в модальне вікно
+    var paymentMethodForModal by remember { mutableStateOf<PaymentMethod?>(null) }
+
+
+    val guestFirstName = remember { mutableStateOf("") }
+    val guestLastName = remember { mutableStateOf("") }
+    val guestPhone = remember { mutableStateOf("") }
+    val guestEmail = remember { mutableStateOf("") }
+    val guestCity = remember { mutableStateOf("") }
+    val guestStreet = remember { mutableStateOf("") }
+    val guestHouse = remember { mutableStateOf("") }
+    val guestApartment = remember { mutableStateOf("") }
+
+    val selectedAddressFromProfile = remember { mutableStateOf<UserAddress?>(null) }
+
+    LaunchedEffect(Unit) {
+        viewModel.loadProfileIfNecessary()
+    }
+
+    LaunchedEffect(checkoutState.profile) {
+        val addresses = checkoutState.profile?.addresses.orEmpty().filter { it.street.isNotBlank() && it.city.isNotBlank() }
+        selectedAddressFromProfile.value = addresses.firstOrNull()
+    }
+
+
+    val canPlaceOrder = remember(checkoutState.isPlacingOrder, cartState.cartItems, isLoggedIn, selectedAddressFromProfile.value, guestFirstName.value, guestCity.value) {
+        if (checkoutState.isPlacingOrder || cartState.cartItems.isEmpty()) return@remember false
+
+        if (isLoggedIn) {
+            selectedAddressFromProfile.value != null
+        } else {
+            guestFirstName.value.isNotBlank() && guestLastName.value.isNotBlank() &&
+                    guestPhone.value.isNotBlank() && guestEmail.value.isNotBlank() &&
+                    guestCity.value.isNotBlank() && guestStreet.value.isNotBlank() &&
+                    guestHouse.value.isNotBlank()
+        }
+    }
+
+    val customerData = remember(isLoggedIn, checkoutState.profile, selectedAddressFromProfile.value, guestFirstName.value, guestCity.value, guestPhone.value, guestEmail.value) {
+        if (isLoggedIn) {
+            val profile = checkoutState.profile
+            val address = selectedAddressFromProfile.value
+            if (profile != null && address != null) {
+                CustomerOrderData(
+                    address = address,
+                    customerName = "${profile.firstName} ${profile.lastName}",
+                    customerEmail = profile.email,
+                    customerPhone = profile.phoneNumber
+                )
+            } else null
+        } else {
+            if (guestCity.value.isNotBlank() && guestStreet.value.isNotBlank() && guestHouse.value.isNotBlank()) {
+                CustomerOrderData(
+                    address = UserAddress(
+                        id = null,
+                        city = guestCity.value,
+                        street = guestStreet.value,
+                        house = guestHouse.value,
+                        apartments = guestApartment.value.ifBlank { null }
+                    ),
+                    customerName = "${guestFirstName.value} ${guestLastName.value}",
+                    customerEmail = guestEmail.value,
+                    customerPhone = guestPhone.value
+                )
+            } else null
+        }
+    }
+
+    // Діалог симуляції оплати
+    paymentMethodForModal?.let { method ->
+        PaymentSimulationDialog(
+            isOpen = showPaymentModal,
+            onPaymentSuccess = {
+                showPaymentModal = false
+                onOrderConfirmed()
+            },
+            onClose = {
+                // Якщо користувач закрив діалог, він, ймовірно, скасував оплату.
+                showPaymentModal = false
+            },
+            total = cartState.subtotal,
+            paymentMethod = method
+        )
+    }
+
 
     Scaffold(
         topBar = {
@@ -127,17 +413,27 @@ fun CheckoutScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // --- 0. SHIPPING INFORMATION / GUEST INFO (ГОЛОВНА ЛОГІКА) ---
                 item {
                     if (isLoggedIn) {
-                        ShippingInformationForm(checkoutState.profile)
+                        ShippingInformationForm(
+                            profile = checkoutState.profile,
+                            selectedAddress = selectedAddressFromProfile.value,
+                            onAddressSelect = { selectedAddressFromProfile.value = it }
+                        )
                     } else {
-                        // Якщо не авторизований - показуємо форму введення адреси для гостя
-                        AddressInputForm()
+                        AddressInputForm(
+                            firstName = guestFirstName,
+                            lastName = guestLastName,
+                            phone = guestPhone,
+                            email = guestEmail,
+                            city = guestCity,
+                            street = guestStreet,
+                            house = guestHouse,
+                            apartment = guestApartment
+                        )
                     }
                 }
 
-                // --- 1. DELIVERY TYPE SECTION ---
                 item {
                     Text(
                         "Delivery Type",
@@ -147,12 +443,11 @@ fun CheckoutScreen(
                     )
                     DeliveryOptions(
                         selected = selectedDelivery,
-                        onSelect = { selectedDelivery = it },
-                        options = listOf(DeliveryMethod.Courier, DeliveryMethod.Post, DeliveryMethod.Premium)
+                        onSelect = { selectedDelivery = it.method },
+                        options = deliveryOptions
                     )
                 }
 
-                // --- 2. PAYMENT METHOD SECTION ---
                 item {
                     Text(
                         "Payment Method",
@@ -162,21 +457,50 @@ fun CheckoutScreen(
                     )
                     PaymentOptions(
                         selected = selectedPayment,
-                        onSelect = { selectedPayment = it },
-                        options = listOf(PaymentMethod.Card, PaymentMethod.CashAfterDelivery)
+                        onSelect = { selectedPayment = it.method },
+                        options = paymentOptions
                     )
                 }
 
-                // --- 3. CONFIRM BUTTON (Placeholder) ---
                 item {
+                    OrderTotalCard(cartState.subtotal)
+                }
+
+                item {
+                    if (checkoutState.error != null) {
+                        Text(checkoutState.error!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(bottom = 8.dp))
+                    }
                     Spacer(modifier = Modifier.height(16.dp))
                     Button(
-                        // [ОНОВЛЕНО] При натисканні імітуємо успішне оформлення замовлення та викликаємо навігацію
-                        onClick = { onOrderConfirmed() },
+                        onClick = {
+                            customerData?.let { data ->
+                                paymentMethodForModal = selectedPayment
+                                viewModel.placeOrder(
+                                    deliveryMethod = selectedDelivery,
+                                    paymentMethod = selectedPayment,
+                                    address = data.address,
+                                    customerName = data.customerName,
+                                    customerEmail = data.customerEmail,
+                                    customerPhone = data.customerPhone,
+                                    onOrderPlacedSuccessfully = { method ->
+                                        when (method) {
+                                            PaymentMethod.CashAfterDelivery -> onOrderConfirmed()
+                                            PaymentMethod.Card, PaymentMethod.GooglePay -> showPaymentModal = true
+                                            else -> onOrderConfirmed()
+                                        }
+                                    }
+                                )
+                            }
+                        },
+                        enabled = canPlaceOrder,
                         modifier = Modifier.fillMaxWidth().height(56.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Confirm Order", fontWeight = FontWeight.Bold)
+                        if (checkoutState.isPlacingOrder) {
+                            CircularProgressIndicator(color = Color.White, modifier = Modifier.size(24.dp))
+                        } else {
+                            Text("Confirm Order (${cartState.subtotal.formatPrice()} ₴)", fontWeight = FontWeight.Bold)
+                        }
                     }
                 }
             }
@@ -184,33 +508,29 @@ fun CheckoutScreen(
     }
 }
 
-// --- ФОРМА АВТОРИЗОВАНОГО КОРИСТУВАЧА (ОНОВЛЕНО ДЛЯ АДРЕС) ---
+// --- ФОРМА АВТОРИЗОВАНОГО КОРИСТУВАЧА ---
 @Composable
-fun ShippingInformationForm(profile: UserProfile?) {
+fun ShippingInformationForm(profile: UserProfile?, selectedAddress: UserAddress?, onAddressSelect: (UserAddress) -> Unit) {
 
-    // [MODIFIED LOGIC]: Отримання та мапінг адрес з профілю
     val addresses = remember(profile?.addresses) {
         profile?.addresses.orEmpty()
-            .filter { it.street.isNotBlank() && it.city.isNotBlank() } // Фільтруємо неповні
-            .map {
-                // Форматування адреси для відображення в Dropdown
-                "${it.street}, ${it.house}${if (it.apartments.isNullOrBlank()) "" else ", apt ${it.apartments}"}, ${it.city}"
-            }
+            .filter { it.street.isNotBlank() && it.city.isNotBlank() }
     }
 
-    // Default selected address: Placeholder if none exist
     val addressOptions = remember(addresses) {
-        if (addresses.isEmpty()) {
-            listOf("Select address")
-        } else {
-            addresses
+        addresses.map { address ->
+            Pair(
+                address,
+                "${address.street}, ${address.house}${if (address.apartments.isNullOrBlank()) "" else ", apt ${address.apartments}"}, ${address.city}"
+            )
         }
     }
 
-    // Стан для Dropdown (вибору адреси)
-    var isExpanded by remember { mutableStateOf(false) }
-    var selectedAddress by remember { mutableStateOf(addressOptions.first()) } // Використовуємо динамічні опції
+    val selectedAddressPair = remember(selectedAddress) {
+        addressOptions.find { it.first == selectedAddress } ?: addressOptions.firstOrNull()
+    }
 
+    var isExpanded by remember { mutableStateOf(false) }
 
     Column(
         modifier = Modifier
@@ -226,7 +546,6 @@ fun ShippingInformationForm(profile: UserProfile?) {
             fontWeight = FontWeight.Bold
         )
 
-        // --- 1. Name & Last Name ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -243,7 +562,6 @@ fun ShippingInformationForm(profile: UserProfile?) {
             )
         }
 
-        // --- 2. Email & Phone ---
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -260,7 +578,6 @@ fun ShippingInformationForm(profile: UserProfile?) {
             )
         }
 
-        // --- 3. Address Dropdown (Вибір адреси) ---
         Text(
             "Address",
             style = MaterialTheme.typography.labelMedium,
@@ -268,7 +585,6 @@ fun ShippingInformationForm(profile: UserProfile?) {
             modifier = Modifier.padding(top = 8.dp)
         )
 
-        // Використовуємо OutlinedTextField для імітації Dropdown.
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -276,13 +592,13 @@ fun ShippingInformationForm(profile: UserProfile?) {
                 .clip(RoundedCornerShape(12.dp))
                 .border(1.dp, Color.Gray, RoundedCornerShape(12.dp))
                 .clickable(onClick = { isExpanded = true })
-                .background(Color(0xFFF0F0F0)), // Light Gray background for input fields
+                .background(Color(0xFFF0F0F0)),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(
-                selectedAddress,
+                selectedAddressPair?.second ?: "Select address or add one in profile",
                 modifier = Modifier.padding(horizontal = 16.dp),
-                color = Color.Black
+                color = if (selectedAddressPair != null) Color.Black else Color.Gray
             )
             Icon(
                 Icons.Outlined.ArrowDropDown,
@@ -295,18 +611,17 @@ fun ShippingInformationForm(profile: UserProfile?) {
                 onDismissRequest = { isExpanded = false },
                 modifier = Modifier.fillMaxWidth(0.9f)
             ) {
-                addressOptions.forEach { address -> // Використовуємо динамічні опції
+                addressOptions.forEach { (address, label) ->
                     DropdownMenuItem(
-                        text = { Text(address) },
+                        text = { Text(label) },
                         onClick = {
-                            selectedAddress = address
+                            onAddressSelect(address)
                             isExpanded = false
                         }
                     )
                 }
             }
         }
-        // [ПОПЕРЕДЖЕННЯ ПРО АДРЕСУ] - Показуємо, якщо список адрес порожній
         if (addresses.isEmpty()) {
             Text(
                 "You have no addresses to select from. Please configure them in your profile.",
@@ -318,7 +633,6 @@ fun ShippingInformationForm(profile: UserProfile?) {
     }
 }
 
-// Допоміжний компонент для відображення нередагованих полів
 @Composable
 fun InputDisplayCard(label: String, value: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier) {
@@ -334,7 +648,7 @@ fun InputDisplayCard(label: String, value: String, modifier: Modifier = Modifier
                 .fillMaxWidth()
                 .height(56.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color(0xFFF0F0F0)) // Light Gray background for input fields
+                .background(Color(0xFFF0F0F0))
                 .padding(horizontal = 16.dp),
             contentAlignment = Alignment.CenterStart
         ) {
@@ -344,15 +658,18 @@ fun InputDisplayCard(label: String, value: String, modifier: Modifier = Modifier
 }
 
 
-// --- ФОРМА ГОСТЯ (ІСНУЮЧА) ---
+// --- ФОРМА ГОСТЯ ---
 @Composable
-fun AddressInputForm() {
-    // Стан для полів
-    val city = remember { mutableStateOf("") }
-    val street = remember { mutableStateOf("") }
-    val house = remember { mutableStateOf("") }
-    val apartment = remember { mutableStateOf("") }
-
+fun AddressInputForm(
+    firstName: MutableState<String>,
+    lastName: MutableState<String>,
+    phone: MutableState<String>,
+    email: MutableState<String>,
+    city: MutableState<String>,
+    street: MutableState<String>,
+    house: MutableState<String>,
+    apartment: MutableState<String>
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -362,90 +679,69 @@ fun AddressInputForm() {
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Text(
-            "Add New Address",
+            "Guest and Shipping Information",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold
         )
 
-        // Рядок 1: City & Street
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(value = firstName.value, onValueChange = { firstName.value = it }, label = { Text("First Name*") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+            OutlinedTextField(value = lastName.value, onValueChange = { lastName.value = it }, label = { Text("Last Name*") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             OutlinedTextField(
-                value = city.value,
-                onValueChange = { city.value = it },
-                label = { Text("City") },
+                value = email.value,
+                onValueChange = { email.value = it },
+                label = { Text("Email*") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
             OutlinedTextField(
-                value = street.value,
-                onValueChange = { street.value = it },
-                label = { Text("Street") },
+                value = phone.value,
+                onValueChange = { phone.value = it.filter { c -> c.isDigit() || c == '+' } },
+                label = { Text("Phone*") },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Phone)
             )
         }
 
-        // Рядок 2: House & Apartment
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = house.value,
-                onValueChange = { house.value = it },
-                label = { Text("House") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
-            OutlinedTextField(
-                value = apartment.value,
-                onValueChange = { apartment.value = it },
-                label = { Text("Apartment (optional)") },
-                singleLine = true,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
-            )
+        Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+        Text("Delivery Address", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(value = city.value, onValueChange = { city.value = it }, label = { Text("City*") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+            OutlinedTextField(value = street.value, onValueChange = { street.value = it }, label = { Text("Street*") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
         }
 
-        Spacer(Modifier.height(24.dp))
-
-        // Кнопка "Add Address"
-        OutlinedButton(
-            onClick = { /* TODO: Implement saving address */ },
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = MaterialTheme.colorScheme.primary,
-                containerColor = Color.Transparent
-            ),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary)
-        ) {
-            Icon(Icons.Outlined.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(Modifier.width(8.dp))
-            Text("Add Address", fontWeight = FontWeight.SemiBold)
+        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(value = house.value, onValueChange = { house.value = it }, label = { Text("House*") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
+            OutlinedTextField(value = apartment.value, onValueChange = { apartment.value = it }, label = { Text("Apartment (optional)") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp))
         }
     }
 }
 
 
-// --- ІСНУЮЧІ ДОПОМІЖНІ КОМПОНЕНТИ ---
+// --- ДОПОМІЖНІ КОМПОНЕНТИ ---
 
 @Composable
-fun <T : DeliveryMethod> DeliveryOptions(
-    selected: T,
-    onSelect: (T) -> Unit,
-    options: List<T>
+fun DeliveryOptions(
+    selected: DeliveryMethod,
+    onSelect: (DeliveryOption) -> Unit,
+    options: List<DeliveryOption>
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { item ->
-            DeliveryCard(
-                delivery = item,
-                isSelected = item == selected,
+            SelectionCard(
+                title = item.title,
+                subtitle = item.subtitle,
+                icon = item.icon,
+                isSelected = item.method == selected,
                 onClick = { onSelect(item) }
             )
         }
@@ -453,52 +749,22 @@ fun <T : DeliveryMethod> DeliveryOptions(
 }
 
 @Composable
-fun <T : PaymentMethod> PaymentOptions(
-    selected: T,
-    onSelect: (T) -> Unit,
-    options: List<T>
+fun PaymentOptions(
+    selected: PaymentMethod,
+    onSelect: (PaymentOption) -> Unit,
+    options: List<PaymentOption>
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.forEach { item ->
-            PaymentCard(
-                payment = item,
-                isSelected = item == selected,
+            SelectionCard(
+                title = item.title,
+                subtitle = item.subtitle,
+                icon = item.icon,
+                isSelected = item.method == selected,
                 onClick = { onSelect(item) }
             )
         }
     }
-}
-
-
-@Composable
-fun DeliveryCard(
-    delivery: DeliveryMethod,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    SelectionCard(
-        title = delivery.title,
-        subtitle = delivery.subtitle,
-        icon = delivery.icon,
-        isSelected = isSelected,
-        onClick = onClick
-    )
-}
-
-@Composable
-fun PaymentCard(
-    payment: PaymentMethod,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    // NOTE: Для методу оплати ми використовуємо іконку $ (AttachMoney) замість LocalShipping
-    SelectionCard(
-        title = payment.title,
-        subtitle = payment.subtitle,
-        icon = payment.icon,
-        isSelected = isSelected,
-        onClick = onClick
-    )
 }
 
 @Composable
@@ -526,7 +792,6 @@ fun SelectionCard(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                // Radio Button (Імітація)
                 RadioButton(
                     selected = isSelected,
                     onClick = onClick,
@@ -538,15 +803,12 @@ fun SelectionCard(
 
                 Spacer(Modifier.width(8.dp))
 
-                // Content (Text)
                 Column {
                     Text(title, fontWeight = FontWeight.SemiBold)
                     Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
             }
 
-            // Icon (Right side, styled like the image)
-            // Ми не можемо точно імітувати стилізовані іконки, тому використовуємо стандартні.
             Icon(
                 icon,
                 contentDescription = null,

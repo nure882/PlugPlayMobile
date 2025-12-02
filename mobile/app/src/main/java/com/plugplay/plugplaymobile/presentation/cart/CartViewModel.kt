@@ -39,21 +39,19 @@ class CartViewModel @Inject constructor(
 
     private val _loadingState = MutableStateFlow(false)
 
-    // Получаем ID пользователя из AuthRepository
     private val userIdFlow = authRepository.getUserId()
         .stateIn(viewModelScope, kotlinx.coroutines.flow.SharingStarted.Eagerly, null)
 
-    // Комбинируем поток товаров в корзине с состоянием загрузки
     val state: StateFlow<CartState> = combine(
         userIdFlow,
         getCartItemsUseCase(null),
-        _loadingState // <--- [ВИПРАВЛЕННЯ] Включаємо потік _loadingState сюди
-    ) { userId, items, isMutating -> // <--- [ВИПРАВЛЕННЯ] Отримуємо нове значення isMutating
+        _loadingState
+    ) { userId, items, isMutating ->
         val subtotal = items.sumOf { it.total }
         CartState(
             cartItems = items.sortedBy { it.id },
             subtotal = subtotal,
-            isLoading = isMutating, // <--- [ВИПРАВЛЕННЯ] Використовуємо реактивне значення isMutating
+            isLoading = isMutating,
             error = null
         )
     }.stateIn(
@@ -61,6 +59,10 @@ class CartViewModel @Inject constructor(
         kotlinx.coroutines.flow.SharingStarted.WhileSubscribed(5000),
         CartState(isLoading = false)
     )
+
+    fun getUserId(): Int? {
+        return userIdFlow.value
+    }
 
     fun addToCart(productId: String, quantity: Int) {
         viewModelScope.launch {
