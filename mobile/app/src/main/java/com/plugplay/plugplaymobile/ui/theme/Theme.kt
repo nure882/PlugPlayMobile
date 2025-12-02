@@ -40,7 +40,7 @@ private val LightColorScheme = lightColorScheme(
 
 @Composable
 fun PlugPlayMobileTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     // Динамические цвета Material 3 (пока не используем)
     dynamicColor: Boolean = true,
     content: @Composable () -> Unit
