@@ -17,10 +17,19 @@ android {
         applicationId = "com.plugplay.plugplaymobile"
         minSdk = 28
         targetSdk = 35
-        versionCode = 1
+        versionCode = 2
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("x86_64", "arm64-v8a", "armeabi-v7a")
+            isUniversalApk = false
+        }
     }
 
     buildTypes {
@@ -33,8 +42,6 @@ android {
         }
     }
     compileOptions {
-        // Убедитесь, что используете Java 17 для Hilt, если необходимо, или оставайтесь на 11, но проверьте совместимость.
-        // Оставим 11, как у вас.
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
     }
