@@ -15,14 +15,18 @@ import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.KeyboardArrowDown
+import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Search
@@ -49,6 +53,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.plugplay.plugplaymobile.R
+import com.plugplay.plugplaymobile.domain.model.AttributeGroup
 import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
@@ -94,7 +99,6 @@ fun ProductListScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
 
-    // Синхронизация текста при изменении извне (например, при сбросе)
     LaunchedEffect(currentSearchQuery) {
         searchText = currentSearchQuery
         if (currentSearchQuery.isNotEmpty()) {
@@ -102,9 +106,7 @@ fun ProductListScreen(
         }
     }
 
-    // Для анимированного перехода (ключ фильтра)
     val currentCategoryId by viewModel.currentCategoryId.collectAsState()
-    // Ключ для анимации: меняется либо категория, либо поисковый запрос
     val animationKey = remember(currentCategoryId, currentSearchQuery) {
         currentCategoryId?.toString() ?: currentSearchQuery
     }
@@ -118,16 +120,18 @@ fun ProductListScreen(
         }
     )
 
+    // [ИСПРАВЛЕНО] Теперь передаем 4 параметра: min, max, sort, attributes
     FilterModal(
         isOpen = isFilterModalVisible,
         onClose = viewModel::toggleFilterModal,
-        onApply = { min, max, sort -> viewModel.applyFilters(min, max, sort) }
+        onApply = { min, max, sort, attrs ->
+            viewModel.applyFilters(min, max, sort, attrs)
+        }
     )
 
     Scaffold(
         topBar = {
             if (isSearchActive) {
-                // [РЕЖИМ ПОИСКА]
                 TopAppBar(
                     title = {
                         TextField(
@@ -152,7 +156,6 @@ fun ProductListScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = {
-                            // Выход из поиска
                             isSearchActive = false
                             searchText = ""
                             viewModel.clearSearch()
@@ -162,21 +165,16 @@ fun ProductListScreen(
                     },
                     actions = {
                         if (searchText.isNotEmpty()) {
-                            IconButton(onClick = {
-                                searchText = ""
-                                // Можно сразу сбрасывать поиск или ждать Enter
-                            }) {
+                            IconButton(onClick = { searchText = "" }) {
                                 Icon(Icons.Default.Close, contentDescription = "Clear text")
                             }
                         }
-                        // Кнопка поиска для подтверждения (дублирует Enter)
                         IconButton(onClick = { viewModel.search(searchText.trim()) }) {
                             Icon(Icons.Default.Search, contentDescription = "Search")
                         }
                     }
                 )
             } else {
-                // [ОБЫЧНЫЙ РЕЖИМ]
                 TopAppBar(
                     title = {
                         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -191,7 +189,6 @@ fun ProductListScreen(
                         }
                     },
                     actions = {
-                        // Кнопка активации поиска
                         IconButton(onClick = { isSearchActive = true }) {
                             Icon(Icons.Outlined.Search, contentDescription = "Search")
                         }
@@ -241,7 +238,6 @@ fun ProductListScreen(
                     is ProductListState.Success -> {
                         val products = (state as ProductListState.Success).products
                         if (products.isEmpty() && currentSearchQuery.isNotEmpty()) {
-                            // Если поиск не дал результатов
                             Column(
                                 modifier = Modifier.align(Alignment.Center),
                                 horizontalAlignment = Alignment.CenterHorizontally
@@ -522,145 +518,135 @@ fun CategoryIconItem(item: CategoryItem, isSelected: Boolean, onClick: () -> Uni
 fun FilterModal(
     isOpen: Boolean,
     onClose: () -> Unit,
-    // [ОНОВЛЕНО]: Тепер приймає опціональний Boolean для сортування (true=Asc, false=Desc, null=None)
-    onApply: (minPrice: Double?, maxPrice: Double?, isSortAscending: Boolean?) -> Unit,
+    onApply: (minPrice: Double?, maxPrice: Double?, sortOption: String, attributes: Map<Int, Set<String>>) -> Unit,
     viewModel: ProductListViewModel = hiltViewModel()
 ) {
     if (!isOpen) return
 
-    val currentMinPrice by viewModel.minPrice.collectAsState()
-    val currentMaxPrice by viewModel.maxPrice.collectAsState()
-    val currentSort by viewModel.isPriceSortAscending.collectAsState() // <--- НОВЕ: Стан сортування
+    val currentMinPrice by viewModel.currentMinPrice.collectAsState()
+    val currentMaxPrice by viewModel.currentMaxPrice.collectAsState()
+    val currentSort by viewModel.currentSortOption.collectAsState()
+    val availableAttributes by viewModel.availableAttributeGroups.collectAsState()
+    val initialSelectedAttributes by viewModel.selectedAttributes.collectAsState()
 
-    // Стан для полів введення ціни
-    val minPriceText = remember { mutableStateOf(currentMinPrice?.toString() ?: "") }
-    val maxPriceText = remember { mutableStateOf(currentMaxPrice?.toString() ?: "") }
+    // Локальное состояние формы
+    var minPriceText by remember { mutableStateOf(currentMinPrice?.toString() ?: "") }
+    var maxPriceText by remember { mutableStateOf(currentMaxPrice?.toString() ?: "") }
+    var selectedSort by remember { mutableStateOf(currentSort) }
 
-    // Стан для перемикача сортування (true=Asc, false=Desc, null=No Sort)
-    var isSortAscending by remember { mutableStateOf(currentSort) }
-
-    LaunchedEffect(currentMinPrice, currentMaxPrice, currentSort) {
-        minPriceText.value = currentMinPrice?.toString() ?: ""
-        maxPriceText.value = currentMaxPrice?.toString() ?: ""
-        isSortAscending = currentSort
-    }
+    // Состояние выбранных атрибутов (копия для редактирования)
+    // Map<GroupId, Set<Value>>
+    var selectedAttrs by remember { mutableStateOf(initialSelectedAttributes) }
 
     Dialog(onDismissRequest = onClose) {
         Card(
             modifier = Modifier
-                .fillMaxHeight(0.8f)
+                .fillMaxHeight(0.9f)
                 .fillMaxWidth(),
             shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+            colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
                 // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .padding(16.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Product Filters", style = MaterialTheme.typography.headlineSmall)
+                    Text("Filters & Sort", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Закрити")
+                        Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
                 Divider()
 
-                // Content (Price Range UI & Sorting)
+                // Content Scrollable
                 Column(
                     modifier = Modifier
                         .weight(1f)
-                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
                         .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    // --- 1. Фільтр за ціною ---
-                    Text(
-                        "Price Range",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        OutlinedTextField(
-                            value = minPriceText.value,
-                            onValueChange = { minPriceText.value = it.filter { c -> c.isDigit() || c == '.' } },
-                            label = { Text("From (₴)") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
-                        OutlinedTextField(
-                            value = maxPriceText.value,
-                            onValueChange = { maxPriceText.value = it.filter { c -> c.isDigit() || c == '.' } },
-                            label = { Text("To (₴)") },
-                            singleLine = true,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(12.dp)
-                        )
+                    // 1. Sorting
+                    Column {
+                        Text("Sort By", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(8.dp))
+                        SortOptionRadio("Price (Low to High)", "price-asc", selectedSort) { selectedSort = it }
+                        SortOptionRadio("Price (High to Low)", "price-desc", selectedSort) { selectedSort = it }
+                        SortOptionRadio("Newest", "newest", selectedSort) { selectedSort = it }
                     }
 
-                    // --- 2. Сортування ---
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        "Sort by Price",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
+                    Divider()
 
-                    // Radio Button: No Sort / Ascending / Descending
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Radio Button: No Sort
-                        FilterRadioButton(
-                            label = "No Sort",
-                            selected = isSortAscending == null,
-                            onClick = { isSortAscending = null }
-                        )
+                    // 2. Price Range
+                    Column {
+                        Text("Price Range", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(12.dp))
+                        Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                            OutlinedTextField(
+                                value = minPriceText,
+                                onValueChange = { minPriceText = it.filter { c -> c.isDigit() || c == '.' } },
+                                label = { Text("Min (₴)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                            OutlinedTextField(
+                                value = maxPriceText,
+                                onValueChange = { maxPriceText = it.filter { c -> c.isDigit() || c == '.' } },
+                                label = { Text("Max (₴)") },
+                                modifier = Modifier.weight(1f),
+                                singleLine = true
+                            )
+                        }
+                    }
 
-                        // Radio Button: Ascending
-                        FilterRadioButton(
-                            label = "Ascending",
-                            selected = isSortAscending == true,
-                            onClick = { isSortAscending = true }
-                        )
+                    // 3. Dynamic Attributes
+                    if (availableAttributes.isNotEmpty()) {
+                        Divider()
+                        Text("Characteristics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
-                        // Radio Button: Descending
-                        FilterRadioButton(
-                            label = "Descending",
-                            selected = isSortAscending == false,
-                            onClick = { isSortAscending = false }
-                        )
+                        availableAttributes.forEach { group ->
+                            AttributeFilterGroup(
+                                group = group,
+                                selectedValues = selectedAttrs[group.id] ?: emptySet(),
+                                onValueToggle = { value ->
+                                    val currentSet = selectedAttrs[group.id] ?: emptySet()
+                                    val newSet = if (currentSet.contains(value)) {
+                                        currentSet - value
+                                    } else {
+                                        currentSet + value
+                                    }
+
+                                    // Обновляем Map
+                                    selectedAttrs = if (newSet.isEmpty()) {
+                                        selectedAttrs - group.id
+                                    } else {
+                                        selectedAttrs + (group.id to newSet)
+                                    }
+                                }
+                            )
+                        }
                     }
                 }
 
-                // Footer
+                // Footer Buttons
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = {
-                            // Парсинг значень та виклик onApply
-                            val minPrice = minPriceText.value.toDoubleOrNull()
-                            val maxPrice = maxPriceText.value.toDoubleOrNull()
-                            // Передаємо всі три параметри
-                            onApply(minPrice, maxPrice, isSortAscending)
+                            val min = minPriceText.toDoubleOrNull()
+                            val max = maxPriceText.toDoubleOrNull()
+                            onApply(min, max, selectedSort, selectedAttrs)
                         },
                         modifier = Modifier.fillMaxWidth().height(50.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
-                        Text("Apply Filters", fontWeight = FontWeight.Bold)
+                        Text("Show Results", fontWeight = FontWeight.Bold)
                     }
                     OutlinedButton(
                         onClick = onClose,
@@ -675,6 +661,77 @@ fun FilterModal(
     }
 }
 
+@Composable
+fun SortOptionRadio(label: String, value: String, selectedValue: String, onSelect: (String) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { onSelect(value) }
+            .padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = (value == selectedValue),
+            onClick = { onSelect(value) },
+            colors = RadioButtonDefaults.colors(selectedColor = MaterialTheme.colorScheme.primary)
+        )
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.bodyLarge)
+    }
+}
+
+@Composable
+fun AttributeFilterGroup(
+    group: AttributeGroup,
+    selectedValues: Set<String>, // Здесь хранятся RAW значения ("16", "true")
+    onValueToggle: (String) -> Unit
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    Column {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { isExpanded = !isExpanded }
+                .padding(vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(group.name, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Icon(
+                imageVector = if (isExpanded) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                contentDescription = null,
+                tint = Color.Gray
+            )
+        }
+
+        if (isExpanded) {
+            Column(modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)) {
+                // [ИЗМЕНЕНО] Перебираем options
+                group.options.forEach { option ->
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onValueToggle(option.value) } // Переключаем RAW значение
+                            .padding(vertical = 4.dp)
+                    ) {
+                        Checkbox(
+                            checked = selectedValues.contains(option.value), // Проверяем по RAW
+                            onCheckedChange = { onValueToggle(option.value) }
+                        )
+                        Text(
+                            text = option.display, // [ВАЖНО] Показываем красивое значение с юнитами
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(start = 8.dp)
+                        )
+                    }
+                }
+            }
+        }
+        Divider(color = Color(0xFFF0F0F0))
+    }
+}
 // [НОВИЙ ДОПОМІЖНИЙ КОМПОНЕНТ]
 @Composable
 fun RowScope.FilterRadioButton(label: String, selected: Boolean, onClick: () -> Unit) {

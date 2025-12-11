@@ -7,6 +7,7 @@ import com.plugplay.plugplaymobile.domain.model.Review
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import com.plugplay.plugplaymobile.data.model.ReviewDto
+import com.plugplay.plugplaymobile.domain.model.AttributeOption
 
 private const val PLACEHOLDER_URL = "https://example.com/placeholder.jpg"
 
@@ -71,28 +72,34 @@ fun ProductDto.toDomainItem(): Item {
 fun AttributeGroupDto.toDomain(): AttributeGroup? {
     if (this.attributes.isNullOrEmpty()) return null
 
-    val formattedValues = this.attributes.mapNotNull { attr ->
-        val rawValue = if (this.dataType?.contains("num", true) == true) {
-            attr.numValue ?: attr.strValue
-        } else {
-            attr.strValue ?: attr.numValue
+    val options = this.attributes.mapNotNull { attr ->
+        // 1. Формируем "сырое" значение для фильтра (как на фронте)
+        val rawValueForFilter: String? = when {
+            this.dataType == "bool" -> if (attr.numValue?.toInt() == 1) "true" else "false"
+            this.dataType?.contains("num", true) == true -> attr.numValue?.toString() // Просто число "16.0"
+            else -> attr.strValue // Просто строка
         }
 
-        if (rawValue == null || rawValue.toString().isBlank()) return@mapNotNull null
-
-        // Handle boolean specially
-        if (this.dataType == "bool") {
-            if (attr.numValue?.toInt() == 1) "Yes" else "No"
-        } else {
-            "${rawValue}${if (!this.unit.isNullOrBlank()) " ${this.unit}" else ""}"
+        // 2. Формируем красивое значение для отображения
+        val displayValue: String? = when {
+            this.dataType == "bool" -> if (attr.numValue?.toInt() == 1) "Yes" else "No"
+            else -> {
+                // Берем значение + юнит (если есть)
+                val raw = if (this.dataType?.contains("num", true) == true) attr.numValue else attr.strValue
+                if (raw != null) "${raw}${if (!this.unit.isNullOrBlank()) " ${this.unit}" else ""}" else null
+            }
         }
-    }.distinct()
 
-    if (formattedValues.isEmpty()) return null
+        if (rawValueForFilter.isNullOrBlank() || displayValue.isNullOrBlank()) return@mapNotNull null
+
+        AttributeOption(value = rawValueForFilter, display = displayValue)
+    }.distinctBy { it.value } // Убираем дубликаты по значению фильтра
+
+    if (options.isEmpty()) return null
 
     return AttributeGroup(
         id = this.id,
         name = this.name,
-        values = formattedValues
+        options = options
     )
 }

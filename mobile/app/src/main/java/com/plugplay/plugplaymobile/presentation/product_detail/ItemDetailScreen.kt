@@ -210,7 +210,8 @@ fun ProductAttributesSection(attributes: List<AttributeGroup>) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            group.values.forEach { value ->
+                            // [ИЗМЕНЕНО] group.values -> group.options
+                            group.options.forEach { option ->
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
                                     color = Color.White,
@@ -218,7 +219,7 @@ fun ProductAttributesSection(attributes: List<AttributeGroup>) {
                                     shadowElevation = 0.dp
                                 ) {
                                     Text(
-                                        text = value,
+                                        text = option.display, // [ИЗМЕНЕНО] Используем .display
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = Color.Black,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)

@@ -10,9 +10,11 @@ interface ShopApiService {
     @GET("api/Products/all")
     suspend fun getProducts(): List<ProductDto>
 
-    @GET("api/Products/filter/{categoryId}")
+    @GET("api/products/filter/{categoryId}")
     suspend fun filterProducts(
         @Path("categoryId") categoryId: Int,
+        @Query("minPrice") minPrice: Double? = null,
+        @Query("maxPrice") maxPrice: Double? = null,
         @Query("filter") filter: String? = null,
         @Query("sort") sort: String? = null,
         @Query("page") page: Int = 1,

@@ -2,7 +2,9 @@ package com.plugplay.plugplaymobile.presentation.product_list
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plugplay.plugplaymobile.domain.model.AttributeGroup
 import com.plugplay.plugplaymobile.domain.model.Product
+import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import com.plugplay.plugplaymobile.domain.usecase.GetProductsUseCase
 import com.plugplay.plugplaymobile.domain.usecase.SearchProductsUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -13,73 +15,49 @@ import javax.inject.Inject
 @HiltViewModel
 class ProductListViewModel @Inject constructor(
     private val getProductsUseCase: GetProductsUseCase,
-    private val searchProductsUseCase: SearchProductsUseCase
+    private val searchProductsUseCase: SearchProductsUseCase,
+    private val productRepository: ProductRepository
 ) : ViewModel() {
 
-    private val _originalProducts = MutableStateFlow<List<Product>>(emptyList())
+    private val _products = MutableStateFlow<List<Product>>(emptyList())
 
+    // Фильтры
     private val _currentCategoryId = MutableStateFlow<Int?>(null)
-    val currentCategoryId: StateFlow<Int?> = _currentCategoryId.asStateFlow()
-
     private val _searchQuery = MutableStateFlow("")
-    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
-
     private val _minPrice = MutableStateFlow<Double?>(null)
     private val _maxPrice = MutableStateFlow<Double?>(null)
-    val minPrice: StateFlow<Double?> = _minPrice.asStateFlow()
-    val maxPrice: StateFlow<Double?> = _maxPrice.asStateFlow()
 
-    private val _isPriceSortAscending = MutableStateFlow<Boolean?>(null)
-    val isPriceSortAscending: StateFlow<Boolean?> = _isPriceSortAscending.asStateFlow()
+    // Сортировка (значения: 'price-asc', 'price-desc', 'newest')
+    private val _sortOption = MutableStateFlow("price-asc")
+
+    // Выбранные атрибуты: Map<GroupId, Set<Value>>
+    private val _selectedAttributes = MutableStateFlow<Map<Int, Set<String>>>(emptyMap())
+
+    // Доступные для фильтрации группы атрибутов
+    private val _availableAttributeGroups = MutableStateFlow<List<AttributeGroup>>(emptyList())
 
     private val _isFilterModalVisible = MutableStateFlow(false)
     val isFilterModalVisible: StateFlow<Boolean> = _isFilterModalVisible.asStateFlow()
 
-    // [ИСПРАВЛЕНО] Используем combine для 6 потоков.
-    // При передаче > 5 аргументов combine возвращает Array<Any?>.
+    // UI State
     @Suppress("UNCHECKED_CAST")
     val state: StateFlow<ProductListState> = combine(
-        _originalProducts,
-        _minPrice,
-        _maxPrice,
-        _isPriceSortAscending,
+        _products,
         _currentCategoryId,
-        _searchQuery
+        _searchQuery,
+        _availableAttributeGroups,
+        _sortOption // Триггер
     ) { args ->
-        // Распаковываем аргументы вручную
         val products = args[0] as List<Product>
-        val min = args[1] as? Double
-        val max = args[2] as? Double
-        val isAscending = args[3] as? Boolean
-        val catId = args[4] as? Int
-        val query = args[5] as String
+        val catId = args[1] as? Int
+        val query = args[2] as String
 
-        // Логика загрузки
         if (products.isEmpty() && (catId != null || query.isNotEmpty())) {
-            return@combine ProductListState.Loading
-        }
-
-        // Фильтрация (локальная)
-        val priceFilteredList = products.filter { product ->
-            val price = product.price
-            val minMatch = min == null || price >= (min ?: 0.0)
-            val maxMatch = max == null || price <= (max ?: Double.MAX_VALUE)
-            minMatch && maxMatch
-        }
-
-        val finalSortedList = if (isAscending != null) {
-            priceFilteredList.sortedWith(compareBy { it.price }).let { sorted ->
-                if (isAscending == false) sorted.reversed() else sorted
-            }
-        } else {
-            priceFilteredList
-        }
-
-        // Если список пуст, но мы не фильтруем (стартовый экран)
-        if (products.isEmpty() && catId == null && query.isEmpty()) {
+            ProductListState.Loading
+        } else if (products.isEmpty() && catId == null && query.isEmpty()) {
             ProductListState.Idle
         } else {
-            ProductListState.Success(finalSortedList)
+            ProductListState.Success(products)
         }
     }.stateIn(
         scope = viewModelScope,
@@ -87,46 +65,106 @@ class ProductListViewModel @Inject constructor(
         initialValue = ProductListState.Loading
     )
 
+    val currentSortOption: StateFlow<String> = _sortOption.asStateFlow()
+    val currentMinPrice: StateFlow<Double?> = _minPrice.asStateFlow()
+    val currentMaxPrice: StateFlow<Double?> = _maxPrice.asStateFlow()
+    val selectedAttributes: StateFlow<Map<Int, Set<String>>> = _selectedAttributes.asStateFlow()
+    val availableAttributeGroups: StateFlow<List<AttributeGroup>> = _availableAttributeGroups.asStateFlow()
+    val currentCategoryId: StateFlow<Int?> = _currentCategoryId.asStateFlow()
+    val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
     init {
         loadProducts()
     }
 
     private fun loadProducts() {
         viewModelScope.launch {
-            _originalProducts.value = emptyList() // Сброс для показа загрузки
+            _products.value = emptyList() // Сброс для показа загрузки
 
             val query = _searchQuery.value
             val categoryId = _currentCategoryId.value
 
+            // 1. Загрузка товаров (Поиск или Фильтр)
             val result = if (query.isNotBlank()) {
                 searchProductsUseCase(query)
             } else {
-                getProductsUseCase(categoryId = categoryId)
+                val filterString = buildFilterString(_selectedAttributes.value)
+                getProductsUseCase(
+                    categoryId = categoryId,
+                    minPrice = _minPrice.value,
+                    maxPrice = _maxPrice.value,
+                    sort = _sortOption.value,
+                    filterString = filterString
+                )
             }
 
             result.onSuccess { products ->
-                _originalProducts.update { products }
-            }.onFailure { error ->
-                _originalProducts.update { emptyList() }
-                println("Error loading products: ${error.message}")
+                _products.value = products
+
+                // 2. [ИСПРАВЛЕНО] Загрузка атрибутов для фильтрации
+                if (products.isNotEmpty()) {
+                    // Если категория не выбрана (null), используем "Магическое число" с фронтенда (Int.MAX_VALUE),
+                    // которое сервер понимает как "Все категории" для поиска атрибутов.
+                    val attributesCategoryId = categoryId ?: 2147483647
+                    val productIds = products.mapNotNull { it.id.toIntOrNull() }
+
+                    loadAvailableAttributes(attributesCategoryId, productIds)
+                } else {
+                    _availableAttributeGroups.value = emptyList()
+                }
+
+            }.onFailure {
+                println("Error loading products: ${it.message}")
+                _products.value = emptyList()
+                _availableAttributeGroups.value = emptyList()
             }
         }
     }
 
+    private fun loadAvailableAttributes(categoryId: Int, productIds: List<Int>) {
+        viewModelScope.launch {
+            productRepository.getAttributesForFilter(categoryId, productIds)
+                .onSuccess { groups ->
+                    _availableAttributeGroups.value = groups
+                }
+                .onFailure {
+                    // Fail silently
+                }
+        }
+    }
+
+    private fun buildFilterString(attrs: Map<Int, Set<String>>): String? {
+        if (attrs.isEmpty()) return null
+
+        return attrs.entries.joinToString(";") { (id, values) ->
+            val safeValues = values.joinToString(",") { it.replace("[,;:]".toRegex(), "") }
+            "$id:$safeValues"
+        }.ifBlank { null }
+    }
+
+    // --- Public Methods ---
+
     fun setCategoryFilter(categoryId: Int) {
         val newFilter = if (_currentCategoryId.value == categoryId) null else categoryId
 
-        _searchQuery.value = "" // Сброс поиска
+        // Сброс при смене категории
         _currentCategoryId.value = newFilter
+        _searchQuery.value = ""
+        _minPrice.value = null
+        _maxPrice.value = null
+        _selectedAttributes.value = emptyMap()
 
         loadProducts()
     }
 
     fun search(query: String) {
         if (query == _searchQuery.value) return
-
-        _currentCategoryId.value = null // Сброс категории
+        _currentCategoryId.value = null
         _searchQuery.value = query
+        // Сброс фильтров при новом поиске
+        _minPrice.value = null
+        _maxPrice.value = null
+        _selectedAttributes.value = emptyMap()
 
         loadProducts()
     }
@@ -142,10 +180,18 @@ class ProductListViewModel @Inject constructor(
         _isFilterModalVisible.update { !it }
     }
 
-    fun applyFilters(minPrice: Double? = null, maxPrice: Double? = null, isSortAscending: Boolean? = null) {
-        _minPrice.update { minPrice }
-        _maxPrice.update { maxPrice }
-        _isPriceSortAscending.update { isSortAscending }
-        _isFilterModalVisible.update { false }
+    fun applyFilters(
+        minPrice: Double?,
+        maxPrice: Double?,
+        sortOption: String,
+        attributes: Map<Int, Set<String>>
+    ) {
+        _minPrice.value = minPrice
+        _maxPrice.value = maxPrice
+        _sortOption.value = sortOption
+        _selectedAttributes.value = attributes
+
+        _isFilterModalVisible.value = false
+        loadProducts()
     }
 }
