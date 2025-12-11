@@ -76,4 +76,13 @@ interface ShopApiService {
         @Path("categoryId") categoryId: Int,
         @Body productIds: List<Int>
     ): Response<List<AttributeGroupDto>>
+
+    @GET("api/Wishlist/{userId}")
+    suspend fun getWishlist(@Path("userId") userId: Int): Response<List<ProductDto>>
+
+    @POST("api/Wishlist/add")
+    suspend fun addToWishlist(@Body request: ToggleWishlistRequest): Response<Void>
+
+    @POST("api/Wishlist/remove")
+    suspend fun removeFromWishlist(@Body request: ToggleWishlistRequest): Response<Void>
 }

@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.List
@@ -88,6 +89,7 @@ fun ProductListScreen(
     cartViewModel: CartViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
+    val wishlistIds by viewModel.wishlistIds.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
 
@@ -251,7 +253,9 @@ fun ProductListScreen(
                                 modifier = Modifier,
                                 onItemClick = onNavigateToItemDetail,
                                 viewModel = viewModel,
-                                onFilterClick = viewModel::toggleFilterModal
+                                onFilterClick = viewModel::toggleFilterModal,
+                                onToggleWishlist = viewModel::toggleWishlist,
+                                wishlistIds = wishlistIds
                             )
                         }
                     }
@@ -272,7 +276,9 @@ fun ProductGrid(
     onItemClick: (itemId: String) -> Unit,
     viewModel: ProductListViewModel, // <--- ВИКОРИСТОВУЄМО VIEWMODEL
     // [НОВИЙ АРГУМЕНТ]
-    onFilterClick: () -> Unit
+    onFilterClick: () -> Unit,
+    wishlistIds: Set<String>,
+    onToggleWishlist: (String) -> Unit,
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(2), // 2 колонки
@@ -309,7 +315,9 @@ fun ProductGrid(
         items(products) { product ->
             ProductItem(
                 product = product,
-                onClick = { onItemClick(product.id) }
+                onClick = { onItemClick(product.id) },
+                onFavoriteClick = { onToggleWishlist(product.id) },
+                isFavorite = wishlistIds.contains(product.id)
             )
         }
     }
@@ -319,7 +327,9 @@ fun ProductGrid(
 @Composable
 fun ProductItem(
     product: Product,
-    onClick: () -> Unit
+    onClick: () -> Unit,
+    isFavorite: Boolean,
+    onFavoriteClick: () -> Unit
 ) {
     Card(
         onClick = onClick,
@@ -343,19 +353,21 @@ fun ProductItem(
                 )
 
                 IconButton(
-                    onClick = { /* TODO: Add to favorites */ },
+                    onClick = onFavoriteClick, // [NEW]
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(4.dp)
                         .background(
-                            Color.Black.copy(alpha = 0.3f),
+                            Color.White.copy(alpha = 0.7f), // Светлый фон для контраста
                             CircleShape
                         )
+                        .size(32.dp) // Чуть меньше стандартного размера
                 ) {
                     Icon(
-                        Icons.Outlined.FavoriteBorder,
+                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
                         contentDescription = "В обране",
-                        tint = Color.White
+                        tint = if (isFavorite) Color.Red else Color.Gray,
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }

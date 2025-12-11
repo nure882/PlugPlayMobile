@@ -4,10 +4,12 @@ import com.plugplay.plugplaymobile.data.repository.AuthRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.ProductRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.CartRepositoryImpl
 import com.plugplay.plugplaymobile.data.repository.OrderRepositoryImpl
+import com.plugplay.plugplaymobile.data.repository.WishlistRepositoryImpl
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import com.plugplay.plugplaymobile.domain.repository.CartRepository
 import com.plugplay.plugplaymobile.domain.repository.OrderRepository
+import com.plugplay.plugplaymobile.domain.repository.WishlistRepository
 import dagger.Binds
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -41,4 +43,10 @@ abstract class RepositoryModule {
     abstract fun bindOrderRepository(
         orderRepositoryImpl: OrderRepositoryImpl
     ): OrderRepository
+
+    @Binds
+    @Singleton
+    abstract fun bindWishlistRepository(
+        wishlistRepositoryImpl: WishlistRepositoryImpl
+    ): WishlistRepository
 }

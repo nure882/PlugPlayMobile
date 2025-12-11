@@ -14,6 +14,7 @@ import com.plugplay.plugplaymobile.presentation.profile.ProfileScreen
 import com.plugplay.plugplaymobile.presentation.product_detail.ItemDetailScreen
 import com.plugplay.plugplaymobile.presentation.checkout.CheckoutScreen
 import com.plugplay.plugplaymobile.presentation.checkout.OrderConfirmationScreen
+import com.plugplay.plugplaymobile.presentation.wishlist.WishlistScreen
 
 object Routes {
     const val PRODUCT_LIST = "product_list"
@@ -23,6 +24,7 @@ object Routes {
     const val ITEM_DETAIL = "detail_list/{itemId}"
     const val CHECKOUT = "checkout"
     const val ORDER_CONFIRMATION = "order_confirmation"
+    const val WISHLIST = "wishlist"
 }
 
 fun createItemDetailRoute(itemId: String) = "detail_list/$itemId"
@@ -57,11 +59,18 @@ fun AppNavigation(
         // Profile Screen (без змін)
         composable(Routes.PROFILE) {
             ProfileScreen(
-                onNavigateToCatalog = {
-                    navController.popBackStack()
-                },
-                onNavigateToLogin = {
-                    navController.navigate(Routes.LOGIN)
+                onNavigateToCatalog = { navController.popBackStack() },
+                onNavigateToLogin = { navController.navigate(Routes.LOGIN) },
+                onNavigateToWishlist = { navController.navigate(Routes.WISHLIST) } // <--- NEW
+            )
+        }
+
+        // Wishlist Screen Route
+        composable(Routes.WISHLIST) {
+            WishlistScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToItemDetail = { itemId ->
+                    navController.navigate(createItemDetailRoute(itemId))
                 }
             )
         }
