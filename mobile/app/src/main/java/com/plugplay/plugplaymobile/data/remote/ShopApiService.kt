@@ -68,4 +68,10 @@ interface ShopApiService {
         @Query("page") page: Int = 1,
         @Query("pageSize") pageSize: Int = 100
     ): List<ProductDto>
+
+    @POST("api/Products/attribute/{categoryId}")
+    suspend fun getAttributeGroups(
+        @Path("categoryId") categoryId: Int,
+        @Body productIds: List<Int>
+    ): Response<List<AttributeGroupDto>>
 }

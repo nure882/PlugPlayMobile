@@ -1,8 +1,10 @@
 package com.plugplay.plugplaymobile.presentation.product_detail
 
+import android.util.Log
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plugplay.plugplaymobile.domain.model.AttributeGroup
 import com.plugplay.plugplaymobile.domain.model.Item
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -17,30 +19,25 @@ import javax.inject.Inject
  */
 data class ItemDetailState(
     val item: Item? = null,
+    val attributes: List<AttributeGroup> = emptyList(),
     val isLoading: Boolean = true,
     val error: String? = null
 )
-
 @HiltViewModel
 class ItemDetailViewModel @Inject constructor(
     private val repository: ProductRepository,
-    // SavedStateHandle використовується для отримання аргументів навігації
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
-    // Отримуємо itemId, який був переданий через NavHost
-    // Використовуємо .get<String>("itemId") замість checkNotNull, оскільки це більш типово для Compose
     private val itemId: String = savedStateHandle.get<String>("itemId") ?: ""
-
     private val _state = MutableStateFlow(ItemDetailState())
     val state: StateFlow<ItemDetailState> = _state
 
     init {
-        // Завантажуємо дані одразу при створенні ViewModel, тільки якщо itemId не пустий
         if (itemId.isNotEmpty()) {
             loadItemDetails()
         } else {
-            _state.update { it.copy(isLoading = false, error = "ID товару не знайдено.") }
+            _state.update { it.copy(isLoading = false, error = "Item ID not found") }
         }
     }
 
@@ -48,23 +45,32 @@ class ItemDetailViewModel @Inject constructor(
         viewModelScope.launch {
             _state.update { it.copy(isLoading = true, error = null) }
 
-            // Викликаємо функцію з оновленого ProductRepository
             repository.getProductById(itemId)
                 .onSuccess { item ->
-                    _state.update {
-                        it.copy(
-                            item = item,
-                            isLoading = false
-                        )
-                    }
+                    _state.update { it.copy(item = item, isLoading = false) }
+
+                    Log.d("ItemDetailVM", "Item loaded: ${item.name}, CatID: ${item.categoryId}")
+
+                    // Загружаем атрибуты, только если есть ID категории
+                    item.categoryId?.let { catId ->
+                        loadAttributes(catId, item.id.toInt())
+                    } ?: Log.w("ItemDetailVM", "Category ID is null, attributes won't load")
                 }
                 .onFailure { throwable ->
-                    _state.update {
-                        it.copy(
-                            isLoading = false,
-                            error = "Помилка завантаження товару: ${throwable.localizedMessage}"
-                        )
-                    }
+                    _state.update { it.copy(isLoading = false, error = throwable.message) }
+                }
+        }
+    }
+
+    private fun loadAttributes(categoryId: Int, productId: Int) {
+        viewModelScope.launch {
+            repository.getProductAttributes(categoryId, productId)
+                .onSuccess { attrs ->
+                    Log.d("ItemDetailVM", "Attributes loaded: ${attrs.size} groups")
+                    _state.update { it.copy(attributes = attrs) }
+                }
+                .onFailure { e ->
+                    Log.e("ItemDetailVM", "Error in attributes flow", e)
                 }
         }
     }

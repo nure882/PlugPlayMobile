@@ -1,65 +1,39 @@
 package com.plugplay.plugplaymobile.data.repository
 
 import android.util.Log
+import com.plugplay.plugplaymobile.data.model.AttributeRequestDto
+import com.plugplay.plugplaymobile.data.model.toDomain
 import com.plugplay.plugplaymobile.data.model.toDomainItem
 import com.plugplay.plugplaymobile.data.model.toDomainList
 import com.plugplay.plugplaymobile.data.remote.ShopApiService
-import com.plugplay.plugplaymobile.domain.model.Product
+import com.plugplay.plugplaymobile.domain.model.AttributeGroup
 import com.plugplay.plugplaymobile.domain.model.Item
+import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
-import javax.inject.Inject
-import java.lang.Exception
-import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import javax.inject.Inject
 
 class ProductRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService
 ) : ProductRepository {
 
-    // [ЗМІНЕНО] Реалізація тепер приймає categoryId
+    private val TAG = "ProductRepo"
+
     override suspend fun getProducts(categoryId: Int?): Result<List<Product>> {
         return withContext(Dispatchers.IO) {
             runCatching {
                 val productsDtoList = if (categoryId == null) {
-                    // Якщо ID категорії немає, використовуємо існуючий ендпоінт "all"
-                    val allProducts = apiService.getProducts()
-                    Log.d("ProductRepositoryImpl", "Fetched all products: ${allProducts.size}")
-                    allProducts
+                    apiService.getProducts()
                 } else {
-                    // [НОВИЙ ВИКЛИК] Використовуємо ендпоінт фільтрації
-                    val response = apiService.filterProducts(
-                        categoryId = categoryId,
-                        page = 1,
-                        pageSize = 100
-                    )
-
+                    val response = apiService.filterProducts(categoryId = categoryId)
                     if (response.isSuccessful && response.body() != null) {
-                        val filteredProducts = response.body()!!.products
-                        Log.d("ProductRepositoryImpl", "Fetched products by category $categoryId: ${filteredProducts.size}")
-                        filteredProducts
+                        response.body()!!.products
                     } else {
-                        val errorBody = response.errorBody()?.string()
-                        throw Exception(errorBody ?: "Failed to filter products by category: ${response.message()}")
+                        throw Exception("Failed to filter products: ${response.message()}")
                     }
                 }
-
                 productsDtoList.toDomainList()
-            }
-        }
-    }
-
-    // [ОНОВЛЕНО] Конвертуємо String ID в Int для виклику API
-    override suspend fun getProductById(itemId: String): Result<Item> {
-        return runCatching {
-            // API вимагає Int ID, тому парсимо String
-            val itemIdInt = itemId.toIntOrNull() ?: throw IllegalArgumentException("Invalid product ID format. Expected integer, got $itemId")
-
-            val response = apiService.getProductById(itemIdInt)
-            if (response.isSuccessful && response.body() != null) {
-                response.body()!!.toDomainItem()
-            } else {
-                val errorBody = response.errorBody()?.string()
-                throw Exception(errorBody ?: "Failed to fetch item $itemId: ${response.message()}")
             }
         }
     }
@@ -67,10 +41,46 @@ class ProductRepositoryImpl @Inject constructor(
     override suspend fun searchProducts(query: String): Result<List<Product>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                // Вызываем API поиска
                 val productsDto = apiService.searchProducts(query = query)
-                // Мапим в доменные модели
                 productsDto.toDomainList()
+            }
+        }
+    }
+
+    override suspend fun getProductById(itemId: String): Result<Item> {
+        return runCatching {
+            val itemIdInt = itemId.toIntOrNull() ?: throw IllegalArgumentException("Invalid ID")
+            val response = apiService.getProductById(itemIdInt)
+            if (response.isSuccessful && response.body() != null) {
+                response.body()!!.toDomainItem()
+            } else {
+                throw Exception("Failed to fetch item: ${response.code()} ${response.message()}")
+            }
+        }
+    }
+
+    override suspend fun getProductAttributes(categoryId: Int, productId: Int): Result<List<AttributeGroup>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                Log.d(TAG, "Fetching attributes for cat=$categoryId, prod=$productId")
+
+                // [ИСПРАВЛЕНО] Отправляем просто список ID
+                val productIds = listOf(productId)
+
+                // Вызываем обновленный метод API
+                val response = apiService.getAttributeGroups(categoryId, productIds)
+
+                if (response.isSuccessful && response.body() != null) {
+                    val dtoList = response.body()!!
+                    val domainList = dtoList.mapNotNull { it.toDomain() }
+                    domainList
+                } else {
+                    val error = response.errorBody()?.string()
+                    Log.e(TAG, "Failed to load attributes: ${response.code()} $error")
+                    emptyList()
+                }
+            }.onFailure { e ->
+                Log.e(TAG, "Exception loading attributes", e)
             }
         }
     }

@@ -2,11 +2,11 @@ package com.plugplay.plugplaymobile.presentation.product_detail
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -22,19 +22,19 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import coil.compose.AsyncImage
-import com.plugplay.plugplaymobile.domain.model.Item
 import com.plugplay.plugplaymobile.R
+import com.plugplay.plugplaymobile.domain.model.AttributeGroup
+import com.plugplay.plugplaymobile.domain.model.Item
+import com.plugplay.plugplaymobile.domain.model.Review
 import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
 import java.text.NumberFormat
 import java.util.Locale
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,25 +42,20 @@ fun ItemDetailScreen(
     itemId: String,
     navController: NavController,
     onNavigateToCheckout: () -> Unit,
-    onNavigateToProfile: () -> Unit, // <--- ДОДАНО: Новий аргумент
+    onNavigateToProfile: () -> Unit,
     viewModel: ItemDetailViewModel = hiltViewModel(),
     cartViewModel: CartViewModel = hiltViewModel()
 ) {
     val state by viewModel.state.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
-
     val item = state.item
-
-
     var isCartOpen by remember { mutableStateOf(false) }
-
 
     val isInCart = remember(cartState.cartItems, item) {
         if (item == null) return@remember false
         cartState.cartItems.any { it.productId == item.id }
     }
-
 
     ShoppingCartDialog(
         isOpen = isCartOpen,
@@ -74,23 +69,15 @@ fun ItemDetailScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = {
-                    Text(
-                        "Plug & Play",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
+                title = { Text("Plug & Play", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
-                    IconButton(onClick = { /* TODO: Пошук */ }) {
-                        Icon(Icons.Outlined.Search, contentDescription = "Пошук")
-                    }
-                    IconButton(onClick = onNavigateToProfile) { // <--- ВИПРАВЛЕНО: Призначено обробник
-                        Icon(Icons.Outlined.Person, contentDescription = "Профіль")
+                    IconButton(onClick = onNavigateToProfile) {
+                        Icon(Icons.Outlined.Person, contentDescription = "Profile")
                     }
                     IconButton(onClick = { isCartOpen = true }) {
                         BadgedBox(
@@ -99,13 +86,11 @@ fun ItemDetailScreen(
                                     Badge(
                                         modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
                                         containerColor = MaterialTheme.colorScheme.error
-                                    ) {
-                                        Text(cartItemsCount.toString())
-                                    }
+                                    ) { Text(cartItemsCount.toString()) }
                                 }
                             }
                         ) {
-                            Icon(Icons.Outlined.ShoppingCart, contentDescription = "Корзина")
+                            Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart")
                         }
                     }
                 }
@@ -132,35 +117,28 @@ fun ItemDetailScreen(
                         Text(
                             text = state.error.toString(),
                             color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
                 }
                 item != null -> {
-                    item {
-                        ImagePager(item.imageUrls)
-                    }
+                    // 1. Images
+                    item { ImagePager(item.imageUrls) }
 
+                    // 2. Title & Price
                     item {
-                        Column(
-                            Modifier
-                                .background(Color.White)
-                                .padding(16.dp)
-                        ) {
+                        Column(Modifier.padding(16.dp)) {
                             TitleAndPrice(item)
                             Spacer(Modifier.height(24.dp))
                         }
                     }
 
+                    // 3. Actions
                     item {
                         ActionButtons(
                             item = item,
                             isInCart = isInCart,
-                            onAddToCart = {
-                                cartViewModel.addToCart(item.id, 1)
-                            },
+                            onAddToCart = { cartViewModel.addToCart(item.id, 1) },
                             onBuyClick = {
                                 cartViewModel.addToCart(item.id, 1)
                                 isCartOpen = true
@@ -168,12 +146,22 @@ fun ItemDetailScreen(
                         )
                     }
 
-                    item {
-                        InfoSection()
+                    // 4. Info Section (Delivery/Warranty)
+                    item { InfoSection() }
+
+                    // 5. Description
+                    item { DescriptionSection(item) }
+
+                    // 6. [NEW] Attributes
+                    if (state.attributes.isNotEmpty()) {
+                        item {
+                            ProductAttributesSection(attributes = state.attributes)
+                        }
                     }
 
+                    // 7. [NEW] Reviews
                     item {
-                        DescriptionSection(item)
+                        ProductReviewsSection(reviews = item.reviews)
                     }
                 }
             }
@@ -181,7 +169,162 @@ fun ItemDetailScreen(
     }
 }
 
+// [NEW] Component for attributes
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ProductAttributesSection(attributes: List<AttributeGroup>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // Контейнер с серым фоном
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(Color(0xFFF4F7F8), RoundedCornerShape(12.dp))
+                .padding(16.dp)
+        ) {
+            // [ИЗМЕНЕНО] Используем FlowRow для размещения ГРУПП атрибутов
+            // Теперь группы ("Color", "Weight" и т.д.) будут вставать рядом друг с другом
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(24.dp), // Большой отступ между группами
+                verticalArrangement = Arrangement.spacedBy(16.dp)    // Отступ между рядами групп
+            ) {
+                attributes.forEach { group ->
+                    // Блок одной группы (Название + Значения)
+                    Column {
+                        // Название группы (Color)
+                        Text(
+                            text = group.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.DarkGray,
+                            modifier = Modifier.padding(bottom = 6.dp)
+                        )
 
+                        // Значения группы (White, Black) - тоже FlowRow
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            group.values.forEach { value ->
+                                Surface(
+                                    shape = RoundedCornerShape(8.dp),
+                                    color = Color.White,
+                                    border = BorderStroke(1.dp, Color(0xFFE0E0E0)),
+                                    shadowElevation = 0.dp
+                                ) {
+                                    Text(
+                                        text = value,
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = Color.Black,
+                                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+// [NEW] Component for reviews
+@Composable
+fun ProductReviewsSection(reviews: List<Review>) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .background(Color.White)
+            .padding(16.dp)
+    ) {
+        Text(
+            text = "Reviews (${reviews.size})",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        if (reviews.isEmpty()) {
+            Text("No reviews yet.", color = Color.Gray)
+        } else {
+            reviews.forEach { review ->
+                ReviewItem(review)
+                if (review != reviews.last()) {
+                    Divider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 12.dp))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ReviewItem(review: Review) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                // Avatar placeholder
+                Box(
+                    modifier = Modifier
+                        .size(32.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = review.userName.take(1).uppercase(),
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = review.userName,
+                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            Text(
+                text = review.date,
+                style = MaterialTheme.typography.bodySmall,
+                color = Color.Gray
+            )
+        }
+
+        Row(modifier = Modifier.padding(vertical = 6.dp)) {
+            repeat(5) { index ->
+                Icon(
+                    imageVector = Icons.Filled.Star,
+                    contentDescription = null,
+                    tint = if (index < review.rating) Color(0xFFFFC107) else Color.Gray.copy(alpha = 0.3f),
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        if (review.comment.isNotBlank()) {
+            Text(
+                text = review.comment,
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.DarkGray,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+    }
+}
+
+// ... Existing components (ImagePager, TitleAndPrice, InfoSection, DescriptionSection, ActionButtons, InfoRow) remain unchanged ...
+// Ensure you copy them from the previous version of ItemDetailScreen.kt
 @Composable
 fun ActionButtons(
     item: Item,
@@ -203,14 +346,12 @@ fun ActionButtons(
                 .height(48.dp),
             shape = RoundedCornerShape(8.dp),
             enabled = item.isAvailable,
-            // [ОНОВЛЕНО КОЛІР КНОПКИ BUY]
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF)) // Синій відтінок
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2979FF))
         ) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.Center
             ) {
-                // [ДОДАНО ІКОНКУ КОШИКА]
                 Icon(
                     Icons.Outlined.ShoppingCart,
                     contentDescription = "Buy",
@@ -218,13 +359,12 @@ fun ActionButtons(
                     modifier = Modifier.size(24.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                // [ЗМІНЕНО ТЕКСТ КНОПКИ]
                 Text("Buy", fontWeight = FontWeight.Bold, color = Color.White)
             }
         }
         Spacer(Modifier.height(8.dp))
 
-        // Add to Cart Button (змінюється на "Already in cart")
+        // Add to Cart Button
         OutlinedButton(
             onClick = onAddToCart,
             modifier = Modifier
@@ -237,23 +377,19 @@ fun ActionButtons(
                 contentColor = if (isInCart) Color.Gray else MaterialTheme.colorScheme.onSurface,
                 disabledContentColor = Color.Gray
             ),
-            border = BorderStroke(
+            border = androidx.compose.foundation.BorderStroke(
                 1.dp,
                 if (isInCart) Color(0xFFE0E0E0) else Color.Gray.copy(alpha = 0.5f)
             )
         ) {
-            // [ЗМІНЕНО ТЕКСТ КНОПКИ]
             Text(if (isInCart) "Already in cart" else "Add to cart", fontWeight = FontWeight.Bold)
         }
     }
 }
 
-
 @Composable
 fun ImagePager(imageUrls: List<String>) {
-    val mainImageUrl = imageUrls.firstOrNull()
-        ?: "https://example.com/placeholder.jpg"
-
+    val mainImageUrl = imageUrls.firstOrNull() ?: "https://example.com/placeholder.jpg"
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -270,24 +406,14 @@ fun ImagePager(imageUrls: List<String>) {
         ) {
             AsyncImage(
                 model = mainImageUrl,
-                contentDescription = "Зображення товару",
+                contentDescription = "Product Image",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop,
                 error = painterResource(id = R.drawable.ic_launcher_foreground)
             )
-
-            IconButton(
-                onClick = { /*TODO*/ },
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(16.dp)
-            ) {
-                Icon(Icons.Outlined.FavoriteBorder, contentDescription = "В обране", tint = Color.White)
-            }
         }
     }
 }
-
 
 @Composable
 fun TitleAndPrice(item: Item) {
@@ -299,55 +425,25 @@ fun TitleAndPrice(item: Item) {
         format.format(item.price) + " ₴"
     }
 
-    Text(
-        text = item.name,
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.Bold
-    )
-
+    Text(text = item.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
     Spacer(Modifier.height(8.dp))
-
     Row(verticalAlignment = Alignment.CenterVertically) {
-        if (item.reviewCount > 0) {
-            Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
-            Text(
-                text = " ${String.format("%.1f", item.averageRating)} (${item.reviewCount} відгук${if (item.reviewCount != 1) "и" else ""})",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-        } else {
-            Text(
-                text = "No feedback",
-                style = MaterialTheme.typography.bodySmall,
-                color = Color.Gray
-            )
-        }
+        Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
+        Text(
+            text = " ${String.format("%.1f", item.averageRating)} (${item.reviewCount} reviews)",
+            style = MaterialTheme.typography.bodySmall,
+            color = Color.Gray
+        )
     }
-
     Spacer(Modifier.height(16.dp))
-
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.CheckCircle, contentDescription = "Наявність", tint = Color.Green, modifier = Modifier.size(18.dp))
+        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.Green, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(4.dp))
-        Text(
-            text = if (item.isAvailable) "In stock" else "Not in stock",
-            color = Color.Green,
-            fontWeight = FontWeight.SemiBold
-        )
+        Text(text = if (item.isAvailable) "In stock" else "Not in stock", color = Color.Green, fontWeight = FontWeight.SemiBold)
     }
-
     Spacer(Modifier.height(16.dp))
-
-    Row(verticalAlignment = Alignment.Bottom) {
-        Text(
-            text = formattedNumber,
-            style = MaterialTheme.typography.headlineLarge,
-            fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
-        )
-    }
+    Text(text = formattedNumber, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
 }
-
 
 @Composable
 fun InfoSection() {
@@ -360,16 +456,12 @@ fun InfoSection() {
     ) {
         Text("Delivery and warranty", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-
         InfoRow(Icons.Outlined.LocalShipping, "Fast delivery", "Delivery to Kyiv on the next day")
         Divider(Modifier.padding(vertical = 8.dp))
-
         InfoRow(Icons.Outlined.Shield, "1 year warranty", "Official manufacturer warranty")
         Divider(Modifier.padding(vertical = 8.dp))
-
         InfoRow(Icons.Outlined.Replay, "Return within 14 days", "Ability to return the product")
         Divider(Modifier.padding(vertical = 8.dp))
-
         InfoRow(Icons.Outlined.Archive, "Safe packaging", "Reliable protection during delivery")
     }
 }
@@ -385,16 +477,9 @@ fun InfoRow(icon: androidx.compose.ui.graphics.vector.ImageVector, title: String
                 .padding(12.dp),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.fillMaxSize()
-            )
+            Icon(icon, contentDescription = null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxSize())
         }
-
         Spacer(Modifier.width(16.dp))
-
         Column {
             Text(title, fontWeight = FontWeight.SemiBold)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
@@ -413,9 +498,6 @@ fun DescriptionSection(item: Item) {
     ) {
         Text("Description", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
-        Text(
-            text = item.description,
-            style = MaterialTheme.typography.bodyMedium
-        )
+        Text(text = item.description, style = MaterialTheme.typography.bodyMedium)
     }
 }
