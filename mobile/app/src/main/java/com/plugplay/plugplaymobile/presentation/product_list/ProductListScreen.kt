@@ -61,19 +61,12 @@ import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
 import java.util.Locale
 
 // --- ДАНІ-ЗАГЛУШКИ ДЛЯ ДИЗАЙНУ ---
-
-// [ЗМІНЕНО] Додайте categoryId (Int) до моделі
 data class CategoryItem(val name: String, val icon: Int, val categoryId: Int)
 
-// [ЗМІНЕНО] Використовуйте реальні ID категорій:
 val categoryItems = listOf(
-    // ID 23 - Smartphones
     CategoryItem("Smartphones", R.drawable.smartphone_logo, 23),
-    // ID 35 - Headphones & Earbuds
     CategoryItem("Headphones", R.drawable.headphones_logo, 35),
-    // ID 2 - Laptops
     CategoryItem("Laptops", R.drawable.laptop_logo, 2),
-    // ID 52 - Cameras & Photography
     CategoryItem("Cameras", R.drawable.camera_logo, 52),
 )
 
@@ -92,14 +85,22 @@ fun ProductListScreen(
     val wishlistIds by viewModel.wishlistIds.collectAsState()
     val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
     var isCartOpen by remember { mutableStateOf(false) }
     val isFilterModalVisible by viewModel.isFilterModalVisible.collectAsState()
 
-    // Состояния для поиска
     val currentSearchQuery by viewModel.searchQuery.collectAsState()
     var isSearchActive by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
+
+    // [NEW] State for dialog to confirm removal
+    var productToRemove by remember { mutableStateOf<Product?>(null) }
+
+    // [FIX] Reload wishlist every time the screen appears
+    LaunchedEffect(Unit) {
+        viewModel.loadWishlist()
+    }
 
     LaunchedEffect(currentSearchQuery) {
         searchText = currentSearchQuery
@@ -122,7 +123,6 @@ fun ProductListScreen(
         }
     )
 
-    // [ИСПРАВЛЕНО] Теперь передаем 4 параметра: min, max, sort, attributes
     FilterModal(
         isOpen = isFilterModalVisible,
         onClose = viewModel::toggleFilterModal,
@@ -130,6 +130,34 @@ fun ProductListScreen(
             viewModel.applyFilters(min, max, sort, attrs)
         }
     )
+
+    // [NEW] Confirmation Dialog
+    if (productToRemove != null) {
+        AlertDialog(
+            onDismissRequest = { productToRemove = null },
+            title = { Text(text = "Confirm action") },
+            text = {
+                Text(text = "Are you sure you want to remove ${productToRemove?.title} from your wishlist?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        productToRemove?.let { viewModel.toggleWishlist(it.id) }
+                        productToRemove = null
+                    }
+                ) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { productToRemove = null }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -149,9 +177,7 @@ fun ProductListScreen(
                             ),
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                             keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    viewModel.search(searchText.trim())
-                                }
+                                onSearch = { viewModel.search(searchText.trim()) }
                             ),
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -239,27 +265,25 @@ fun ProductListScreen(
                     }
                     is ProductListState.Success -> {
                         val products = (state as ProductListState.Success).products
-                        if (products.isEmpty() && currentSearchQuery.isNotEmpty()) {
-                            Column(
-                                modifier = Modifier.align(Alignment.Center),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text("No products found", style = MaterialTheme.typography.titleLarge)
-                                Text("Try adjusting your search", color = Color.Gray)
-                            }
-                        } else {
-                            ProductGrid(
-                                products = products,
-                                modifier = Modifier,
-                                onItemClick = onNavigateToItemDetail,
-                                viewModel = viewModel,
-                                onFilterClick = viewModel::toggleFilterModal,
-                                onToggleWishlist = viewModel::toggleWishlist,
-                                wishlistIds = wishlistIds
-                            )
-                        }
+                        ProductGrid(
+                            products = products,
+                            modifier = Modifier,
+                            onItemClick = onNavigateToItemDetail,
+                            viewModel = viewModel,
+                            onFilterClick = viewModel::toggleFilterModal,
+                            onToggleWishlist = { product ->
+                                // [CHANGED] Logic to check if we need a dialog
+                                if (wishlistIds.contains(product.id)) {
+                                    productToRemove = product
+                                } else {
+                                    viewModel.toggleWishlist(product.id)
+                                }
+                            },
+                            wishlistIds = wishlistIds,
+                            isLoggedIn = isLoggedIn
+                        )
                     }
-                    ProductListState.Idle -> { /* Пустое состояние */ }
+                    ProductListState.Idle -> { }
                 }
             }
         }
@@ -267,58 +291,80 @@ fun ProductListScreen(
 }
 
 // --- НОВІ КОМПОНЕНТИ ДИЗАЙНУ ---
-// (Оновлення ProductGrid та CategoryLazyRow)
 
 @Composable
 fun ProductGrid(
     products: List<Product>,
     modifier: Modifier,
     onItemClick: (itemId: String) -> Unit,
-    viewModel: ProductListViewModel, // <--- ВИКОРИСТОВУЄМО VIEWMODEL
-    // [НОВИЙ АРГУМЕНТ]
+    viewModel: ProductListViewModel,
     onFilterClick: () -> Unit,
     wishlistIds: Set<String>,
-    onToggleWishlist: (String) -> Unit,
+    onToggleWishlist: (Product) -> Unit, // [CHANGED] Accepts Product object
+    isLoggedIn: Boolean
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2), // 2 колонки
+        columns = GridCells.Fixed(2),
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // 2. ЗАГОЛОВОК КАТЕГОРІЙ (на всю ширину)
         item(span = { GridItemSpan(2) }) {
             SectionHeader(title = "It would interest you")
         }
-
-        // 3. РЯДОК КАТЕГОРІЙ (на всю ширину)
         item(span = { GridItemSpan(2) }) {
             CategoryLazyRow(
                 modifier = Modifier.padding(vertical = 8.dp),
-                viewModel = viewModel // <--- ПЕРЕДАЄМО VIEWMODEL
+                viewModel = viewModel
             )
         }
-
-        // 4. ЗАГОЛОВОК "ДЛЯ ТЕБЕ" (на всю ширину)
         item(span = { GridItemSpan(2) }) {
             SectionHeader(
                 title = "For you",
                 showFilter = true,
-                // [ЗМІНА] Передаємо обробник кліку
                 onFilterClick = onFilterClick
             )
         }
-
-        // 5. СПИСОК ТОВАРІВ
-        items(products) { product ->
-            ProductItem(
-                product = product,
-                onClick = { onItemClick(product.id) },
-                onFavoriteClick = { onToggleWishlist(product.id) },
-                isFavorite = wishlistIds.contains(product.id)
-            )
+        if (products.isEmpty()) {
+            item(span = { GridItemSpan(2) }) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp, bottom = 48.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = Icons.Outlined.Search,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = Color.Gray
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text(
+                        text = "No products found",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.Black
+                    )
+                    Text(
+                        text = "Try adjusting your filters",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.Gray
+                    )
+                }
+            }
+        } else {
+            items(products) { product ->
+                ProductItem(
+                    product = product,
+                    onClick = { onItemClick(product.id) },
+                    onFavoriteClick = { onToggleWishlist(product) }, // [CHANGED] Pass product
+                    isFavorite = wishlistIds.contains(product.id),
+                    showFavoriteButton = isLoggedIn
+                )
+            }
         }
     }
 }
@@ -329,7 +375,8 @@ fun ProductItem(
     product: Product,
     onClick: () -> Unit,
     isFavorite: Boolean,
-    onFavoriteClick: () -> Unit
+    onFavoriteClick: () -> Unit,
+    showFavoriteButton: Boolean = true
 ) {
     Card(
         onClick = onClick,
@@ -344,31 +391,32 @@ fun ProductItem(
                     .height(180.dp)
             ) {
                 AsyncImage(
-                    model = product.image, // <--- URL-адреса з моделі
+                    model = product.image,
                     contentDescription = product.title,
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop,
-                    // Використовуємо заглушку на випадок помилки Coil
                     error = painterResource(id = R.drawable.ic_launcher_foreground)
                 )
 
-                IconButton(
-                    onClick = onFavoriteClick, // [NEW]
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(4.dp)
-                        .background(
-                            Color.White.copy(alpha = 0.7f), // Светлый фон для контраста
-                            CircleShape
+                if (showFavoriteButton) {
+                    IconButton(
+                        onClick = onFavoriteClick,
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(4.dp)
+                            .background(
+                                Color.White.copy(alpha = 0.7f),
+                                CircleShape
+                            )
+                            .size(32.dp)
+                    ) {
+                        Icon(
+                            imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                            contentDescription = "В обране",
+                            tint = if (isFavorite) Color.Red else Color.Gray,
+                            modifier = Modifier.size(20.dp)
                         )
-                        .size(32.dp) // Чуть меньше стандартного размера
-                ) {
-                    Icon(
-                        imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                        contentDescription = "В обране",
-                        tint = if (isFavorite) Color.Red else Color.Gray,
-                        modifier = Modifier.size(20.dp)
-                    )
+                    }
                 }
             }
             Column(modifier = Modifier.padding(12.dp)) {
@@ -392,50 +440,11 @@ fun ProductItem(
     }
 }
 
-
-@Composable
-fun BannerCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(180.dp),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF512DA8))
-    ) {
-        Box(modifier = Modifier.fillMaxSize().padding(24.dp)) {
-            Column(
-                modifier = Modifier.align(Alignment.CenterStart),
-                verticalArrangement = Arrangement.Center
-            ) {
-                Text(
-                    text = "Світло в кожну домівку",
-                    color = Color.White,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "генератори, павербанки,\nзарядні станції",
-                    color = Color.White.copy(alpha = 0.8f),
-                    style = MaterialTheme.typography.bodyMedium
-                )
-                Spacer(Modifier.height(16.dp))
-                Button(
-                    onClick = { /*TODO*/ },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color.White)
-                ) {
-                    Text("Почати продавати", color = Color.Black)
-                }
-            }
-        }
-    }
-}
-
 @Composable
 fun SectionHeader(
     title: String,
     showFilter: Boolean = false,
     modifier: Modifier = Modifier,
-    // [ЗМІНА] Додаємо обробник кліку
     onFilterClick: () -> Unit = {}
 ) {
     Row(
@@ -451,7 +460,6 @@ fun SectionHeader(
             fontWeight = FontWeight.Bold
         )
         if (showFilter) {
-            // [ЗМІНА] Використовуємо onFilterClick
             TextButton(onClick = onFilterClick) {
                 Text("Filters")
             }
@@ -459,10 +467,9 @@ fun SectionHeader(
     }
 }
 
-// [ЗМІНЕНО] CategoryLazyRow тепер приймає ViewModel
 @Composable
 fun CategoryLazyRow(modifier: Modifier = Modifier, viewModel: ProductListViewModel = hiltViewModel()) {
-    val selectedCategory by viewModel.currentCategoryId.collectAsState() // Отримуємо поточний фільтр
+    val selectedCategory by viewModel.currentCategoryId.collectAsState()
 
     LazyRow(
         modifier = modifier.fillMaxWidth(),
@@ -472,14 +479,13 @@ fun CategoryLazyRow(modifier: Modifier = Modifier, viewModel: ProductListViewMod
         items(categoryItems) { item ->
             CategoryIconItem(
                 item = item,
-                isSelected = item.categoryId == selectedCategory, // Порівнюємо ID
-                onClick = { viewModel.setCategoryFilter(item.categoryId) } // <--- ДОДАНО onClick
+                isSelected = item.categoryId == selectedCategory,
+                onClick = { viewModel.setCategoryFilter(item.categoryId) }
             )
         }
     }
 }
 
-// [НОВИЙ/ЗМІНЕНИЙ] CategoryIconItem тепер приймає isSelected та onClick
 @Composable
 fun CategoryIconItem(item: CategoryItem, isSelected: Boolean, onClick: () -> Unit) {
     val primaryColor = MaterialTheme.colorScheme.primary
@@ -488,19 +494,19 @@ fun CategoryIconItem(item: CategoryItem, isSelected: Boolean, onClick: () -> Uni
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
             .width(80.dp)
-            .clickable(onClick = onClick) // <--- ДОДАНО ОБРОБНИК КЛІКУ
+            .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
                 .size(64.dp)
                 .clip(RoundedCornerShape(16.dp))
                 .background(
-                    if (isSelected) primaryColor.copy(alpha = 0.1f) // Якщо обрано
+                    if (isSelected) primaryColor.copy(alpha = 0.1f)
                     else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
                 )
                 .border(
                     width = 2.dp,
-                    color = if (isSelected) primaryColor else Color.Transparent, // Рамка для обраного
+                    color = if (isSelected) primaryColor else Color.Transparent,
                     shape = RoundedCornerShape(16.dp)
                 )
                 .padding(12.dp),
@@ -517,14 +523,12 @@ fun CategoryIconItem(item: CategoryItem, isSelected: Boolean, onClick: () -> Uni
         Text(
             text = item.name,
             style = MaterialTheme.typography.bodySmall,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold, // Жирний шрифт для обраного
+            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis
         )
     }
 }
-
-// --- НОВИЙ КОМПОНЕНТ: МОДАЛЬНЕ ВІКНО ФІЛЬТРІВ (ОНОВЛЕНО ДЛЯ ЦІНИ ТА СОРТУВАННЯ) ---
 
 @Composable
 fun FilterModal(
@@ -541,13 +545,9 @@ fun FilterModal(
     val availableAttributes by viewModel.availableAttributeGroups.collectAsState()
     val initialSelectedAttributes by viewModel.selectedAttributes.collectAsState()
 
-    // Локальное состояние формы
     var minPriceText by remember { mutableStateOf(currentMinPrice?.toString() ?: "") }
     var maxPriceText by remember { mutableStateOf(currentMaxPrice?.toString() ?: "") }
     var selectedSort by remember { mutableStateOf(currentSort) }
-
-    // Состояние выбранных атрибутов (копия для редактирования)
-    // Map<GroupId, Set<Value>>
     var selectedAttrs by remember { mutableStateOf(initialSelectedAttributes) }
 
     Dialog(onDismissRequest = onClose) {
@@ -559,7 +559,6 @@ fun FilterModal(
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
-                // Header
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -574,7 +573,6 @@ fun FilterModal(
                 }
                 Divider()
 
-                // Content Scrollable
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -582,7 +580,6 @@ fun FilterModal(
                         .padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(24.dp)
                 ) {
-                    // 1. Sorting
                     Column {
                         Text("Sort By", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(8.dp))
@@ -593,7 +590,6 @@ fun FilterModal(
 
                     Divider()
 
-                    // 2. Price Range
                     Column {
                         Text("Price Range", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                         Spacer(Modifier.height(12.dp))
@@ -615,7 +611,6 @@ fun FilterModal(
                         }
                     }
 
-                    // 3. Dynamic Attributes
                     if (availableAttributes.isNotEmpty()) {
                         Divider()
                         Text("Characteristics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -631,8 +626,6 @@ fun FilterModal(
                                     } else {
                                         currentSet + value
                                     }
-
-                                    // Обновляем Map
                                     selectedAttrs = if (newSet.isEmpty()) {
                                         selectedAttrs - group.id
                                     } else {
@@ -644,7 +637,6 @@ fun FilterModal(
                     }
                 }
 
-                // Footer Buttons
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -695,7 +687,7 @@ fun SortOptionRadio(label: String, value: String, selectedValue: String, onSelec
 @Composable
 fun AttributeFilterGroup(
     group: AttributeGroup,
-    selectedValues: Set<String>, // Здесь хранятся RAW значения ("16", "true")
+    selectedValues: Set<String>,
     onValueToggle: (String) -> Unit
 ) {
     var isExpanded by remember { mutableStateOf(false) }
@@ -719,21 +711,20 @@ fun AttributeFilterGroup(
 
         if (isExpanded) {
             Column(modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)) {
-                // [ИЗМЕНЕНО] Перебираем options
                 group.options.forEach { option ->
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { onValueToggle(option.value) } // Переключаем RAW значение
+                            .clickable { onValueToggle(option.value) }
                             .padding(vertical = 4.dp)
                     ) {
                         Checkbox(
-                            checked = selectedValues.contains(option.value), // Проверяем по RAW
+                            checked = selectedValues.contains(option.value),
                             onCheckedChange = { onValueToggle(option.value) }
                         )
                         Text(
-                            text = option.display, // [ВАЖНО] Показываем красивое значение с юнитами
+                            text = option.display,
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(start = 8.dp)
                         )
@@ -742,20 +733,5 @@ fun AttributeFilterGroup(
             }
         }
         Divider(color = Color(0xFFF0F0F0))
-    }
-}
-// [НОВИЙ ДОПОМІЖНИЙ КОМПОНЕНТ]
-@Composable
-fun RowScope.FilterRadioButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    Row(
-        modifier = Modifier
-            .weight(1f)
-            .clickable(onClick = onClick)
-            .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        RadioButton(selected = selected, onClick = onClick)
-        Spacer(Modifier.width(4.dp))
-        Text(label, style = MaterialTheme.typography.labelMedium)
     }
 }

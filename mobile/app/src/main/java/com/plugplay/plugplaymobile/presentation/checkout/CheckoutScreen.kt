@@ -121,13 +121,12 @@ fun CheckoutScreen(
     }
 
     Scaffold(
-        // [FIX] Явно задаємо кольори для Snackbar, щоб текст точно був видний
         snackbarHost = {
             SnackbarHost(hostState = snackbarHostState) { data ->
                 Snackbar(
                     snackbarData = data,
-                    containerColor = MaterialTheme.colorScheme.error, // Червоний фон
-                    contentColor = Color.White // Білий текст
+                    containerColor = MaterialTheme.colorScheme.error,
+                    contentColor = Color.White
                 )
             }
         },
@@ -173,32 +172,6 @@ fun CheckoutScreen(
                             house = house, onHouseChange = { house = it },
                             apartment = apartment, onApartmentChange = { apartment = it }
                         )
-                    }
-                }
-
-                // Якщо залогінений, показуємо поля адреси для ручного вводу (якщо не обрав зі списку)
-                if (isLoggedIn) {
-                    item {
-                        Text("Delivery Address", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    }
-                    item {
-                        Column(
-                            Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White)
-                                .padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                OutlinedTextField(value = city, onValueChange = { city = it }, label = { Text("City") }, modifier = Modifier.weight(1f))
-                                OutlinedTextField(value = street, onValueChange = { street = it }, label = { Text("Street") }, modifier = Modifier.weight(1f))
-                            }
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                OutlinedTextField(value = house, onValueChange = { house = it }, label = { Text("House") }, modifier = Modifier.weight(1f))
-                                OutlinedTextField(value = apartment, onValueChange = { apartment = it }, label = { Text("Apt") }, modifier = Modifier.weight(1f))
-                            }
-                        }
                     }
                 }
 
@@ -280,21 +253,34 @@ fun ShippingInformationForm(
             InputDisplayCard("Phone", profile?.phoneNumber ?: "N/A", Modifier.weight(1f))
         }
 
-        if (userAddresses.isNotEmpty()) {
-            Text("Saved Addresses", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(56.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .border(1.dp, Color.Gray, RoundedCornerShape(12.dp))
-                    .clickable(onClick = { isExpanded = true })
-                    .background(Color(0xFFF0F0F0)),
-                contentAlignment = Alignment.CenterStart
+        Text("Saved Addresses", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .border(1.dp, Color.Gray, RoundedCornerShape(12.dp))
+                .clickable(onClick = { isExpanded = true }) // Клікабельно завжди
+                .background(Color(0xFFF0F0F0)),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Text(selectedLabel, modifier = Modifier.padding(horizontal = 16.dp), color = Color.Black)
+            Icon(Icons.Outlined.ArrowDropDown, null, Modifier.align(Alignment.CenterEnd).padding(end = 8.dp))
+
+            // Меню вибору
+            DropdownMenu(
+                expanded = isExpanded,
+                onDismissRequest = { isExpanded = false },
+                modifier = Modifier.fillMaxWidth(0.9f)
             ) {
-                Text(selectedLabel, modifier = Modifier.padding(horizontal = 16.dp), color = Color.Black)
-                Icon(Icons.Outlined.ArrowDropDown, null, Modifier.align(Alignment.CenterEnd).padding(end = 8.dp))
-                DropdownMenu(expanded = isExpanded, onDismissRequest = { isExpanded = false }, modifier = Modifier.fillMaxWidth(0.9f)) {
+                if (userAddresses.isEmpty()) {
+                    // Якщо адрес немає - показуємо напис
+                    DropdownMenuItem(
+                        text = { Text("No saved addresses", color = Color.Gray) },
+                        onClick = { isExpanded = false }
+                    )
+                } else {
+                    // Якщо є адреси - показуємо список
                     userAddresses.forEach { address ->
                         val label = "${address.city}, ${address.street} ${address.house}"
                         DropdownMenuItem(

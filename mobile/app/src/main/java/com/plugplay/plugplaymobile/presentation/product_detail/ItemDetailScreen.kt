@@ -51,7 +51,14 @@ fun ItemDetailScreen(
     val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
     val item = state.item
+
+    // [NEW] Get login state
+    val isLoggedIn by viewModel.isLoggedIn.collectAsState()
+
     var isCartOpen by remember { mutableStateOf(false) }
+
+    // [NEW] State for removal confirmation dialog
+    var showRemoveDialog by remember { mutableStateOf(false) }
 
     val isInCart = remember(cartState.cartItems, item) {
         if (item == null) return@remember false
@@ -67,6 +74,34 @@ fun ItemDetailScreen(
         }
     )
 
+    // [NEW] Confirmation Dialog
+    if (showRemoveDialog && item != null) {
+        AlertDialog(
+            onDismissRequest = { showRemoveDialog = false },
+            title = { Text(text = "Confirm action") },
+            text = {
+                Text(text = "Are you sure you want to remove ${item.name} from your wishlist?")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.toggleFavorite()
+                        showRemoveDialog = false
+                    }
+                ) {
+                    Text("Remove", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRemoveDialog = false }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -77,13 +112,25 @@ fun ItemDetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { viewModel.toggleFavorite() }) {
-                        Icon(
-                            imageVector = if (state.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "Wishlist",
-                            tint = if (state.isFavorite) Color.Red else Color.Black
-                        )
+                    // [FIX] Hide heart icon if not logged in
+                    if (isLoggedIn) {
+                        IconButton(onClick = {
+                            if (state.isFavorite) {
+                                // If already favorite, show dialog
+                                showRemoveDialog = true
+                            } else {
+                                // If not favorite, add immediately
+                                viewModel.toggleFavorite()
+                            }
+                        }) {
+                            Icon(
+                                imageVector = if (state.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
+                                contentDescription = "Wishlist",
+                                tint = if (state.isFavorite) Color.Red else Color.Black
+                            )
+                        }
                     }
+
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Outlined.Person, contentDescription = "Profile")
                     }
@@ -160,14 +207,14 @@ fun ItemDetailScreen(
                     // 5. Description
                     item { DescriptionSection(item) }
 
-                    // 6. [NEW] Attributes
+                    // 6. Attributes
                     if (state.attributes.isNotEmpty()) {
                         item {
                             ProductAttributesSection(attributes = state.attributes)
                         }
                     }
 
-                    // 7. [NEW] Reviews
+                    // 7. Reviews
                     item {
                         ProductReviewsSection(reviews = item.reviews)
                     }
@@ -177,7 +224,8 @@ fun ItemDetailScreen(
     }
 }
 
-// [NEW] Component for attributes
+// [Components: ProductAttributesSection, ProductReviewsSection, ReviewItem, ActionButtons, ImagePager, TitleAndPrice, InfoSection, InfoRow, DescriptionSection - NO CHANGES NEEDED]
+// Copy them from previous responses if needed.
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProductAttributesSection(attributes: List<AttributeGroup>) {
@@ -187,24 +235,19 @@ fun ProductAttributesSection(attributes: List<AttributeGroup>) {
             .background(Color.White)
             .padding(horizontal = 16.dp, vertical = 8.dp)
     ) {
-        // Контейнер с серым фоном
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(Color(0xFFF4F7F8), RoundedCornerShape(12.dp))
                 .padding(16.dp)
         ) {
-            // [ИЗМЕНЕНО] Используем FlowRow для размещения ГРУПП атрибутов
-            // Теперь группы ("Color", "Weight" и т.д.) будут вставать рядом друг с другом
             FlowRow(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(24.dp), // Большой отступ между группами
-                verticalArrangement = Arrangement.spacedBy(16.dp)    // Отступ между рядами групп
+                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 attributes.forEach { group ->
-                    // Блок одной группы (Название + Значения)
                     Column {
-                        // Название группы (Color)
                         Text(
                             text = group.name,
                             style = MaterialTheme.typography.bodyMedium,
@@ -212,13 +255,10 @@ fun ProductAttributesSection(attributes: List<AttributeGroup>) {
                             color = Color.DarkGray,
                             modifier = Modifier.padding(bottom = 6.dp)
                         )
-
-                        // Значения группы (White, Black) - тоже FlowRow
                         FlowRow(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            // [ИЗМЕНЕНО] group.values -> group.options
                             group.options.forEach { option ->
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
@@ -227,7 +267,7 @@ fun ProductAttributesSection(attributes: List<AttributeGroup>) {
                                     shadowElevation = 0.dp
                                 ) {
                                     Text(
-                                        text = option.display, // [ИЗМЕНЕНО] Используем .display
+                                        text = option.display,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = Color.Black,
                                         modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
@@ -243,7 +283,6 @@ fun ProductAttributesSection(attributes: List<AttributeGroup>) {
     }
 }
 
-// [NEW] Component for reviews
 @Composable
 fun ProductReviewsSection(reviews: List<Review>) {
     Column(
@@ -282,7 +321,6 @@ fun ReviewItem(review: Review) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                // Avatar placeholder
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -332,8 +370,6 @@ fun ReviewItem(review: Review) {
     }
 }
 
-// ... Existing components (ImagePager, TitleAndPrice, InfoSection, DescriptionSection, ActionButtons, InfoRow) remain unchanged ...
-// Ensure you copy them from the previous version of ItemDetailScreen.kt
 @Composable
 fun ActionButtons(
     item: Item,
@@ -347,7 +383,6 @@ fun ActionButtons(
             .background(Color.White)
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp, top = 8.dp)
     ) {
-        // Buy Button
         Button(
             onClick = onBuyClick,
             modifier = Modifier
@@ -373,7 +408,6 @@ fun ActionButtons(
         }
         Spacer(Modifier.height(8.dp))
 
-        // Add to Cart Button
         OutlinedButton(
             onClick = onAddToCart,
             modifier = Modifier

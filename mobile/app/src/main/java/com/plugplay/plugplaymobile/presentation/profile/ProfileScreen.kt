@@ -3,26 +3,23 @@ package com.plugplay.plugplaymobile.presentation.profile
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -37,34 +34,18 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.plugplay.plugplaymobile.presentation.auth.AuthViewModel
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import com.plugplay.plugplaymobile.domain.model.UserAddress
-import com.plugplay.plugplaymobile.domain.usecase.GetProfileUseCase
-import com.plugplay.plugplaymobile.domain.usecase.UpdateProfileUseCase
-import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-import dagger.hilt.android.lifecycle.HiltViewModel
 import com.plugplay.plugplaymobile.domain.model.Order
 import com.plugplay.plugplaymobile.domain.model.OrderItem
 import com.plugplay.plugplaymobile.domain.model.OrderStatus
 import com.plugplay.plugplaymobile.domain.model.DeliveryMethod
 import com.plugplay.plugplaymobile.domain.model.PaymentMethod
 import com.plugplay.plugplaymobile.domain.model.PaymentStatus
-import com.plugplay.plugplaymobile.domain.usecase.GetUserOrdersUseCase
-import com.plugplay.plugplaymobile.domain.usecase.CancelOrderUseCase
 import java.text.NumberFormat
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
 import java.time.format.FormatStyle
-
-
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -78,7 +59,6 @@ fun ProfileScreen(
 ) {
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val profileState by profileViewModel.state.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
 
     val profile = profileState.profile
     val orders = profileState.orders
@@ -86,23 +66,21 @@ fun ProfileScreen(
     val isEditingCredentials = remember { mutableStateOf(false) }
     val openSection = remember { mutableStateOf("") }
 
-    LaunchedEffect(isLoggedIn) {
-        profileViewModel.onAuthStatusChanged(isLoggedIn)
-    }
-
+    // --- ЛОГІКА: Закриваємо форму редагування після успішного збереження ---
     LaunchedEffect(profileState.updateSuccess) {
         if (profileState.updateSuccess) {
-            isEditingCredentials.value = false
-            profileViewModel.resetUpdateState()
-            snackbarHostState.showSnackbar("Profile updated successfully!")
+            // Якщо була відкрита форма редагування профілю - закриваємо її
+            if (isEditingCredentials.value) {
+                isEditingCredentials.value = false
+                profileViewModel.resetUpdateState()
+                profileViewModel.onAuthStatusChanged(true) // Оновлюємо дані
+            }
         }
     }
+    // ---------------------------------------------------------------------------
 
-    LaunchedEffect(profileState.error) {
-        if (profileState.error != null) {
-            snackbarHostState.showSnackbar(profileState.error!!)
-            profileViewModel.resetUpdateState()
-        }
+    LaunchedEffect(isLoggedIn) {
+        profileViewModel.onAuthStatusChanged(isLoggedIn)
     }
 
     Scaffold(
@@ -118,7 +96,6 @@ fun ProfileScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         if (!isLoggedIn) {
             Box(
@@ -164,6 +141,7 @@ fun ProfileScreen(
                                 if (openSection.value == "My Details") "" else "My Details"
                         },
                         actionButton = {
+                            // Кнопка Edit відображається тільки якщо ми НЕ в режимі редагування
                             if (!isEditingCredentials.value) {
                                 TextButton(
                                     onClick = { isEditingCredentials.value = true },
@@ -178,7 +156,7 @@ fun ProfileScreen(
                             EditCredentialsForm(
                                 profile = profile,
                                 onSave = { fn, ln, ph, em ->
-                                    profileViewModel.updateProfile(fn, ln, ph, em)
+                                    profileViewModel.updateProfile(fn, ln, ph, em); isEditingCredentials.value = false
                                 },
                                 onCancel = { isEditingCredentials.value = false },
                                 isUpdating = profileState.isUpdating
@@ -207,31 +185,11 @@ fun ProfileScreen(
 
                         AddAddressForm(
                             viewModel = profileViewModel,
-                            onAddressAdded = { openSection.value = "" }
+                            onAddressAdded = {
+                                openSection.value = ""
+                                profileViewModel.onAuthStatusChanged(true)
+                            }
                         )
-                    }
-                }
-
-                item {
-                    // Новая секция для вишлиста
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable(onClick = onNavigateToWishlist),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Icon(Icons.Filled.Favorite, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
-                            Spacer(Modifier.width(16.dp))
-                            Text("My Wishlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Spacer(Modifier.weight(1f))
-                            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                        }
                     }
                 }
 
@@ -256,6 +214,26 @@ fun ProfileScreen(
                                 onCancelOrder = profileViewModel::cancelOrder,
                                 isCancelling = profileState.isUpdating
                             )
+                        }
+                    }
+                }
+
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 4.dp)
+                            .clickable(onClick = onNavigateToWishlist),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("My Wishlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                            Spacer(Modifier.weight(1f))
+                            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -413,8 +391,11 @@ fun AddAddressForm(
             street.value = ""
             house.value = ""
             apartment.value = ""
-            onAddressAdded()
+
             viewModel.resetUpdateState()
+
+            // Callback для згортання секції
+            onAddressAdded()
         }
     }
 
@@ -505,8 +486,18 @@ fun AddressList(
     onEditAddress: (addressId: Int?, city: String, street: String, house: String, apartment: String?) -> Unit,
     profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
-    val isUpdating = profileViewModel.state.collectAsState().value.isUpdating
+    val state by profileViewModel.state.collectAsState()
+    val isUpdating = state.isUpdating
     val addressToEdit = remember { mutableStateOf<UserAddress?>(null) }
+
+    // --- ЛОГІКА ДЛЯ АДРЕС: Закриваємо редагування адреси після успішного збереження ---
+    LaunchedEffect(state.updateSuccess) {
+        if (state.updateSuccess && addressToEdit.value != null) {
+            addressToEdit.value = null
+            profileViewModel.resetUpdateState()
+        }
+    }
+    // ---------------------------------------------------------------------------------
 
     Column(modifier = Modifier
         .fillMaxWidth()
@@ -527,7 +518,7 @@ fun AddressList(
                         address = address,
                         onSave = { city, street, house, apartment ->
                             onEditAddress(address.id, city, street, house, apartment)
-                            addressToEdit.value = null
+                            // Форма закриється автоматично через LaunchedEffect
                         },
                         onCancel = { addressToEdit.value = null },
                         isUpdating = isUpdating

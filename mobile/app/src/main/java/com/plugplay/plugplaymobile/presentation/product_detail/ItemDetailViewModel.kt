@@ -10,10 +10,7 @@ import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import com.plugplay.plugplaymobile.domain.usecase.GetWishlistUseCase
 import com.plugplay.plugplaymobile.domain.usecase.ToggleWishlistUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -21,14 +18,13 @@ data class ItemDetailState(
     val item: Item? = null,
     val attributes: List<AttributeGroup> = emptyList(),
     val isLoading: Boolean = true,
-    val isFavorite: Boolean = false, // [NEW] Состояние лайка
+    val isFavorite: Boolean = false,
     val error: String? = null
 )
 
 @HiltViewModel
 class ItemDetailViewModel @Inject constructor(
     private val repository: ProductRepository,
-    // [NEW] Зависимости
     private val getWishlistUseCase: GetWishlistUseCase,
     private val toggleWishlistUseCase: ToggleWishlistUseCase,
     private val authRepository: AuthRepository,
@@ -39,16 +35,19 @@ class ItemDetailViewModel @Inject constructor(
     private val _state = MutableStateFlow(ItemDetailState())
     val state: StateFlow<ItemDetailState> = _state
 
+    // [NEW] Статус авторизации
+    val isLoggedIn: StateFlow<Boolean> = authRepository.getAuthStatus()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     init {
         if (itemId.isNotEmpty()) {
             loadItemDetails()
-            checkIfFavorite() // [NEW] Проверка при старте
+            checkIfFavorite()
         } else {
             _state.update { it.copy(isLoading = false, error = "Item ID not found") }
         }
     }
 
-    // [NEW] Проверяем статус избранного
     private fun checkIfFavorite() {
         viewModelScope.launch {
             if (authRepository.getUserId().first() != null) {
@@ -61,7 +60,6 @@ class ItemDetailViewModel @Inject constructor(
         }
     }
 
-    // [NEW] Тоггл лайка
     fun toggleFavorite() {
         viewModelScope.launch {
             val isLoggedIn = authRepository.getUserId().first() != null
@@ -70,7 +68,6 @@ class ItemDetailViewModel @Inject constructor(
             val isCurrentlyFavorite = _state.value.isFavorite
             val idInt = itemId.toIntOrNull() ?: return@launch
 
-            // Оптимистичное обновление
             _state.update { it.copy(isFavorite = !isCurrentlyFavorite) }
 
             if (isCurrentlyFavorite) {
@@ -98,7 +95,6 @@ class ItemDetailViewModel @Inject constructor(
         }
     }
 
-    // ... (loadAttributes без изменений)
     private fun loadAttributes(categoryId: Int, productId: Int) {
         viewModelScope.launch {
             repository.getProductAttributes(categoryId, productId)

@@ -46,8 +46,6 @@ class ProfileViewModel @Inject constructor(
             if (_state.value.profile == null && !_state.value.isLoading) {
                 loadProfile()
             }
-            // [ИСПРАВЛЕНО] Загружаем заказы ВСЕГДА при входе на экран,
-            // чтобы данные были актуальными (например, после оформления нового заказа)
             loadOrders()
         } else {
             _state.value = ProfileState()
@@ -68,14 +66,12 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun loadOrders() {
-        // Не запускаем загрузку повторно, если она уже идет
         if (_state.value.isOrdersLoading) return
 
         _state.update { it.copy(isOrdersLoading = true) }
         viewModelScope.launch {
             getUserOrdersUseCase()
                 .onSuccess { orders ->
-                    // Сортируем заказы: сначала новые
                     val sortedOrders = orders.sortedByDescending { it.orderDate }
                     _state.update { it.copy(orders = sortedOrders, isOrdersLoading = false) }
                 }
@@ -91,7 +87,6 @@ class ProfileViewModel @Inject constructor(
             cancelOrderUseCase(orderId)
                 .onSuccess {
                     _state.update { it.copy(isUpdating = false, updateSuccess = true) }
-                    // Перезагружаем список после отмены
                     loadOrders()
                 }
                 .onFailure { throwable ->
@@ -100,6 +95,7 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
+    // [ОНОВЛЕНО] Тепер приймаємо оновлений профіль від UseCase і відразу оновлюємо State
     fun updateProfile(
         firstName: String,
         lastName: String,
@@ -112,9 +108,15 @@ class ProfileViewModel @Inject constructor(
         _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
         viewModelScope.launch {
             updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword, addresses)
-                .onSuccess {
-                    _state.update { it.copy(isUpdating = false, updateSuccess = true) }
-                    loadProfile()
+                .onSuccess { updatedProfile -> // [ВАЖЛИВО] Отримуємо оновлений об'єкт
+                    _state.update {
+                        it.copy(
+                            isUpdating = false,
+                            updateSuccess = true,
+                            profile = updatedProfile // [ВАЖЛИВО] Миттєво оновлюємо UI
+                        )
+                    }
+                    // loadProfile() тут більше не потрібен, оскільки ми вже маємо свіжі дані
                 }
                 .onFailure { throwable ->
                     _state.update {

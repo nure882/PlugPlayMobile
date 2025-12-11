@@ -20,19 +20,18 @@ class ProductListViewModel @Inject constructor(
     private val getProductsUseCase: GetProductsUseCase,
     private val searchProductsUseCase: SearchProductsUseCase,
     private val productRepository: ProductRepository,
-    // [NEW] UseCases для вишлиста
     private val getWishlistUseCase: GetWishlistUseCase,
     private val toggleWishlistUseCase: ToggleWishlistUseCase,
     private val authRepository: AuthRepository
 ) : ViewModel() {
 
     private val _products = MutableStateFlow<List<Product>>(emptyList())
-
-    // [NEW] Список ID товаров в избранном
     private val _wishlistIds = MutableStateFlow<Set<String>>(emptySet())
     val wishlistIds: StateFlow<Set<String>> = _wishlistIds.asStateFlow()
 
-    // Фильтры
+    val isLoggedIn: StateFlow<Boolean> = authRepository.getAuthStatus()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     private val _currentCategoryId = MutableStateFlow<Int?>(null)
     private val _searchQuery = MutableStateFlow("")
     private val _minPrice = MutableStateFlow<Double?>(null)
@@ -50,16 +49,26 @@ class ProductListViewModel @Inject constructor(
         _currentCategoryId,
         _searchQuery,
         _availableAttributeGroups,
-        _sortOption // Триггер
+        _sortOption,
+        _selectedAttributes,
+        _minPrice,
+        _maxPrice
     ) { args ->
         val products = args[0] as List<Product>
         val catId = args[1] as? Int
         val query = args[2] as String
+        val attrs = args[5] as Map<Int, Set<String>>
+        val min = args[6] as? Double
+        val max = args[7] as? Double
 
-        if (products.isEmpty() && (catId != null || query.isNotEmpty())) {
-            ProductListState.Loading
-        } else if (products.isEmpty() && catId == null && query.isEmpty()) {
-            ProductListState.Idle
+        val hasFilters = catId != null || query.isNotEmpty() || attrs.isNotEmpty() || min != null || max != null
+
+        if (products.isEmpty()) {
+            if (hasFilters) {
+                ProductListState.Success(emptyList())
+            } else {
+                ProductListState.Idle
+            }
         } else {
             ProductListState.Success(products)
         }
@@ -79,37 +88,35 @@ class ProductListViewModel @Inject constructor(
 
     init {
         loadProducts()
-        loadWishlist() // [NEW] Загружаем вишлист при старте
+        loadWishlist()
     }
 
-    // [NEW] Загрузка вишлиста (только для авторизованных)
-    private fun loadWishlist() {
+    // [FIXED] Changed from private to public so the UI can refresh it
+    fun loadWishlist() {
         viewModelScope.launch {
             if (authRepository.getUserId().first() != null) {
                 getWishlistUseCase()
                     .onSuccess { wishlist ->
-                        _wishlistIds.value = wishlist.map { it.id }.toSet()
+                        _wishlistIds.update { wishlist.map { it.id }.toSet() }
                     }
             }
         }
     }
 
-    // [NEW] Тоггл лайка
     fun toggleWishlist(productId: String) {
         viewModelScope.launch {
             val isLoggedIn = authRepository.getUserId().first() != null
-            if (!isLoggedIn) return@launch // Или показать сообщение "Войдите"
+            if (!isLoggedIn) return@launch
 
             val currentIds = _wishlistIds.value
             val isFavorite = currentIds.contains(productId)
             val idInt = productId.toIntOrNull() ?: return@launch
 
-            // Оптимистичное обновление UI
             if (isFavorite) {
-                _wishlistIds.value = currentIds - productId
+                _wishlistIds.update { it - productId } // Optimistic update
                 toggleWishlistUseCase.remove(idInt)
             } else {
-                _wishlistIds.value = currentIds + productId
+                _wishlistIds.update { it + productId } // Optimistic update
                 toggleWishlistUseCase.add(idInt)
             }
         }
@@ -141,12 +148,9 @@ class ProductListViewModel @Inject constructor(
                     val attributesCategoryId = categoryId ?: 2147483647
                     val productIds = products.mapNotNull { it.id.toIntOrNull() }
                     loadAvailableAttributes(attributesCategoryId, productIds)
-                } else {
-                    _availableAttributeGroups.value = emptyList()
                 }
             }.onFailure {
                 _products.value = emptyList()
-                _availableAttributeGroups.value = emptyList()
             }
         }
     }
@@ -166,8 +170,6 @@ class ProductListViewModel @Inject constructor(
         }.ifBlank { null }
     }
 
-    // --- Public Methods ---
-
     fun setCategoryFilter(categoryId: Int) {
         val newFilter = if (_currentCategoryId.value == categoryId) null else categoryId
         _currentCategoryId.value = newFilter
@@ -175,6 +177,7 @@ class ProductListViewModel @Inject constructor(
         _minPrice.value = null
         _maxPrice.value = null
         _selectedAttributes.value = emptyMap()
+        _availableAttributeGroups.value = emptyList()
         loadProducts()
     }
 
@@ -185,12 +188,14 @@ class ProductListViewModel @Inject constructor(
         _minPrice.value = null
         _maxPrice.value = null
         _selectedAttributes.value = emptyMap()
+        _availableAttributeGroups.value = emptyList()
         loadProducts()
     }
 
     fun clearSearch() {
         if (_searchQuery.value.isNotEmpty()) {
             _searchQuery.value = ""
+            _availableAttributeGroups.value = emptyList()
             loadProducts()
         }
     }
