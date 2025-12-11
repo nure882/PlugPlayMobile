@@ -63,4 +63,15 @@ class ProductRepositoryImpl @Inject constructor(
             }
         }
     }
+
+    override suspend fun searchProducts(query: String): Result<List<Product>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                // Вызываем API поиска
+                val productsDto = apiService.searchProducts(query = query)
+                // Мапим в доменные модели
+                productsDto.toDomainList()
+            }
+        }
+    }
 }

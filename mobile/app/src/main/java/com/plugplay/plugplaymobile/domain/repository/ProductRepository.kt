@@ -9,4 +9,6 @@ interface ProductRepository {
 
     // Функція для отримання одного товару за ID (використовує модель Item)
     suspend fun getProductById(itemId: String): Result<Item>
+
+    suspend fun searchProducts(query: String): Result<List<Product>>
 }

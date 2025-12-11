@@ -17,10 +17,15 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Person
@@ -35,6 +40,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -80,16 +86,29 @@ fun ProductListScreen(
     val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
 
-    // Стан для відображення діалогу кошика
     var isCartOpen by remember { mutableStateOf(false) }
-
-    // [НОВЕ] Стан для відображення модального вікна фільтра
     val isFilterModalVisible by viewModel.isFilterModalVisible.collectAsState()
 
-    // [НОВЕ] Отримуємо поточний ключ фільтра для AnimatedContent
-    val currentFilterKey by viewModel.currentCategoryId.collectAsState()
+    // Состояния для поиска
+    val currentSearchQuery by viewModel.searchQuery.collectAsState()
+    var isSearchActive by remember { mutableStateOf(false) }
+    var searchText by remember { mutableStateOf("") }
 
-    // [ДОДАНО] Діалог кошика
+    // Синхронизация текста при изменении извне (например, при сбросе)
+    LaunchedEffect(currentSearchQuery) {
+        searchText = currentSearchQuery
+        if (currentSearchQuery.isNotEmpty()) {
+            isSearchActive = true
+        }
+    }
+
+    // Для анимированного перехода (ключ фильтра)
+    val currentCategoryId by viewModel.currentCategoryId.collectAsState()
+    // Ключ для анимации: меняется либо категория, либо поисковый запрос
+    val animationKey = remember(currentCategoryId, currentSearchQuery) {
+        currentCategoryId?.toString() ?: currentSearchQuery
+    }
+
     ShoppingCartDialog(
         isOpen = isCartOpen,
         onClose = { isCartOpen = false },
@@ -99,118 +118,148 @@ fun ProductListScreen(
         }
     )
 
-    // [ОНОВЛЕНО] Модальне вікно для фільтрів
     FilterModal(
         isOpen = isFilterModalVisible,
         onClose = viewModel::toggleFilterModal,
-        onApply = { minPrice, maxPrice, isSortAscending -> // <--- ОНОВЛЕНО СИГНАТУРУ
-            viewModel.applyFilters(minPrice, maxPrice, isSortAscending)
-        }
+        onApply = { min, max, sort -> viewModel.applyFilters(min, max, sort) }
     )
 
     Scaffold(
         topBar = {
-            // [ОНОВЛЕНО TopAppBar]
-            TopAppBar(
-                title = {
-                    // ПОЧАТОК ЗМІНИ: Заміна тексту на два графічні ресурси
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Ресурс 1: Іконка "Plug" (вилка, logo.png)
-                        Icon(
-                            painter = painterResource(id = R.drawable.logo_plug), // <-- Використовуйте R.drawable.logo_plug
-                            contentDescription = "Plug Logo Icon",
-                            tint = MaterialTheme.colorScheme.primary, // Можна стилізувати кольором теми
-                            modifier = Modifier.size(32.dp)
-                        )
-                        Spacer(Modifier.width(8.dp))
-                        // Ресурс 2: Текст "Plug & Play" (file (1).png)
-
-                        // ПОЧАТОК ЗМІНИ: Повернення тексту "Plug & Play" та зміна кольору на чорний
-                        Text(
-                            "Plug & Play",
-                            fontWeight = FontWeight.Bold,
-                            color = Color.Black // <-- ТУТ ЗМІНА
-                        )
-                    }
-                    // КІНЕЦЬ ЗМІНИ
-                },
-                actions = {
-                    IconButton(onClick = { /* TODO: Пошук */ }) {
-                        Icon(Icons.Outlined.Search, contentDescription = "Пошук")
-                    }
-
-                    // [ДОДАНО] Іконка профілю
-                    IconButton(onClick = onNavigateToProfile) {
-                        Icon(Icons.Outlined.Person, contentDescription = "Профіль")
-                    }
-
-                    // [ОНОВЛЕНО] Кнопка корзини з лічильником
-                    IconButton(onClick = { isCartOpen = true }) {
-                        BadgedBox(
-                            badge = {
-                                if (cartItemsCount > 0) {
-                                    Badge(
-                                        modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
-                                        containerColor = MaterialTheme.colorScheme.error
-                                    ) {
-                                        Text(cartItemsCount.toString())
-                                    }
+            if (isSearchActive) {
+                // [РЕЖИМ ПОИСКА]
+                TopAppBar(
+                    title = {
+                        TextField(
+                            value = searchText,
+                            onValueChange = { searchText = it },
+                            placeholder = { Text("Search products...") },
+                            singleLine = true,
+                            colors = TextFieldDefaults.colors(
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                focusedIndicatorColor = Color.Transparent,
+                                unfocusedIndicatorColor = Color.Transparent
+                            ),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
+                                    viewModel.search(searchText.trim())
                                 }
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = {
+                            // Выход из поиска
+                            isSearchActive = false
+                            searchText = ""
+                            viewModel.clearSearch()
+                        }) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Close search")
+                        }
+                    },
+                    actions = {
+                        if (searchText.isNotEmpty()) {
+                            IconButton(onClick = {
+                                searchText = ""
+                                // Можно сразу сбрасывать поиск или ждать Enter
+                            }) {
+                                Icon(Icons.Default.Close, contentDescription = "Clear text")
                             }
-                        ) {
-                            Icon(Icons.Outlined.ShoppingCart, contentDescription = "Корзина")
+                        }
+                        // Кнопка поиска для подтверждения (дублирует Enter)
+                        IconButton(onClick = { viewModel.search(searchText.trim()) }) {
+                            Icon(Icons.Default.Search, contentDescription = "Search")
                         }
                     }
-                }
-            )
-        },
-        // [ВИДАЛЕНО] bottomBar
+                )
+            } else {
+                // [ОБЫЧНЫЙ РЕЖИМ]
+                TopAppBar(
+                    title = {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.logo_plug),
+                                contentDescription = "Logo",
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text("Plug & Play", fontWeight = FontWeight.Bold, color = Color.Black)
+                        }
+                    },
+                    actions = {
+                        // Кнопка активации поиска
+                        IconButton(onClick = { isSearchActive = true }) {
+                            Icon(Icons.Outlined.Search, contentDescription = "Search")
+                        }
+                        IconButton(onClick = onNavigateToProfile) {
+                            Icon(Icons.Outlined.Person, contentDescription = "Profile")
+                        }
+                        IconButton(onClick = { isCartOpen = true }) {
+                            BadgedBox(
+                                badge = {
+                                    if (cartItemsCount > 0) {
+                                        Badge(
+                                            modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
+                                            containerColor = MaterialTheme.colorScheme.error
+                                        ) { Text(cartItemsCount.toString()) }
+                                    }
+                                }
+                            ) {
+                                Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart")
+                            }
+                        }
+                    }
+                )
+            }
+        }
     ) { padding ->
-
-        // [НОВИЙ КОНТЕЙНЕР АНІМАЦІЇ]
-        // AnimatedContent анімує перехід, коли змінюється currentFilterKey
         AnimatedContent(
-            targetState = currentFilterKey, // Ключ, який запускає анімацію (ID категорії або null)
+            targetState = animationKey,
             transitionSpec = {
-                // Плавний перехід: старий екран зникає, новий з'являється одночасно
                 (fadeIn(animationSpec = tween(300))
                     .togetherWith(fadeOut(animationSpec = tween(300))))
             },
-            label = "CategoryFilterFade"
-        ) { targetCategory -> // targetCategory - це значення currentFilterKey
-
-            // Вміст, який анімується
+            label = "ContentFade"
+        ) { _ ->
             Box(Modifier.fillMaxSize().padding(padding)) {
-
-                // Обробка станів (Завантаження, Помилка)
                 when (state) {
                     is ProductListState.Loading -> {
-                        // Показуємо індикатор завантаження
                         CircularProgressIndicator(Modifier.align(Alignment.Center))
                     }
                     is ProductListState.Error -> {
                         Box(Modifier.fillMaxSize().wrapContentSize(Alignment.Center)) {
                             Text(
-                                text = "Помилка: ${(state as ProductListState.Error).message}",
+                                text = "Error: ${(state as ProductListState.Error).message}",
                                 color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
                     is ProductListState.Success -> {
-                        // [НОВИЙ МАКЕТ] Використовуємо LazyVerticalGrid
-                        ProductGrid(
-                            products = (state as ProductListState.Success).products,
-                            // Передаємо порожній модифікатор, оскільки всі відступи вже оброблені
-                            modifier = Modifier,
-                            onItemClick = onNavigateToItemDetail,
-                            viewModel = viewModel,
-                            // [НОВЕ] Передаємо обробник кліку для фільтра
-                            onFilterClick = viewModel::toggleFilterModal
-                        )
+                        val products = (state as ProductListState.Success).products
+                        if (products.isEmpty() && currentSearchQuery.isNotEmpty()) {
+                            // Если поиск не дал результатов
+                            Column(
+                                modifier = Modifier.align(Alignment.Center),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("No products found", style = MaterialTheme.typography.titleLarge)
+                                Text("Try adjusting your search", color = Color.Gray)
+                            }
+                        } else {
+                            ProductGrid(
+                                products = products,
+                                modifier = Modifier,
+                                onItemClick = onNavigateToItemDetail,
+                                viewModel = viewModel,
+                                onFilterClick = viewModel::toggleFilterModal
+                            )
+                        }
                     }
-                    ProductListState.Idle -> { /* Нічого */ }
+                    ProductListState.Idle -> { /* Пустое состояние */ }
                 }
             }
         }

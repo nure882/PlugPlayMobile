@@ -61,4 +61,11 @@ interface ShopApiService {
 
     @PUT("api/Order/cancel/{orderId}")
     suspend fun cancelOrder(@Path("orderId") orderId: Int): Response<Void>
+
+    @GET("api/Products/search/{query}")
+    suspend fun searchProducts(
+        @Path("query") query: String,
+        @Query("page") page: Int = 1,
+        @Query("pageSize") pageSize: Int = 100
+    ): List<ProductDto>
 }
