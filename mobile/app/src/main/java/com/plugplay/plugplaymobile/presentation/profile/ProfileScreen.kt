@@ -2,6 +2,8 @@ package com.plugplay.plugplaymobile.presentation.profile
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,13 +15,20 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -38,142 +47,22 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import dagger.hilt.android.lifecycle.HiltViewModel
+import com.plugplay.plugplaymobile.domain.model.Order
+import com.plugplay.plugplaymobile.domain.model.OrderItem
+import com.plugplay.plugplaymobile.domain.model.OrderStatus
+import com.plugplay.plugplaymobile.domain.model.DeliveryMethod
+import com.plugplay.plugplaymobile.domain.model.PaymentMethod
+import com.plugplay.plugplaymobile.domain.model.PaymentStatus
+import com.plugplay.plugplaymobile.domain.usecase.GetUserOrdersUseCase
+import com.plugplay.plugplaymobile.domain.usecase.CancelOrderUseCase
+import java.text.NumberFormat
+import java.time.ZonedDateTime
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import java.time.format.FormatStyle
 
-data class ProfileState(
-    val profile: UserProfile? = null,
-    val isLoading: Boolean = false,
-    val isUpdating: Boolean = false,
-    val error: String? = null,
-    val updateSuccess: Boolean = false
-)
 
-@HiltViewModel
-class ProfileViewModel @Inject constructor(
-    private val getProfileUseCase: GetProfileUseCase,
-    private val updateProfileUseCase: UpdateProfileUseCase,
-    private val authRepository: AuthRepository
-) : ViewModel() {
 
-    private val _state = MutableStateFlow(ProfileState())
-    val state: StateFlow<ProfileState> = _state.asStateFlow()
-
-    fun onAuthStatusChanged(isLoggedIn: Boolean) {
-        if (isLoggedIn && _state.value.profile == null && !_state.value.isLoading) {
-            loadProfile()
-        } else if (!isLoggedIn) {
-            _state.value = ProfileState()
-        }
-    }
-
-    fun loadProfile() {
-        _state.update { it.copy(isLoading = true, error = null) }
-        viewModelScope.launch {
-            getProfileUseCase()
-                .onSuccess { profile ->
-                    _state.update { it.copy(profile = profile, isLoading = false) }
-                }
-                .onFailure { throwable ->
-                    _state.update { it.copy(isLoading = false, error = throwable.message ?: "Помилка завантаження профілю.") }
-                }
-        }
-    }
-
-    fun updateProfile(
-        firstName: String,
-        lastName: String,
-        phoneNumber: String,
-        email: String,
-        currentPassword: String? = null,
-        newPassword: String? = null,
-        addresses: List<UserAddress> = emptyList()
-    ) {
-        _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
-        viewModelScope.launch {
-            updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword, addresses)
-                .onSuccess {
-                    // Встановлюємо успіх і викликаємо перезавантаження
-                    _state.update { it.copy(isUpdating = false, updateSuccess = true) }
-                    loadProfile()
-                }
-                .onFailure { throwable ->
-                    _state.update {
-                        it.copy(
-                            isUpdating = false,
-                            error = throwable.message ?: "Помилка оновлення профілю."
-                        )
-                    }
-                }
-        }
-    }
-
-    fun updateAddresses(newAddresses: List<UserAddress>) {
-        val currentProfile = state.value.profile ?: return
-        updateProfile(
-            firstName = currentProfile.firstName,
-            lastName = currentProfile.lastName,
-            phoneNumber = currentProfile.phoneNumber,
-            email = currentProfile.email,
-            addresses = newAddresses
-        )
-    }
-
-    fun addAddress(city: String, street: String, house: String, apartment: String?) {
-        val currentProfile = state.value.profile ?: run {
-            _state.update { it.copy(error = "User profile not loaded. Cannot add address.") }
-            return
-        }
-
-        if (city.isBlank() || street.isBlank() || house.isBlank()) {
-            _state.update { it.copy(error = "City, street, and house number are required.") }
-            return
-        }
-
-        val newAddress = UserAddress(
-            id = null, city = city, street = street, house = house, apartments = apartment?.ifBlank { null }
-        )
-
-        val addressesToSend = currentProfile.addresses + listOf(newAddress)
-        updateAddresses(addressesToSend)
-    }
-
-    fun editAddress(addressId: Int?, city: String, street: String, house: String, apartment: String?) {
-        val currentProfile = state.value.profile ?: return
-        if (addressId == null) return
-
-        val updatedAddresses = currentProfile.addresses.map { address ->
-            if (address.id == addressId) {
-                address.copy(
-                    city = city,
-                    street = street,
-                    house = house,
-                    apartments = apartment?.ifBlank { null }
-                )
-            } else {
-                address
-            }
-        }
-        updateAddresses(updatedAddresses)
-    }
-
-    fun deleteAddress(addressId: Int) {
-        val currentProfile = state.value.profile ?: run {
-            _state.update { it.copy(error = "User profile not loaded. Cannot delete address.") }
-            return
-        }
-
-        if (currentProfile.addresses.none { it.id == addressId }) {
-            _state.update { it.copy(error = "Address with ID $addressId not found.") }
-            return
-        }
-
-        val addressesToSend = currentProfile.addresses.filter { it.id != addressId }
-        updateAddresses(addressesToSend)
-    }
-
-    fun resetUpdateState() {
-        _state.update { it.copy(updateSuccess = false, error = null) }
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -185,8 +74,10 @@ fun ProfileScreen(
 ) {
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val profileState by profileViewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val profile = profileState.profile
+    val orders = profileState.orders
 
     val isEditingCredentials = remember { mutableStateOf(false) }
     val openSection = remember { mutableStateOf("") }
@@ -198,6 +89,14 @@ fun ProfileScreen(
     LaunchedEffect(profileState.updateSuccess) {
         if (profileState.updateSuccess) {
             isEditingCredentials.value = false
+            profileViewModel.resetUpdateState()
+            snackbarHostState.showSnackbar("Profile updated successfully!")
+        }
+    }
+
+    LaunchedEffect(profileState.error) {
+        if (profileState.error != null) {
+            snackbarHostState.showSnackbar(profileState.error!!)
             profileViewModel.resetUpdateState()
         }
     }
@@ -215,7 +114,7 @@ fun ProfileScreen(
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
             )
         },
-        snackbarHost = { SnackbarHost(remember { SnackbarHostState() }) },
+        snackbarHost = { SnackbarHost(snackbarHostState) },
     ) { padding ->
         if (!isLoggedIn) {
             Box(
@@ -319,10 +218,18 @@ fun ProfileScreen(
                                 if (openSection.value == "My Orders") "" else "My Orders"
                         }
                     ) {
-                        Text(
-                            text = "Тут буде історія ваших замовлень.",
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        if (profileState.isOrdersLoading) {
+                            Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                                CircularProgressIndicator()
+                            }
+                        } else {
+                            OrderHistoryList(
+                                orders = orders,
+                                addresses = profile.addresses,
+                                onCancelOrder = profileViewModel::cancelOrder,
+                                isCancelling = profileState.isUpdating
+                            )
+                        }
                     }
                 }
 
@@ -823,5 +730,261 @@ fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
         ) {
             Text("Log in / Register")
         }
+    }
+}
+
+@Composable
+fun OrderHistoryList(
+    orders: List<Order>,
+    addresses: List<UserAddress>,
+    onCancelOrder: (orderId: Int) -> Unit,
+    isCancelling: Boolean
+) {
+    if (orders.isEmpty()) {
+        Text(
+            text = "You haven't placed any orders yet.",
+            modifier = Modifier.padding(16.dp),
+            color = Color.Gray
+        )
+    } else {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.padding(16.dp)) {
+            orders.sortedByDescending { it.orderDate }.forEach { order ->
+                OrderHistoryCard(
+                    order = order,
+                    addresses = addresses,
+                    onCancelOrder = onCancelOrder,
+                    isCancelling = isCancelling
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun OrderHistoryCard(
+    order: Order,
+    addresses: List<UserAddress>,
+    onCancelOrder: (orderId: Int) -> Unit,
+    isCancelling: Boolean
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+
+    fun formatHryvnia(amount: Double): String {
+        return NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+            minimumFractionDigits = 2
+            maximumFractionDigits = 2
+        }.format(amount) + " ₴"
+    }
+
+    val deliveryPrice = when (order.deliveryMethod) {
+        DeliveryMethod.Courier -> 100.0
+        DeliveryMethod.Post -> 80.0
+        DeliveryMethod.Premium -> 150.0
+        DeliveryMethod.Pickup -> 0.0
+    }
+    val deliveryLabel = when (order.deliveryMethod) {
+        DeliveryMethod.Courier -> "Courier Delivery"
+        DeliveryMethod.Post -> "Postal Service"
+        DeliveryMethod.Premium -> "Premium Delivery"
+        DeliveryMethod.Pickup -> "Store Pickup"
+    }
+
+    val totalWithShipping = order.totalAmount + deliveryPrice
+    val canCancel = order.status == OrderStatus.Created || order.status == OrderStatus.Approved
+
+    fun findAddress(addressId: Int): UserAddress? {
+        return addresses.find { it.id == addressId }
+    }
+
+    val formattedAddress = remember(order.deliveryAddressId, addresses) {
+        val address = findAddress(order.deliveryAddressId)
+        address?.let {
+            "${it.city}, ${it.street} ${it.house}${if (!it.apartments.isNullOrBlank()) ", apt ${it.apartments}" else ""}"
+        } ?: "Address information not available"
+    }
+
+    val orderStatusDisplay = when(order.status) {
+        OrderStatus.Created -> "Created"
+        OrderStatus.Approved -> "Approved"
+        OrderStatus.Collected -> "Collected"
+        OrderStatus.Delivered -> "Delivered"
+        OrderStatus.Cancelled -> "Cancelled"
+    }
+
+    val paymentStatusDisplay = when(order.paymentStatus) {
+        PaymentStatus.Paid -> "Paid"
+        PaymentStatus.Failed -> "Failed"
+        PaymentStatus.TestPaid -> "Test paid"
+        PaymentStatus.NotPaid -> "Not paid"
+    }
+
+    val orderDateFormatted = remember(order.orderDate) {
+        try {
+            val zonedDateTime = ZonedDateTime.parse(order.orderDate)
+            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(Locale("uk", "UA")).format(zonedDateTime)
+        } catch (e: Exception) {
+            "Invalid date"
+        }
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth().clickable { isExpanded = !isExpanded },
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(2.dp),
+        border = BorderStroke(1.dp, Color(0xFFE0E0E0))
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Column {
+                    Text("Order ID", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text("#${order.id}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Date", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text(orderDateFormatted, style = MaterialTheme.typography.bodyMedium)
+                }
+
+                Column(horizontalAlignment = Alignment.End) {
+                    Text("Status", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text(
+                        orderStatusDisplay,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = when(order.status) {
+                            OrderStatus.Created -> Color(0xFFF9A825)
+                            OrderStatus.Approved -> Color(0xFF1976D2)
+                            OrderStatus.Collected -> Color(0xFF388E3C)
+                            OrderStatus.Delivered -> Color(0xFF9C27B0)
+                            OrderStatus.Cancelled -> Color.Gray
+                        }
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text("Total Amount", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
+                    Text(formatHryvnia(totalWithShipping), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Divider(color = Color(0xFFF0F0F0))
+
+            AnimatedVisibility(visible = isExpanded) {
+                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OrderInfoRow(Icons.Filled.Call, "Delivery Method", deliveryLabel)
+                    OrderInfoRow(Icons.Filled.Info, "Payment Method", when(order.paymentMethod) {
+                        PaymentMethod.Card -> "Card"
+                        PaymentMethod.CashAfterDelivery -> "Cash after delivery"
+                        PaymentMethod.GooglePay -> "Google Pay"
+                    })
+                    OrderInfoRow(Icons.Filled.Check, "Payment Status", paymentStatusDisplay)
+                    OrderInfoRow(Icons.Filled.ShoppingCart, "Full Address", formattedAddress)
+
+                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                    Text("Order Items", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        order.orderItems.forEach { item ->
+                            OrderItemDisplay(item = item, formatHryvnia = ::formatHryvnia)
+                        }
+                    }
+
+                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                        CostBreakdownRow("Subtotal", formatHryvnia(order.totalAmount), isTotal = false)
+                        CostBreakdownRow("Shipment Cost ($deliveryLabel)", formatHryvnia(deliveryPrice), isTotal = false)
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                        CostBreakdownRow("Total", formatHryvnia(totalWithShipping), isTotal = true)
+                    }
+
+                    if (canCancel) {
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = {
+                                if (!isCancelling) {
+                                    onCancelOrder(order.id)
+                                }
+                            },
+                            enabled = !isCancelling,
+                            modifier = Modifier.fillMaxWidth().height(48.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                            )
+                        ) {
+                            if (isCancelling) {
+                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                            } else {
+                                Icon(Icons.Default.Clear, contentDescription = "Cancel", modifier = Modifier.size(20.dp))
+                                Spacer(Modifier.width(8.dp))
+                                Text("Cancel Order", fontWeight = FontWeight.SemiBold)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun OrderItemDisplay(item: OrderItem, formatHryvnia: (Double) -> String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color(0xFFF0F0F0), RoundedCornerShape(8.dp))
+            .padding(12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(item.productName, fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(
+                "Price: ${formatHryvnia(item.price)}",
+                fontSize = 12.sp,
+                color = Color.Gray,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text("Qty: ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
+            Text(
+                formatHryvnia(item.price * item.quantity),
+                fontWeight = FontWeight.Bold,
+                fontSize = 14.sp
+            )
+        }
+    }
+}
+
+@Composable
+fun OrderInfoRow(icon: ImageVector, title: String, value: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(8.dp))
+        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
+        Text(value, fontSize = 14.sp, color = Color.DarkGray)
+    }
+}
+
+@Composable
+fun CostBreakdownRow(label: String, amount: String, isTotal: Boolean) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(
+            label,
+            fontWeight = if (isTotal) FontWeight.Bold else FontWeight.Normal,
+            fontSize = if (isTotal) 16.sp else 14.sp,
+            color = if (isTotal) Color.Black else Color.Gray
+        )
+        Text(
+            amount,
+            fontWeight = if (isTotal) FontWeight.ExtraBold else FontWeight.SemiBold,
+            fontSize = if (isTotal) 16.sp else 14.sp,
+            color = Color.Black
+        )
     }
 }
