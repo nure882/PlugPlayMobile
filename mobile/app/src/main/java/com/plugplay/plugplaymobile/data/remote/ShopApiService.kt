@@ -3,10 +3,10 @@ package com.plugplay.plugplaymobile.data.remote
 import com.plugplay.plugplaymobile.data.model.*
 import retrofit2.Response
 import retrofit2.http.*
-import java.lang.Void
 
 interface ShopApiService {
 
+    // ... (Остальные методы: getProducts, login, register, profile, cart, orders, searchProducts, getAttributeGroups оставляем как есть)
     @GET("api/Products/all")
     suspend fun getProducts(): List<ProductDto>
 
@@ -54,7 +54,6 @@ interface ShopApiService {
     @DELETE("api/Cart/clear/{userId}")
     suspend fun clearCart(@Path("userId") userId: Int): Response<Void>
 
-    // [ИСПРАВЛЕНО] Правильный путь согласно frontend/src/api/orderApi.ts
     @POST("api/Order")
     suspend fun placeOrder(@Body request: PlaceOrderRequest): Response<PlaceOrderResponse>
 
@@ -77,12 +76,20 @@ interface ShopApiService {
         @Body productIds: List<Int>
     ): Response<List<AttributeGroupDto>>
 
-    @GET("api/Wishlist/{userId}")
-    suspend fun getWishlist(@Path("userId") userId: Int): Response<List<ProductDto>>
+    // --- WISHLIST ENDPOINTS ---
 
-    @POST("api/Wishlist/add")
-    suspend fun addToWishlist(@Body request: ToggleWishlistRequest): Response<Void>
+    // [UPDATED] Возвращает список связей (id записи, id товара)
+    @GET("api/WishList")
+    suspend fun getUserWishList(): Response<List<WishlistItemDto>>
 
-    @POST("api/Wishlist/remove")
-    suspend fun removeFromWishlist(@Body request: ToggleWishlistRequest): Response<Void>
+    // [UPDATED] Возвращает ID созданной записи
+    @POST("api/WishList/{productId}")
+    suspend fun addItemToWishList(@Path("productId") productId: Int): Response<AddWishlistItemResponse>
+
+    // [UPDATED] Удаляет по ID записи вишлиста
+    @DELETE("api/WishList/{itemId}")
+    suspend fun removeItemFromWishList(@Path("itemId") itemId: Int): Response<Unit>
+
+    @GET("api/WishList/{prodId}")
+    suspend fun isProductInWishList(@Path("prodId") prodId: Int): Response<Boolean>
 }
