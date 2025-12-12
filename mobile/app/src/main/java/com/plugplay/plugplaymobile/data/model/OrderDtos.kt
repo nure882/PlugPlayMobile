@@ -8,39 +8,25 @@ import com.plugplay.plugplaymobile.domain.model.OrderStatus
 import com.plugplay.plugplaymobile.domain.model.PaymentMethod
 import com.plugplay.plugplaymobile.domain.model.PaymentStatus
 
-// [ИСПРАВЛЕНО] Структура запроса теперь совпадает с Frontend (src/api/orderApi.ts)
+// Request DTOs
 data class PlaceOrderRequest(
-    @SerializedName("userId")
-    val userId: Int,
-
-    @SerializedName("deliveryAddressId")
-    val deliveryAddressId: Int, // Сервер ждет ID, а не объект!
-
-    @SerializedName("deliveryMethod")
-    val deliveryMethod: Int,
-
-    @SerializedName("paymentMethod")
-    val paymentMethod: Int,
-
-    @SerializedName("orderItems")
-    val orderItems: List<OrderItemRequestDto>
+    @SerializedName("userId") val userId: Int,
+    @SerializedName("deliveryAddressId") val deliveryAddressId: Int,
+    @SerializedName("deliveryMethod") val deliveryMethod: Int,
+    @SerializedName("paymentMethod") val paymentMethod: Int,
+    @SerializedName("orderItems") val orderItems: List<OrderItemRequestDto>
 )
 
-// [НОВОЕ] Упрощенный DTO для элемента заказа в запросе (как в Frontend src/models/OrderItem.ts)
 data class OrderItemRequestDto(
-    @SerializedName("productId")
-    val productId: Int,
-    @SerializedName("quantity")
-    val quantity: Int
+    @SerializedName("productId") val productId: Int,
+    @SerializedName("quantity") val quantity: Int
 )
 
 data class PlaceOrderResponse(
-    @SerializedName("orderId")
-    val orderId: Int
-    // paymentData тут опускаем, пока не делаем LiqPay
+    @SerializedName("orderId") val orderId: Int
 )
 
-// ... (OrderDto и мапперы ответов оставляем как были, они для чтения истории) ...
+// Response DTOs
 data class OrderItemDto(
     @SerializedName("productId") val productId: Int,
     @SerializedName("quantity") val quantity: Int,
@@ -58,36 +44,44 @@ data class OrderDto(
     @SerializedName("deliveryMethod") val deliveryMethod: Int,
     @SerializedName("paymentMethod") val paymentMethod: Int,
     @SerializedName("deliveryAddressId") val deliveryAddressId: Int,
+
+    // [ВАЖЛИВО] Переконуємось, що це поле є. Якщо JSON не містить його, буде 0 (Paid).
     @SerializedName("paymentStatus") val paymentStatus: Int,
+
     @SerializedName("orderItems") val orderItems: List<OrderItemDto>
 )
 
+// Mappers
 fun OrderItemDto.toDomain(): OrderItem {
     return OrderItem(
         productId = this.productId.toString(),
         quantity = this.quantity,
-        productName = this.productName ?: "Unknown Product",
+        productName = this.productName ?: "Product #${this.productId}", // Fallback name
         price = this.price ?: 0.0,
-        imageUrl = this.productImageUrl ?: "https://example.com/placeholder.jpg"
+        imageUrl = this.productImageUrl ?: "" // Empty string or placeholder url
     )
 }
 
 fun OrderDto.toDomain(): Order {
+    // Дефолтні значення на випадок, якщо прийде невідомий ID enum-а
     val defaultStatus = OrderStatus.Created
     val defaultDelivery = DeliveryMethod.Courier
     val defaultPayment = PaymentMethod.Card
-    val defaultPaymentStatus = PaymentStatus.NotPaid
+    val defaultPaymentStatus = PaymentStatus.NotPaid // Default to NotPaid for safety
 
     return Order(
         id = this.id,
         userId = this.userId,
         orderDate = this.orderDate,
-        status = OrderStatus.entries.find { it.id == this.status } ?: defaultStatus,
         totalAmount = this.totalAmount,
+        deliveryAddressId = this.deliveryAddressId,
+
+        // Безпечний маппінг Enum-ів
+        status = OrderStatus.entries.find { it.id == this.status } ?: defaultStatus,
         deliveryMethod = DeliveryMethod.entries.find { it.id == this.deliveryMethod } ?: defaultDelivery,
         paymentMethod = PaymentMethod.entries.find { it.id == this.paymentMethod } ?: defaultPayment,
-        deliveryAddressId = this.deliveryAddressId,
         paymentStatus = PaymentStatus.entries.find { it.id == this.paymentStatus } ?: defaultPaymentStatus,
+
         orderItems = this.orderItems.map { it.toDomain() }
     )
 }

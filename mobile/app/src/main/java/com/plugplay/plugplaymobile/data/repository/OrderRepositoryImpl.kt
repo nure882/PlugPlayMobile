@@ -1,26 +1,29 @@
 package com.plugplay.plugplaymobile.data.repository
 
-import android.util.Log
 import com.plugplay.plugplaymobile.data.local.CartLocalDataSource
 import com.plugplay.plugplaymobile.data.model.OrderItemRequestDto
 import com.plugplay.plugplaymobile.data.model.PlaceOrderRequest
 import com.plugplay.plugplaymobile.data.remote.ShopApiService
 import com.plugplay.plugplaymobile.domain.model.CartItem
 import com.plugplay.plugplaymobile.domain.model.DeliveryMethod
+import com.plugplay.plugplaymobile.domain.model.Order
+import com.plugplay.plugplaymobile.domain.model.OrderItem
+import com.plugplay.plugplaymobile.domain.model.OrderStatus
 import com.plugplay.plugplaymobile.domain.model.PaymentMethod
+import com.plugplay.plugplaymobile.domain.model.PaymentStatus
 import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.domain.repository.OrderRepository
-import com.plugplay.plugplaymobile.domain.model.Order
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
-import com.plugplay.plugplaymobile.data.model.toDomain as toOrderDomain
 
 class OrderRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService,
     private val cartLocalDataSource: CartLocalDataSource,
-    private val productRepository: ProductRepository
+    private val productRepository: ProductRepository // Використовуємо для підтягування назв
 ) : OrderRepository {
 
     override suspend fun placeOrder(
@@ -39,9 +42,7 @@ class OrderRepositoryImpl @Inject constructor(
                 throw Exception("Guest checkout is not supported. Please log in.")
             }
 
-            if (address.id == null) {
-                throw Exception("Please select a saved address to place an order.")
-            }
+            val addressId = address.id ?: throw Exception("Please select a saved address to place an order.")
 
             val orderItemsDto = cartItems.map {
                 OrderItemRequestDto(
@@ -52,7 +53,7 @@ class OrderRepositoryImpl @Inject constructor(
 
             val request = PlaceOrderRequest(
                 userId = userId,
-                deliveryAddressId = address.id,
+                deliveryAddressId = addressId,
                 deliveryMethod = deliveryMethod.id,
                 paymentMethod = paymentMethod.id,
                 orderItems = orderItemsDto
@@ -64,7 +65,6 @@ class OrderRepositoryImpl @Inject constructor(
                 response.body()!!.orderId
             } else {
                 val errorBody = response.errorBody()?.string()
-                Log.e("OrderRepo", "Error: $errorBody")
                 throw Exception(errorBody ?: "Server error: ${response.code()}")
             }
         }
@@ -79,32 +79,69 @@ class OrderRepositoryImpl @Inject constructor(
             }
 
             val ordersDto = response.body() ?: emptyList()
-            var orders = ordersDto.map { it.toOrderDomain() }
 
-            // Подгружаем актуальные данные товаров
-            val productsResult = productRepository.getProducts(null)
+            // 1. Збираємо унікальні ID товарів з усіх замовлень
+            val productIds = ordersDto.flatMap { it.orderItems }
+                .map { it.productId }
+                .distinct()
 
-            if (productsResult.isSuccess) {
-                val productsMap = productsResult.getOrThrow().associateBy { it.id }
-
-                orders = orders.map { order ->
-                    val enrichedItems = order.orderItems.map { item ->
-                        val product = productsMap[item.productId]
-                        if (product != null) {
-                            item.copy(
-                                productName = product.title,
-                                imageUrl = if (item.imageUrl.contains("placeholder")) product.image else item.imageUrl,
-                                price = product.price // [ИСПРАВЛЕНО] Теперь цена берется из актуального товара
-                            )
-                        } else {
-                            item
-                        }
-                    }
-                    order.copy(orderItems = enrichedItems)
+            // 2. Паралельно завантажуємо деталі ТІЛЬКИ цих товарів (швидко)
+            val productsMap = productIds.map { id ->
+                async {
+                    // Якщо товар не знайдено (видалений), повернеться null
+                    id to productRepository.getProductById(id.toString()).getOrNull()
                 }
-            }
+            }.awaitAll().toMap()
 
-            orders
+            // 3. Формуємо список замовлень, підставляючи реальні дані
+            ordersDto.map { orderDto ->
+
+                // Збагачуємо позиції замовлення
+                val enrichedItems = orderDto.orderItems.map { itemDto ->
+                    val product = productsMap[itemDto.productId]
+
+                    // Назва: якщо є в DTO - беремо її, якщо ні - з каталогу, інакше заглушка
+                    val realName = itemDto.productName?.takeIf { it.isNotBlank() }
+                        ?: product?.name
+                        ?: "Product #${itemDto.productId}"
+
+                    // Ціна: якщо в історії 0 - беремо актуальну
+                    val realPrice = if (itemDto.price == null || itemDto.price == 0.0) {
+                        product?.price ?: 0.0
+                    } else {
+                        itemDto.price
+                    }
+
+                    // Картинка
+                    val realImage = itemDto.productImageUrl?.takeIf { it.isNotBlank() && !it.contains("placeholder") }
+                        ?: product?.imageUrls?.firstOrNull()
+                        ?: ""
+
+                    OrderItem(
+                        productId = itemDto.productId.toString(),
+                        quantity = itemDto.quantity,
+                        productName = realName,
+                        price = realPrice,
+                        imageUrl = realImage
+                    )
+                }
+
+                // Збираємо Order
+                Order(
+                    id = orderDto.id,
+                    userId = orderDto.userId,
+                    orderDate = orderDto.orderDate,
+                    totalAmount = orderDto.totalAmount,
+                    deliveryAddressId = orderDto.deliveryAddressId,
+
+                    status = OrderStatus.entries.find { it.id == orderDto.status } ?: OrderStatus.Created,
+                    deliveryMethod = DeliveryMethod.entries.find { it.id == orderDto.deliveryMethod } ?: DeliveryMethod.Courier,
+                    paymentMethod = PaymentMethod.entries.find { it.id == orderDto.paymentMethod } ?: PaymentMethod.Card,
+                    paymentStatus = PaymentStatus.entries.find { it.id == orderDto.paymentStatus } ?: PaymentStatus.NotPaid,
+
+                    orderItems = enrichedItems
+                )
+            }
         }
     }
 
