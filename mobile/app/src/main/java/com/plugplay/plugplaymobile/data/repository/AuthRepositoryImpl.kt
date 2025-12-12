@@ -60,15 +60,30 @@ class AuthRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val request = GoogleSignInRequest(googleIdToken)
-                val response = apiService.loginWithGoogle(request)
+                try {
+                    val response = apiService.loginWithGoogle(request)
 
-                if (response.isSuccessful && response.body() != null) {
-                    val authData = response.body()!!.toAuthData()
-                    localDataSource.saveAuthData(authData.token, authData.userId)
-                    authData
-                } else {
-                    val errorBody = response.errorBody()?.string()
-                    throw Exception(errorBody ?: "Google Login failed: ${response.message()}")
+                    if (response.isSuccessful && response.body() != null) {
+                        val authData = response.body()!!.toAuthData()
+                        localDataSource.saveAuthData(authData.token, authData.userId)
+                        authData
+                    } else {
+                        // Читаємо тіло помилки
+                        val errorBody = response.errorBody()?.string()
+                        // Якщо тіло пусте, формуємо своє повідомлення
+                        val errorMessage = if (errorBody.isNullOrBlank()) {
+                            "Login failed: Code ${response.code()} (${response.message()})"
+                        } else {
+                            errorBody
+                        }
+                        // Логуємо для дебагу
+                        android.util.Log.e("AuthRepo", "API Error: $errorMessage")
+                        throw Exception(errorMessage)
+                    }
+                } catch (e: Exception) {
+                    // Ловимо мережеві помилки (наприклад, Cleartext not permitted)
+                    android.util.Log.e("AuthRepo", "Network Exception", e)
+                    throw Exception("Network Error: ${e.localizedMessage ?: e.javaClass.simpleName}")
                 }
             }
         }

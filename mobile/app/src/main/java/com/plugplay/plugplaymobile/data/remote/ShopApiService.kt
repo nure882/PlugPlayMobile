@@ -27,7 +27,7 @@ interface ShopApiService {
     @POST("api/Auth/login")
     suspend fun login(@Body request: LoginRequest): Response<LoginResponse>
 
-    @POST("Auth/google-login")
+    @POST("api/Auth/google")
     suspend fun loginWithGoogle(@Body request: GoogleSignInRequest): Response<LoginResponse>
 
     @POST("api/Auth/register")
