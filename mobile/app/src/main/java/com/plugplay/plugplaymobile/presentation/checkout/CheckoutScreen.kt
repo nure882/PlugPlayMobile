@@ -1,6 +1,5 @@
 package com.plugplay.plugplaymobile.presentation.checkout
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -22,23 +21,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.plugplay.plugplaymobile.domain.model.CartItem
 import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.repository.AuthRepository
-import com.plugplay.plugplaymobile.domain.usecase.GetCartItemsUseCase
-import com.plugplay.plugplaymobile.domain.usecase.PlaceOrderUseCase
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
-import javax.inject.Inject
+// [ВАЖЛИВО] Імпортуємо доменні моделі з аліасами, щоб не плутати з UI моделями
 import com.plugplay.plugplaymobile.domain.model.DeliveryMethod as DomainDeliveryMethod
 import com.plugplay.plugplaymobile.domain.model.PaymentMethod as DomainPaymentMethod
 
-
-// --- МОДЕЛІ ДЛЯ UI ---
+// --- МОДЕЛІ ДЛЯ UI (Залишаємось без змін, вони потрібні для верстки) ---
 sealed class DeliveryMethod(val title: String, val subtitle: String, val icon: ImageVector) {
     object Courier : DeliveryMethod("Courier", "Delivery 1-2 days", Icons.Outlined.LocalShipping)
     object Post : DeliveryMethod("Post", "Delivery 3-5 days", Icons.Outlined.Inventory)
@@ -47,7 +36,7 @@ sealed class DeliveryMethod(val title: String, val subtitle: String, val icon: I
 }
 
 sealed class PaymentMethod(val title: String, val subtitle: String, val icon: ImageVector) {
-    object Card : PaymentMethod("Card", "Pay online with card", Icons.Outlined.CreditCard)
+    object Card : PaymentMethod("Card", "Pay online with card (LiqPay)", Icons.Outlined.CreditCard)
     object CashAfterDelivery : PaymentMethod("Cash after delivery", "Pay when you receive", Icons.Outlined.AttachMoney)
 }
 
@@ -67,8 +56,8 @@ fun CheckoutScreen(
     // Слухаємо успішне замовлення
     LaunchedEffect(checkoutState.orderSuccess) {
         if (checkoutState.orderSuccess) {
-            viewModel.resetOrderState()
             onOrderConfirmed()
+            viewModel.resetOrderState()
         }
     }
 
@@ -201,10 +190,24 @@ fun CheckoutScreen(
                     Button(
                         onClick = {
                             if (isFormValid) {
+                                // [FIX] Маппінг UI моделей в Domain моделі
+                                val domainDelivery = when (selectedDelivery) {
+                                    DeliveryMethod.Courier -> DomainDeliveryMethod.Courier
+                                    DeliveryMethod.Post -> DomainDeliveryMethod.Post
+                                    DeliveryMethod.Premium -> DomainDeliveryMethod.Premium
+                                    DeliveryMethod.Pickup -> DomainDeliveryMethod.Pickup
+                                }
+
+                                val domainPayment = when (selectedPayment) {
+                                    PaymentMethod.Card -> DomainPaymentMethod.Card
+                                    PaymentMethod.CashAfterDelivery -> DomainPaymentMethod.CashAfterDelivery
+                                }
+
                                 viewModel.placeOrder(
                                     guestName, guestLastName, guestEmail, guestPhone,
                                     city, street, house, apartment,
-                                    selectedDelivery, selectedPayment
+                                    domainDelivery, // Передаємо сконвертоване значення
+                                    domainPayment   // Передаємо сконвертоване значення
                                 )
                             }
                         },
@@ -260,27 +263,24 @@ fun ShippingInformationForm(
                 .height(56.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .border(1.dp, Color.Gray, RoundedCornerShape(12.dp))
-                .clickable(onClick = { isExpanded = true }) // Клікабельно завжди
+                .clickable(onClick = { isExpanded = true })
                 .background(Color(0xFFF0F0F0)),
             contentAlignment = Alignment.CenterStart
         ) {
             Text(selectedLabel, modifier = Modifier.padding(horizontal = 16.dp), color = Color.Black)
             Icon(Icons.Outlined.ArrowDropDown, null, Modifier.align(Alignment.CenterEnd).padding(end = 8.dp))
 
-            // Меню вибору
             DropdownMenu(
                 expanded = isExpanded,
                 onDismissRequest = { isExpanded = false },
                 modifier = Modifier.fillMaxWidth(0.9f)
             ) {
                 if (userAddresses.isEmpty()) {
-                    // Якщо адрес немає - показуємо напис
                     DropdownMenuItem(
                         text = { Text("No saved addresses", color = Color.Gray) },
                         onClick = { isExpanded = false }
                     )
                 } else {
-                    // Якщо є адреси - показуємо список
                     userAddresses.forEach { address ->
                         val label = "${address.city}, ${address.street} ${address.house}"
                         DropdownMenuItem(

@@ -1,19 +1,23 @@
 package com.plugplay.plugplaymobile.presentation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Modifier
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
-import androidx.navigation.NavType
 import com.plugplay.plugplaymobile.presentation.auth.LoginScreen
 import com.plugplay.plugplaymobile.presentation.auth.RegisterScreen
 import com.plugplay.plugplaymobile.presentation.product_list.ProductListScreen
 import com.plugplay.plugplaymobile.presentation.profile.ProfileScreen
 import com.plugplay.plugplaymobile.presentation.product_detail.ItemDetailScreen
 import com.plugplay.plugplaymobile.presentation.checkout.CheckoutScreen
+import com.plugplay.plugplaymobile.presentation.checkout.CheckoutViewModel
 import com.plugplay.plugplaymobile.presentation.checkout.OrderConfirmationScreen
+import com.plugplay.plugplaymobile.presentation.payment.PaymentViewModel
 import com.plugplay.plugplaymobile.presentation.wishlist.WishlistScreen
 
 object Routes {
@@ -23,8 +27,13 @@ object Routes {
     const val REGISTER = "register"
     const val ITEM_DETAIL = "detail_list/{itemId}"
     const val CHECKOUT = "checkout"
-    const val ORDER_CONFIRMATION = "order_confirmation"
     const val WISHLIST = "wishlist"
+
+    // Маршрут приймає orderId і прапорець startPayment (true/false)
+    const val ORDER_CONFIRMATION = "order_confirmation/{orderId}/{startPayment}"
+
+    fun createOrderConfirmationRoute(orderId: Int, startPayment: Boolean) =
+        "order_confirmation/$orderId/$startPayment"
 }
 
 fun createItemDetailRoute(itemId: String) = "detail_list/$itemId"
@@ -56,16 +65,16 @@ fun AppNavigation(
             )
         }
 
-        // Profile Screen (без змін)
+        // Profile Screen
         composable(Routes.PROFILE) {
             ProfileScreen(
                 onNavigateToCatalog = { navController.popBackStack() },
                 onNavigateToLogin = { navController.navigate(Routes.LOGIN) },
-                onNavigateToWishlist = { navController.navigate(Routes.WISHLIST) } // <--- NEW
+                onNavigateToWishlist = { navController.navigate(Routes.WISHLIST) }
             )
         }
 
-        // Wishlist Screen Route
+        // Wishlist Screen
         composable(Routes.WISHLIST) {
             WishlistScreen(
                 onNavigateBack = { navController.popBackStack() },
@@ -87,13 +96,13 @@ fun AppNavigation(
                 onNavigateToRegister = {
                     navController.navigate(Routes.REGISTER)
                 },
-                onNavigateBack = { // <--- ВИКОРИСТАННЯ: popBackStack для повернення на Register
+                onNavigateBack = {
                     navController.popBackStack()
                 }
             )
         }
 
-        // Register Screen (без змін)
+        // Register Screen
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -129,7 +138,7 @@ fun AppNavigation(
                     onNavigateToCheckout = {
                         navController.navigate(Routes.CHECKOUT)
                     },
-                    onNavigateToProfile = { // <--- ДОДАНО: передаємо функцію для навігації на екран профілю
+                    onNavigateToProfile = {
                         navController.navigate(Routes.PROFILE)
                     }
                 )
@@ -138,28 +147,62 @@ fun AppNavigation(
             }
         }
 
-        // Checkout Screen
+        // --- CHECKOUT SCREEN ---
         composable(Routes.CHECKOUT) {
+            val checkoutViewModel: CheckoutViewModel = hiltViewModel()
+
             CheckoutScreen(
+                viewModel = checkoutViewModel,
                 onNavigateBack = {
                     navController.popBackStack()
                 },
                 onOrderConfirmed = {
-                    navController.navigate(Routes.ORDER_CONFIRMATION) {
-                        // Видаляємо Checkout з бек-стеку
-                        popUpTo(Routes.CHECKOUT) { inclusive = true }
-                        launchSingleTop = true
+                    val orderId = checkoutViewModel.lastOrderId
+                    val shouldStartPayment = checkoutViewModel.shouldStartPayment
+
+                    if (orderId != null) {
+                        // Переходимо на екран підтвердження, передаючи прапорець оплати
+                        navController.navigate(Routes.createOrderConfirmationRoute(orderId, shouldStartPayment)) {
+                            popUpTo(Routes.CHECKOUT) { inclusive = true }
+                            launchSingleTop = true
+                        }
+                    } else {
+                        navController.popBackStack()
                     }
                 }
             )
         }
 
-        // Order Confirmation Screen
-        composable(Routes.ORDER_CONFIRMATION) {
+        // --- ORDER CONFIRMATION SCREEN ---
+        composable(
+            route = Routes.ORDER_CONFIRMATION,
+            arguments = listOf(
+                navArgument("orderId") { type = NavType.IntType },
+                navArgument("startPayment") { type = NavType.BoolType }
+            )
+        ) { backStackEntry ->
+            val orderId = backStackEntry.arguments?.getInt("orderId")
+            val startPayment = backStackEntry.arguments?.getBoolean("startPayment") ?: false
+
+            val paymentViewModel: PaymentViewModel = hiltViewModel()
+
+            // Передаємо дані у ViewModel
+            LaunchedEffect(orderId) {
+                paymentViewModel.currentOrderId = orderId
+            }
+
+            // АВТО-ЗАПУСК ОПЛАТИ: Якщо startPayment == true, запускаємо процес одразу
+            LaunchedEffect(startPayment) {
+                if (startPayment) {
+                    paymentViewModel.payForOrder()
+                }
+            }
+
             OrderConfirmationScreen(
                 onNavigateToCatalog = {
                     navController.popBackStack(Routes.PRODUCT_LIST, inclusive = false)
-                }
+                },
+                paymentViewModel = paymentViewModel
             )
         }
     }

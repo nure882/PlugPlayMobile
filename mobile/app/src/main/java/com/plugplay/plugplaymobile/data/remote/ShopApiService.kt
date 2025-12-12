@@ -92,4 +92,8 @@ interface ShopApiService {
 
     @GET("api/WishList/{prodId}")
     suspend fun isProductInWishList(@Path("prodId") prodId: Int): Response<Boolean>
+
+    // [NEW] Ініціалізація оплати LiqPay
+    @GET("api/Payment/init/{orderId}")
+    suspend fun initPayment(@Path("orderId") orderId: Int): Response<LiqPayInitResponse>
 }

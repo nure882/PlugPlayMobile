@@ -36,6 +36,14 @@ class CheckoutViewModel @Inject constructor(
     private val _orderErrorState = MutableStateFlow<String?>(null)
     private val _orderSuccessState = MutableStateFlow(false)
 
+    // Зберігаємо ID останнього створеного замовлення для навігації
+    var lastOrderId: Int? = null
+        private set
+
+    // Прапорець: чи потрібно автоматично починати оплату (True для картки)
+    var shouldStartPayment: Boolean = false
+        private set
+
     val state: StateFlow<CheckoutState> = combine(
         authRepository.getAuthStatus(),
         getCartItemsUseCase(null),
@@ -72,8 +80,8 @@ class CheckoutViewModel @Inject constructor(
         street: String,
         house: String,
         apartment: String?,
-        deliveryMethod: DeliveryMethod,
-        paymentMethod: PaymentMethod
+        deliveryMethod: DomainDeliveryMethod,
+        paymentMethod: DomainPaymentMethod
     ) {
         val currentState = state.value
 
@@ -90,46 +98,40 @@ class CheckoutViewModel @Inject constructor(
                 val userId = authRepository.getUserId().first()
                 val totalPrice = currentState.cartItems.sumOf { it.total }
 
-                // [ВАЖНО] Пытаемся найти ID выбранного адреса в списке профиля
-                // Сравниваем введенные данные с сохраненными адресами
+                // Шукаємо адресу серед збережених
                 val savedAddress = currentState.profile?.addresses?.find {
                     it.city.equals(city, ignoreCase = true) &&
                             it.street.equals(street, ignoreCase = true) &&
                             it.house.equals(house, ignoreCase = true)
                 }
 
-                // Если адрес не найден среди сохраненных, у него не будет ID, и репозиторий выдаст ошибку.
-                // В реальном приложении тут нужно вызывать createAddress, но пока используем то, что есть.
+                // Якщо адреса нова (id == null), передаємо те, що ввів користувач
                 val addressToSend = savedAddress ?: UserAddress(
-                    id = null, // Это вызовет ошибку в репозитории, но это честно
+                    id = null,
                     city = city, street = street, house = house, apartments = apartment
                 )
 
-                // ... остальной код (placeOrderUseCase) ...
                 placeOrderUseCase(
                     userId = userId,
                     cartItems = currentState.cartItems,
                     totalPrice = totalPrice,
-                    deliveryMethod = when(deliveryMethod) {
-                        DeliveryMethod.Courier -> DomainDeliveryMethod.Courier
-                        DeliveryMethod.Post -> DomainDeliveryMethod.Post
-                        DeliveryMethod.Premium -> DomainDeliveryMethod.Premium
-                        DeliveryMethod.Pickup -> DomainDeliveryMethod.Pickup
-                    },
-                    paymentMethod = when(paymentMethod) {
-                        PaymentMethod.Card -> DomainPaymentMethod.Card
-                        PaymentMethod.CashAfterDelivery -> DomainPaymentMethod.CashAfterDelivery
-                    },
-                    address = addressToSend, // Передаем найденный адрес с ID
+                    deliveryMethod = deliveryMethod,
+                    paymentMethod = paymentMethod,
+                    address = addressToSend,
                     customerName = "${currentState.profile?.firstName} ${currentState.profile?.lastName}",
                     customerEmail = currentState.profile?.email ?: "",
                     customerPhone = currentState.profile?.phoneNumber ?: ""
-                ).onSuccess {
+                ).onSuccess { orderId ->
+                    // Успіх! Зберігаємо ID та налаштовуємо прапорець оплати
+                    lastOrderId = orderId
+                    // Якщо оплата картою або GooglePay -> ставимо прапорець оплати
+                    shouldStartPayment = (paymentMethod == DomainPaymentMethod.Card || paymentMethod == DomainPaymentMethod.GooglePay)
+
                     _orderProcessingState.value = false
                     _orderSuccessState.value = true
                 }.onFailure { e ->
                     _orderProcessingState.value = false
-                    _orderErrorState.value = e.message
+                    _orderErrorState.value = e.message ?: "Unknown error"
                 }
             } catch (e: Exception) {
                 _orderProcessingState.value = false
@@ -141,5 +143,7 @@ class CheckoutViewModel @Inject constructor(
     fun resetOrderState() {
         _orderSuccessState.value = false
         _orderErrorState.value = null
+        lastOrderId = null
+        shouldStartPayment = false
     }
 }
