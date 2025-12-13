@@ -1,48 +1,36 @@
 package com.plugplay.plugplaymobile.presentation.payment
 
 import androidx.lifecycle.ViewModel
-import androidx.lifecycle.viewModelScope
-import com.plugplay.plugplaymobile.domain.usecase.InitPaymentUseCase
+import com.plugplay.plugplaymobile.data.model.LiqPayInitResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class PaymentViewModel @Inject constructor(
-    private val initPaymentUseCase: InitPaymentUseCase
-) : ViewModel() {
-
-    private val _paymentUrl = MutableStateFlow<String?>(null)
-    val paymentUrl: StateFlow<String?> = _paymentUrl.asStateFlow()
+class PaymentViewModel @Inject constructor() : ViewModel() {
 
     private val _isLoading = MutableStateFlow(false)
     val isLoading: StateFlow<Boolean> = _isLoading.asStateFlow()
 
-    // Сюди передамо ID з навігації
+    // Подія для запуску SDK з UI
+    private val _shouldLaunchSdk = MutableStateFlow(false)
+    val shouldLaunchSdk: StateFlow<Boolean> = _shouldLaunchSdk.asStateFlow()
+
+    // Дані для оплати
+    var paymentData: LiqPayInitResponse? = null
     var currentOrderId: Int? = null
 
+    // Цей метод тепер просто дає команду UI запустити SDK
     fun payForOrder() {
-        val orderId = currentOrderId ?: return
-
-        viewModelScope.launch {
-            _isLoading.value = true
-            initPaymentUseCase(orderId)
-                .onSuccess { url ->
-                    _paymentUrl.value = url // Це викличе відкриття браузера
-                    _isLoading.value = false
-                }
-                .onFailure {
-                    // Тут можна обробити помилку
-                    _isLoading.value = false
-                }
+        if (paymentData != null) {
+            _shouldLaunchSdk.value = true
         }
     }
 
-    // Скидаємо URL після відкриття, щоб не відкривалося двічі
-    fun onPaymentUrlOpened() {
-        _paymentUrl.value = null
+    // Метод, який UI викличе після того, як успішно запустить лаунчер SDK
+    fun onSdkLaunched() {
+        _shouldLaunchSdk.value = false
     }
 }

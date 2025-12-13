@@ -17,7 +17,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
     // [ОНОВЛЕНО] Нова адреса сервера
-    private const val BASE_URL = "http://109.162.85.132:5298/"
+    private const val BASE_URL = "http://192.168.240.1:5298/"
 
     @Provides
     @Singleton

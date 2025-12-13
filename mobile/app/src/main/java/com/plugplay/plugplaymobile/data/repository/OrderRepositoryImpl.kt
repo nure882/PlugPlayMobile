@@ -11,6 +11,7 @@ import com.plugplay.plugplaymobile.domain.model.OrderItem
 import com.plugplay.plugplaymobile.domain.model.OrderStatus
 import com.plugplay.plugplaymobile.domain.model.PaymentMethod
 import com.plugplay.plugplaymobile.domain.model.PaymentStatus
+import com.plugplay.plugplaymobile.domain.model.PlaceOrderResult // Додано
 import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.domain.repository.OrderRepository
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
@@ -23,7 +24,7 @@ import javax.inject.Inject
 class OrderRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService,
     private val cartLocalDataSource: CartLocalDataSource,
-    private val productRepository: ProductRepository // Використовуємо для підтягування назв
+    private val productRepository: ProductRepository
 ) : OrderRepository {
 
     override suspend fun placeOrder(
@@ -36,7 +37,7 @@ class OrderRepositoryImpl @Inject constructor(
         customerName: String,
         customerEmail: String,
         customerPhone: String
-    ): Result<Int> = withContext(Dispatchers.IO) {
+    ): Result<PlaceOrderResult> = withContext(Dispatchers.IO) { // [FIX] Тип Result
         runCatching {
             if (userId == null) {
                 throw Exception("Guest checkout is not supported. Please log in.")
@@ -62,7 +63,12 @@ class OrderRepositoryImpl @Inject constructor(
             val response = apiService.placeOrder(request)
 
             if (response.isSuccessful && response.body() != null) {
-                response.body()!!.orderId
+                val body = response.body()!!
+                // [FIX] Повертаємо об'єкт з даними, а не просто ID
+                PlaceOrderResult(
+                    orderId = body.orderId,
+                    paymentData = body.paymentData
+                )
             } else {
                 val errorBody = response.errorBody()?.string()
                 throw Exception(errorBody ?: "Server error: ${response.code()}")
@@ -80,39 +86,30 @@ class OrderRepositoryImpl @Inject constructor(
 
             val ordersDto = response.body() ?: emptyList()
 
-            // 1. Збираємо унікальні ID товарів з усіх замовлень
             val productIds = ordersDto.flatMap { it.orderItems }
                 .map { it.productId }
                 .distinct()
 
-            // 2. Паралельно завантажуємо деталі ТІЛЬКИ цих товарів (швидко)
             val productsMap = productIds.map { id ->
                 async {
-                    // Якщо товар не знайдено (видалений), повернеться null
                     id to productRepository.getProductById(id.toString()).getOrNull()
                 }
             }.awaitAll().toMap()
 
-            // 3. Формуємо список замовлень, підставляючи реальні дані
             ordersDto.map { orderDto ->
-
-                // Збагачуємо позиції замовлення
                 val enrichedItems = orderDto.orderItems.map { itemDto ->
                     val product = productsMap[itemDto.productId]
 
-                    // Назва: якщо є в DTO - беремо її, якщо ні - з каталогу, інакше заглушка
                     val realName = itemDto.productName?.takeIf { it.isNotBlank() }
                         ?: product?.name
                         ?: "Product #${itemDto.productId}"
 
-                    // Ціна: якщо в історії 0 - беремо актуальну
                     val realPrice = if (itemDto.price == null || itemDto.price == 0.0) {
                         product?.price ?: 0.0
                     } else {
                         itemDto.price
                     }
 
-                    // Картинка
                     val realImage = itemDto.productImageUrl?.takeIf { it.isNotBlank() && !it.contains("placeholder") }
                         ?: product?.imageUrls?.firstOrNull()
                         ?: ""
@@ -126,19 +123,16 @@ class OrderRepositoryImpl @Inject constructor(
                     )
                 }
 
-                // Збираємо Order
                 Order(
                     id = orderDto.id,
                     userId = orderDto.userId,
                     orderDate = orderDto.orderDate,
                     totalAmount = orderDto.totalAmount,
                     deliveryAddressId = orderDto.deliveryAddressId,
-
                     status = OrderStatus.entries.find { it.id == orderDto.status } ?: OrderStatus.Created,
                     deliveryMethod = DeliveryMethod.entries.find { it.id == orderDto.deliveryMethod } ?: DeliveryMethod.Courier,
                     paymentMethod = PaymentMethod.entries.find { it.id == orderDto.paymentMethod } ?: PaymentMethod.Card,
                     paymentStatus = PaymentStatus.entries.find { it.id == orderDto.paymentStatus } ?: PaymentStatus.NotPaid,
-
                     orderItems = enrichedItems
                 )
             }

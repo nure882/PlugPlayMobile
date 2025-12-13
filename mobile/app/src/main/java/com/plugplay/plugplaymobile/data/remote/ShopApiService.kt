@@ -6,7 +6,6 @@ import retrofit2.http.*
 
 interface ShopApiService {
 
-    // ... (Остальные методы: getProducts, login, register, profile, cart, orders, searchProducts, getAttributeGroups оставляем как есть)
     @GET("api/Products/all")
     suspend fun getProducts(): List<ProductDto>
 
@@ -76,24 +75,17 @@ interface ShopApiService {
         @Body productIds: List<Int>
     ): Response<List<AttributeGroupDto>>
 
-    // --- WISHLIST ENDPOINTS ---
-
-    // [UPDATED] Возвращает список связей (id записи, id товара)
     @GET("api/WishList")
     suspend fun getUserWishList(): Response<List<WishlistItemDto>>
 
-    // [UPDATED] Возвращает ID созданной записи
     @POST("api/WishList/{productId}")
     suspend fun addItemToWishList(@Path("productId") productId: Int): Response<AddWishlistItemResponse>
 
-    // [UPDATED] Удаляет по ID записи вишлиста
     @DELETE("api/WishList/{itemId}")
     suspend fun removeItemFromWishList(@Path("itemId") itemId: Int): Response<Unit>
 
     @GET("api/WishList/{prodId}")
     suspend fun isProductInWishList(@Path("prodId") prodId: Int): Response<Boolean>
 
-    // [NEW] Ініціалізація оплати LiqPay
-    @GET("api/Payment/init/{orderId}")
-    suspend fun initPayment(@Path("orderId") orderId: Int): Response<LiqPayInitResponse>
+    // [REMOVED] initPayment was deleted as requested
 }

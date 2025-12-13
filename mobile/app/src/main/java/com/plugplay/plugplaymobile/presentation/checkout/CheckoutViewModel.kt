@@ -1,149 +1,143 @@
 package com.plugplay.plugplaymobile.presentation.checkout
 
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.plugplay.plugplaymobile.data.model.LiqPayInitResponse
 import com.plugplay.plugplaymobile.domain.model.CartItem
+import com.plugplay.plugplaymobile.domain.model.DeliveryMethod
+import com.plugplay.plugplaymobile.domain.model.PaymentMethod
 import com.plugplay.plugplaymobile.domain.model.UserAddress
-import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.repository.AuthRepository
+import com.plugplay.plugplaymobile.domain.usecase.ClearCartUseCase
 import com.plugplay.plugplaymobile.domain.usecase.GetCartItemsUseCase
 import com.plugplay.plugplaymobile.domain.usecase.PlaceOrderUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
-import com.plugplay.plugplaymobile.domain.model.DeliveryMethod as DomainDeliveryMethod
-import com.plugplay.plugplaymobile.domain.model.PaymentMethod as DomainPaymentMethod
 
 data class CheckoutState(
-    val isLoggedIn: Boolean = false,
-    val isLoading: Boolean = true,
-    val profile: UserProfile? = null,
     val cartItems: List<CartItem> = emptyList(),
-    val orderProcessing: Boolean = false,
-    val orderError: String? = null,
+    val availableAddresses: List<UserAddress> = emptyList(),
+    val selectedAddress: UserAddress? = null,
+    val selectedPaymentMethod: PaymentMethod = PaymentMethod.CashAfterDelivery,
+    val selectedDeliveryMethod: DeliveryMethod = DeliveryMethod.Courier,
+    val isLoading: Boolean = false,
+    val isPlacingOrder: Boolean = false,
+    val orderId: Int? = null,
+    val error: String? = null,
+    val liqPayData: LiqPayInitResponse? = null,
     val orderSuccess: Boolean = false
 )
 
 @HiltViewModel
 class CheckoutViewModel @Inject constructor(
-    private val authRepository: AuthRepository,
+    private val getCartItemsUseCase: GetCartItemsUseCase,
     private val placeOrderUseCase: PlaceOrderUseCase,
-    private val getCartItemsUseCase: GetCartItemsUseCase
+    private val clearCartUseCase: ClearCartUseCase
 ) : ViewModel() {
 
-    private val _orderProcessingState = MutableStateFlow(false)
-    private val _orderErrorState = MutableStateFlow<String?>(null)
-    private val _orderSuccessState = MutableStateFlow(false)
+    private val _state = MutableStateFlow(CheckoutState())
+    val state: StateFlow<CheckoutState> = _state.asStateFlow()
 
-    // Зберігаємо ID останнього створеного замовлення для навігації
-    var lastOrderId: Int? = null
-        private set
+    private val _currentUserId = mutableStateOf<Int?>(null)
 
-    // Прапорець: чи потрібно автоматично починати оплату (True для картки)
-    var shouldStartPayment: Boolean = false
-        private set
-
-    val state: StateFlow<CheckoutState> = combine(
-        authRepository.getAuthStatus(),
-        getCartItemsUseCase(null),
-        _orderProcessingState,
-        _orderErrorState,
-        _orderSuccessState
-    ) { isLoggedIn, cartItems, isProcessing, error, isSuccess ->
-        val profile = if (isLoggedIn) {
-            authRepository.getProfile().getOrNull()
-        } else {
-            null
+    fun loadCart(userId: Int, addresses: List<UserAddress>) {
+        if (_currentUserId.value == null) {
+            _currentUserId.value = userId
         }
-        CheckoutState(
-            isLoggedIn = isLoggedIn,
-            isLoading = false,
-            profile = profile,
-            cartItems = cartItems,
-            orderProcessing = isProcessing,
-            orderError = error,
-            orderSuccess = isSuccess
-        )
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.WhileSubscribed(5000),
-        CheckoutState(isLoading = true)
-    )
-
-    fun placeOrder(
-        guestName: String,
-        guestLastName: String,
-        guestEmail: String,
-        guestPhone: String,
-        city: String,
-        street: String,
-        house: String,
-        apartment: String?,
-        deliveryMethod: DomainDeliveryMethod,
-        paymentMethod: DomainPaymentMethod
-    ) {
-        val currentState = state.value
-
-        if (!currentState.isLoggedIn) {
-            _orderErrorState.value = "You must be logged in to place an order."
-            return
-        }
+        _state.update { it.copy(availableAddresses = addresses, selectedAddress = addresses.firstOrNull(), isLoading = true) }
 
         viewModelScope.launch {
-            _orderProcessingState.value = true
-            _orderErrorState.value = null
-
-            try {
-                val userId = authRepository.getUserId().first()
-                val totalPrice = currentState.cartItems.sumOf { it.total }
-
-                // Шукаємо адресу серед збережених
-                val savedAddress = currentState.profile?.addresses?.find {
-                    it.city.equals(city, ignoreCase = true) &&
-                            it.street.equals(street, ignoreCase = true) &&
-                            it.house.equals(house, ignoreCase = true)
+            getCartItemsUseCase(userId)
+                .catch { throwable ->
+                    _state.update { it.copy(isLoading = false, error = throwable.message) }
                 }
-
-                // Якщо адреса нова (id == null), передаємо те, що ввів користувач
-                val addressToSend = savedAddress ?: UserAddress(
-                    id = null,
-                    city = city, street = street, house = house, apartments = apartment
-                )
-
-                placeOrderUseCase(
-                    userId = userId,
-                    cartItems = currentState.cartItems,
-                    totalPrice = totalPrice,
-                    deliveryMethod = deliveryMethod,
-                    paymentMethod = paymentMethod,
-                    address = addressToSend,
-                    customerName = "${currentState.profile?.firstName} ${currentState.profile?.lastName}",
-                    customerEmail = currentState.profile?.email ?: "",
-                    customerPhone = currentState.profile?.phoneNumber ?: ""
-                ).onSuccess { orderId ->
-                    // Успіх! Зберігаємо ID та налаштовуємо прапорець оплати
-                    lastOrderId = orderId
-                    // Якщо оплата картою або GooglePay -> ставимо прапорець оплати
-                    shouldStartPayment = (paymentMethod == DomainPaymentMethod.Card || paymentMethod == DomainPaymentMethod.GooglePay)
-
-                    _orderProcessingState.value = false
-                    _orderSuccessState.value = true
-                }.onFailure { e ->
-                    _orderProcessingState.value = false
-                    _orderErrorState.value = e.message ?: "Unknown error"
+                .collect { items ->
+                    _state.update { it.copy(cartItems = items, isLoading = false) }
                 }
-            } catch (e: Exception) {
-                _orderProcessingState.value = false
-                _orderErrorState.value = e.message
-            }
         }
     }
 
+    fun selectAddress(address: UserAddress) {
+        _state.update { it.copy(selectedAddress = address) }
+    }
+
+    fun selectPaymentMethod(method: PaymentMethod) {
+        _state.update { it.copy(selectedPaymentMethod = method) }
+    }
+
+    fun selectDeliveryMethod(method: DeliveryMethod) {
+        _state.update { it.copy(selectedDeliveryMethod = method) }
+    }
+
     fun resetOrderState() {
-        _orderSuccessState.value = false
-        _orderErrorState.value = null
-        lastOrderId = null
-        shouldStartPayment = false
+        _state.update { it.copy(orderSuccess = false, orderId = null, error = null) }
+    }
+
+    fun resetError() {
+        _state.update { it.copy(error = null) }
+    }
+
+    fun placeOrder(
+        guestName: String, guestLastName: String, guestEmail: String, guestPhone: String,
+        city: String, street: String, house: String, apartment: String,
+        deliveryMethod: DeliveryMethod, paymentMethod: PaymentMethod
+    ) {
+        placeOrder()
+    }
+
+    fun placeOrder() {
+        val userId = _currentUserId.value
+        val address = _state.value.selectedAddress
+        val items = _state.value.cartItems
+        val paymentMethod = _state.value.selectedPaymentMethod
+        val deliveryMethod = _state.value.selectedDeliveryMethod
+
+        if (userId == null || address == null || items.isEmpty()) {
+            _state.update { it.copy(error = "Missing user, address, or cart items.") }
+            return
+        }
+
+        _state.update { it.copy(isPlacingOrder = true, error = null) }
+
+        viewModelScope.launch {
+            placeOrderUseCase(
+                userId = userId,
+                address = address,
+                cartItems = items,
+                totalPrice = items.sumOf { it.total },
+                paymentMethod = paymentMethod,
+                deliveryMethod = deliveryMethod,
+                customerName = "",
+                customerEmail = "",
+                customerPhone = ""
+            ).onSuccess { result -> // [FIX] Тепер це PlaceOrderResult
+                // Очищення кошика вже викликається в UseCase, але для UI оновлення можна залишити
+                clearCartUseCase(userId)
+
+                _state.update {
+                    it.copy(
+                        isPlacingOrder = false,
+                        orderId = result.orderId, // [FIX] Беремо з об'єкта
+                        orderSuccess = true,
+                        liqPayData = result.paymentData, // [FIX] Зберігаємо дані LiqPay!
+                        cartItems = emptyList()
+                    )
+                }
+            }
+                .onFailure { throwable ->
+                    _state.update {
+                        it.copy(
+                            isPlacingOrder = false,
+                            error = throwable.message ?: "Failed to place order."
+                        )
+                    }
+                }
+        }
     }
 }

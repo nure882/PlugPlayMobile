@@ -1,29 +1,22 @@
 package com.plugplay.plugplaymobile.presentation.profile
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowForwardIos
-import androidx.compose.material.icons.filled.Call
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Clear
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.ShoppingCart
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
@@ -44,9 +37,8 @@ import com.plugplay.plugplaymobile.domain.model.PaymentStatus
 import java.text.NumberFormat
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
-import java.util.Locale
 import java.time.format.FormatStyle
-
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -59,6 +51,7 @@ fun ProfileScreen(
 ) {
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val profileState by profileViewModel.state.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val profile = profileState.profile
     val orders = profileState.orders
@@ -66,18 +59,20 @@ fun ProfileScreen(
     val isEditingCredentials = remember { mutableStateOf(false) }
     val openSection = remember { mutableStateOf("") }
 
-    // --- ЛОГІКА: Закриваємо форму редагування після успішного збереження ---
-    LaunchedEffect(profileState.updateSuccess) {
-        if (profileState.updateSuccess) {
-            // Якщо була відкрита форма редагування профілю - закриваємо її
-            if (isEditingCredentials.value) {
-                isEditingCredentials.value = false
-                profileViewModel.resetUpdateState()
-                profileViewModel.onAuthStatusChanged(true) // Оновлюємо дані
-            }
+    // Обработка ошибок через Snackbar
+    LaunchedEffect(profileState.error) {
+        profileState.error?.let { error ->
+            snackbarHostState.showSnackbar(error)
+            profileViewModel.resetUpdateState() // Сброс ошибки после показа
         }
     }
-    // ---------------------------------------------------------------------------
+
+    LaunchedEffect(profileState.updateSuccess) {
+        if (profileState.updateSuccess) {
+            isEditingCredentials.value = false
+            profileViewModel.resetUpdateState()
+        }
+    }
 
     LaunchedEffect(isLoggedIn) {
         profileViewModel.onAuthStatusChanged(isLoggedIn)
@@ -85,12 +80,13 @@ fun ProfileScreen(
 
     Scaffold(
         containerColor = Color(0xFFF4F7F8),
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             TopAppBar(
                 title = { Text("Personal Information") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateToCatalog) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -99,23 +95,19 @@ fun ProfileScreen(
     ) { padding ->
         if (!isLoggedIn) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
                 NotLoggedInPlaceholder(onNavigateToLogin)
             }
-        } else if (profileState.isLoading || profile == null) {
+        } else if (profileState.isLoading && profile == null) {
             Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
+                modifier = Modifier.fillMaxSize().padding(padding),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator()
             }
-        } else {
+        } else if (profile != null) {
             LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
@@ -141,8 +133,7 @@ fun ProfileScreen(
                                 if (openSection.value == "My Details") "" else "My Details"
                         },
                         actionButton = {
-                            // Кнопка Edit відображається тільки якщо ми НЕ в режимі редагування
-                            if (!isEditingCredentials.value) {
+                            if (!isEditingCredentials.value && openSection.value == "My Details") {
                                 TextButton(
                                     onClick = { isEditingCredentials.value = true },
                                     enabled = !profileState.isUpdating
@@ -156,7 +147,7 @@ fun ProfileScreen(
                             EditCredentialsForm(
                                 profile = profile,
                                 onSave = { fn, ln, ph, em ->
-                                    profileViewModel.updateProfile(fn, ln, ph, em); isEditingCredentials.value = false
+                                    profileViewModel.updateProfile(fn, ln, ph, em)
                                 },
                                 onCancel = { isEditingCredentials.value = false },
                                 isUpdating = profileState.isUpdating
@@ -181,14 +172,12 @@ fun ProfileScreen(
                             addresses = profile.addresses,
                             onDeleteAddress = profileViewModel::deleteAddress,
                             onEditAddress = profileViewModel::editAddress,
+                            profileViewModel = profileViewModel
                         )
 
                         AddAddressForm(
                             viewModel = profileViewModel,
-                            onAddressAdded = {
-                                openSection.value = ""
-                                profileViewModel.onAuthStatusChanged(true)
-                            }
+                            onAddressAdded = { /* Можно добавить логику скрытия формы, если нужно */ }
                         )
                     }
                 }
@@ -225,12 +214,15 @@ fun ProfileScreen(
                             .padding(vertical = 4.dp)
                             .clickable(onClick = onNavigateToWishlist),
                         shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
+                        colors = CardDefaults.cardColors(containerColor = Color.White),
+                        border = BorderStroke(1.dp, Color(0xFFE0E0E0)) // Добавил границу для стиля
                     ) {
                         Row(
                             modifier = Modifier.padding(16.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
+                            Icon(Icons.Default.FavoriteBorder, contentDescription = null, tint = MaterialTheme.colorScheme.primary)
+                            Spacer(Modifier.width(12.dp))
                             Text("My Wishlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.weight(1f))
                             Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
@@ -258,6 +250,254 @@ fun ProfileScreen(
     }
 }
 
+// --- НЕДОСТАЮЩИЕ КОМПОНЕНТЫ (ИСПРАВЛЕНИЕ ОШИБОК) ---
+
+@Composable
+fun ExpandableSection(
+    title: String,
+    subtitle: String,
+    isExpanded: Boolean,
+    onClick: () -> Unit,
+    actionButton: @Composable (() -> Unit)? = null,
+    content: @Composable () -> Unit
+) {
+    val rotationState by animateFloatAsState(
+        targetValue = if (isExpanded) 180f else 0f, label = "rotation"
+    )
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .animateContentSize(), // Анимация изменения размера
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        border = BorderStroke(1.dp, if (isExpanded) MaterialTheme.colorScheme.primary.copy(alpha = 0.5f) else Color(0xFFE0E0E0))
+    ) {
+        Column {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onClick)
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                    Text(text = subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
+                }
+
+                if (actionButton != null) {
+                    actionButton()
+                }
+
+                IconButton(onClick = onClick, modifier = Modifier.size(24.dp)) {
+                    Icon(
+                        imageVector = Icons.Default.ExpandMore,
+                        contentDescription = "Expand",
+                        modifier = Modifier.rotate(rotationState),
+                        tint = Color.Gray
+                    )
+                }
+            }
+
+            if (isExpanded) {
+                Divider(color = Color(0xFFF0F0F0))
+                Box(modifier = Modifier.padding(bottom = 16.dp)) {
+                    content()
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun NotLoggedInPlaceholder(onLoginClick: () -> Unit) {
+    Column(
+        modifier = Modifier.padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.AccountCircle,
+            contentDescription = null,
+            modifier = Modifier.size(100.dp),
+            tint = Color.LightGray
+        )
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "You are not logged in",
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            "Log in to view your profile, orders and saved addresses.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = Color.Gray,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(vertical = 8.dp)
+        )
+        Spacer(Modifier.height(24.dp))
+        Button(
+            onClick = onLoginClick,
+            modifier = Modifier.fillMaxWidth().height(50.dp),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Login / Register", fontWeight = FontWeight.Bold)
+        }
+    }
+}
+
+// --- ОСТАЛЬНЫЕ КОМПОНЕНТЫ (Без изменений или с мелкими правками импортов) ---
+
+@Composable
+fun AddAddressForm(
+    viewModel: ProfileViewModel,
+    onAddressAdded: () -> Unit
+) {
+    val city = remember { mutableStateOf("") }
+    val street = remember { mutableStateOf("") }
+    val house = remember { mutableStateOf("") }
+    val apartment = remember { mutableStateOf("") }
+
+    val profileState by viewModel.state.collectAsState()
+
+    LaunchedEffect(profileState.updateSuccess) {
+        if (profileState.updateSuccess && profileState.error == null) {
+            // Очищаем только если поля были заполнены (чтобы не сбрасывать при других апдейтах)
+            if (city.value.isNotEmpty()) {
+                city.value = ""
+                street.value = ""
+                house.value = ""
+                apartment.value = ""
+                onAddressAdded()
+            }
+        }
+    }
+
+    val isAddButtonEnabled = remember {
+        derivedStateOf {
+            city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank()
+        }
+    }
+
+    val isUpdating = profileState.isUpdating
+
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(16.dp)
+    ) {
+        Text(
+            "Add New Address",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(bottom = 16.dp)
+        )
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(
+                value = city.value, onValueChange = { city.value = it },
+                label = { Text("City") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = street.value, onValueChange = { street.value = it },
+                label = { Text("Street") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(
+                value = house.value, onValueChange = { house.value = it },
+                label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+            OutlinedTextField(
+                value = apartment.value, onValueChange = { apartment.value = it },
+                label = { Text("Apt (opt)") }, singleLine = true, modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            )
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                viewModel.addAddress(
+                    city = city.value, street = street.value, house = house.value, apartment = apartment.value.ifBlank { null }
+                )
+            },
+            enabled = isAddButtonEnabled.value && !isUpdating,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+        ) {
+            if (isUpdating) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+            } else {
+                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Add Address", fontWeight = FontWeight.SemiBold)
+            }
+        }
+    }
+}
+
+@Composable
+fun AddressList(
+    addresses: List<UserAddress>,
+    onDeleteAddress: (Int) -> Unit,
+    onEditAddress: (addressId: Int?, city: String, street: String, house: String, apartment: String?) -> Unit,
+    profileViewModel: ProfileViewModel
+) {
+    val state by profileViewModel.state.collectAsState()
+    val isUpdating = state.isUpdating
+    val addressToEdit = remember { mutableStateOf<UserAddress?>(null) }
+
+    LaunchedEffect(state.updateSuccess) {
+        if (state.updateSuccess && addressToEdit.value != null) {
+            addressToEdit.value = null
+        }
+    }
+
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .padding(top = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        if (addresses.isEmpty()) {
+            Text(
+                "You have no saved addresses yet.",
+                style = MaterialTheme.typography.bodyMedium,
+                color = Color.Gray,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            )
+        } else {
+            addresses.forEach { address ->
+                if (addressToEdit.value?.id == address.id) {
+                    EditAddressForm(
+                        address = address,
+                        onSave = { city, street, house, apartment ->
+                            onEditAddress(address.id, city, street, house, apartment)
+                        },
+                        onCancel = { addressToEdit.value = null },
+                        isUpdating = isUpdating
+                    )
+                } else {
+                    SavedAddressCard(
+                        address = address,
+                        onDeleteClick = { id -> onDeleteAddress(id) },
+                        onEditClick = { addressToEdit.value = address },
+                        isUpdating = isUpdating
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 fun DisplayCredentials(profile: UserProfile) {
     Column(
@@ -266,31 +506,26 @@ fun DisplayCredentials(profile: UserProfile) {
             .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text("First Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+        CredentialRow("First Name", profile.firstName)
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+        CredentialRow("Last Name", profile.lastName)
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+        CredentialRow("Phone", profile.phoneNumber)
+        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+        CredentialRow("Email", profile.email)
+    }
+}
+
+@Composable
+fun CredentialRow(label: String, value: String) {
+    Column {
+        Text(label, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, color = Color.Gray)
+        Spacer(Modifier.height(4.dp))
         Text(
-            text = profile.firstName.ifBlank { "—" },
+            text = value.ifBlank { "—" },
             fontSize = 16.sp,
-            color = Color.DarkGray
+            color = Color.Black
         )
-
-        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
-
-        Text("Last Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Text(
-            text = profile.lastName.ifBlank { "—" },
-            fontSize = 16.sp,
-            color = Color.DarkGray
-        )
-
-        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
-
-        Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Text(profile.phoneNumber.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
-
-        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
-
-        Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        Text(profile.email.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
     }
 }
 
@@ -373,170 +608,6 @@ fun EditCredentialsForm(
 }
 
 @Composable
-fun AddAddressForm(
-    viewModel: ProfileViewModel = hiltViewModel(),
-    onAddressAdded: () -> Unit
-) {
-    val city = remember { mutableStateOf("") }
-    val street = remember { mutableStateOf("") }
-    val house = remember { mutableStateOf("") }
-    val apartment = remember { mutableStateOf("") }
-
-    val profileState by viewModel.state.collectAsState()
-    val lastUpdateSuccess by rememberUpdatedState(profileState.updateSuccess)
-
-    LaunchedEffect(lastUpdateSuccess) {
-        if (lastUpdateSuccess && profileState.error == null) {
-            city.value = ""
-            street.value = ""
-            house.value = ""
-            apartment.value = ""
-
-            viewModel.resetUpdateState()
-
-            // Callback для згортання секції
-            onAddressAdded()
-        }
-    }
-
-    val isAddButtonEnabled = remember {
-        derivedStateOf {
-            city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank()
-        }
-    }
-
-    val isUpdating = profileState.isUpdating
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Text(
-            "Add New Address",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = city.value, onValueChange = { city.value = it },
-                label = { Text("City") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
-            OutlinedTextField(
-                value = street.value, onValueChange = { street.value = it },
-                label = { Text("Street") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
-        }
-
-        Spacer(Modifier.height(16.dp))
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = house.value, onValueChange = { house.value = it },
-                label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
-            OutlinedTextField(
-                value = apartment.value, onValueChange = { apartment.value = it },
-                label = { Text("Apartment (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
-        }
-
-        Spacer(Modifier.height(24.dp))
-
-        Button(
-            onClick = {
-                viewModel.addAddress(
-                    city = city.value, street = street.value, house = house.value, apartment = apartment.value.ifBlank { null }
-                )
-            },
-            enabled = isAddButtonEnabled.value && !isUpdating,
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-        ) {
-            if (isUpdating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp
-                )
-            } else {
-                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(Modifier.width(8.dp))
-                Text("Add Address", fontWeight = FontWeight.SemiBold)
-            }
-        }
-    }
-}
-
-@Composable
-fun AddressList(
-    addresses: List<UserAddress>,
-    onDeleteAddress: (Int) -> Unit,
-    onEditAddress: (addressId: Int?, city: String, street: String, house: String, apartment: String?) -> Unit,
-    profileViewModel: ProfileViewModel = hiltViewModel()
-) {
-    val state by profileViewModel.state.collectAsState()
-    val isUpdating = state.isUpdating
-    val addressToEdit = remember { mutableStateOf<UserAddress?>(null) }
-
-    // --- ЛОГІКА ДЛЯ АДРЕС: Закриваємо редагування адреси після успішного збереження ---
-    LaunchedEffect(state.updateSuccess) {
-        if (state.updateSuccess && addressToEdit.value != null) {
-            addressToEdit.value = null
-            profileViewModel.resetUpdateState()
-        }
-    }
-    // ---------------------------------------------------------------------------------
-
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(top = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        if (addresses.isEmpty()) {
-            Text(
-                "You have no saved addresses yet.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Gray,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-        } else {
-            addresses.forEach { address ->
-                if (addressToEdit.value?.id == address.id) {
-                    EditAddressForm(
-                        address = address,
-                        onSave = { city, street, house, apartment ->
-                            onEditAddress(address.id, city, street, house, apartment)
-                            // Форма закриється автоматично через LaunchedEffect
-                        },
-                        onCancel = { addressToEdit.value = null },
-                        isUpdating = isUpdating
-                    )
-                } else {
-                    SavedAddressCard(
-                        address = address,
-                        onDeleteClick = onDeleteAddress,
-                        onEditClick = { addressToEdit.value = address },
-                        isUpdating = isUpdating
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
 fun EditAddressForm(
     address: UserAddress,
     onSave: (city: String, street: String, house: String, apartment: String?) -> Unit,
@@ -577,7 +648,7 @@ fun EditAddressForm(
                 )
                 OutlinedTextField(
                     value = apartment.value, onValueChange = { apartment.value = it },
-                    label = { Text("Apt (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
+                    label = { Text("Apt (opt)") }, singleLine = true, modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp), enabled = !isUpdating
                 )
             }
@@ -605,7 +676,6 @@ fun EditAddressForm(
         }
     }
 }
-
 
 @Composable
 fun SavedAddressCard(
@@ -646,11 +716,11 @@ fun SavedAddressCard(
                 IconButton(
                     onClick = onEditClick,
                     enabled = !isUpdating,
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
                         Icons.Default.Edit,
-                        contentDescription = "Редагувати адресу",
+                        contentDescription = "Edit",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -660,93 +730,16 @@ fun SavedAddressCard(
                     IconButton(
                         onClick = { onDeleteClick(addressId) },
                         enabled = !isUpdating,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(40.dp)
                     ) {
                         Icon(
                             Icons.Default.Delete,
-                            contentDescription = "Видалити адресу",
+                            contentDescription = "Delete",
                             tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
             }
-        }
-    }
-}
-
-
-@Composable
-fun ExpandableSection(
-    title: String,
-    subtitle: String,
-    isExpanded: Boolean,
-    onClick: () -> Unit,
-    actionButton: @Composable (() -> Unit)? = null,
-    content: @Composable ColumnScope.() -> Unit
-) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White)
-    ) {
-        Column {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable(onClick = onClick)
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                    Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
-                }
-                actionButton?.invoke()
-                Icon(
-                    imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                    contentDescription = if (isExpanded) "Згорнути" else "Розгорнути"
-                )
-            }
-            AnimatedVisibility(visible = isExpanded) {
-                Column {
-                    Divider(color = Color(0xFFF0F0F0))
-                    content()
-                }
-            }
-        }
-    }
-}
-
-
-@Composable
-fun NotLoggedInPlaceholder(onNavigateToLogin: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 24.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
-    ) {
-        Text(
-            "You are not authorized",
-            style = MaterialTheme.typography.titleLarge,
-            textAlign = TextAlign.Center
-        )
-        Text(
-            "Sign in to manage your profile",
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 8.dp, bottom = 24.dp)
-        )
-        Button(
-            onClick = onNavigateToLogin,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(50.dp)
-        ) {
-            Text("Log in / Register")
         }
     }
 }
@@ -830,6 +823,14 @@ fun OrderHistoryCard(
         OrderStatus.Cancelled -> "Cancelled"
     }
 
+    val orderStatusColor = when(order.status) {
+        OrderStatus.Created -> Color(0xFFF9A825)
+        OrderStatus.Approved -> Color(0xFF1976D2)
+        OrderStatus.Collected -> Color(0xFF388E3C)
+        OrderStatus.Delivered -> Color(0xFF9C27B0)
+        OrderStatus.Cancelled -> Color.Gray
+    }
+
     val paymentStatusDisplay = when(order.paymentStatus) {
         PaymentStatus.Paid -> "Paid"
         PaymentStatus.Failed -> "Failed"
@@ -840,7 +841,7 @@ fun OrderHistoryCard(
     val orderDateFormatted = remember(order.orderDate) {
         try {
             val zonedDateTime = ZonedDateTime.parse(order.orderDate)
-            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(Locale("uk", "UA")).format(zonedDateTime)
+            DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT).withLocale(Locale.getDefault()).format(zonedDateTime)
         } catch (e: Exception) {
             "Invalid date"
         }
@@ -862,84 +863,76 @@ fun OrderHistoryCard(
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Column {
-                    Text("Order ID", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                    Text("#${order.id}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+                    Text("Order #${order.id}", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(4.dp))
-                    Text("Date", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                    Text(orderDateFormatted, style = MaterialTheme.typography.bodyMedium)
+                    Text(orderDateFormatted, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
                 }
 
                 Column(horizontalAlignment = Alignment.End) {
-                    Text("Status", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
-                    Text(
-                        orderStatusDisplay,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        color = when(order.status) {
-                            OrderStatus.Created -> Color(0xFFF9A825)
-                            OrderStatus.Approved -> Color(0xFF1976D2)
-                            OrderStatus.Collected -> Color(0xFF388E3C)
-                            OrderStatus.Delivered -> Color(0xFF9C27B0)
-                            OrderStatus.Cancelled -> Color.Gray
-                        }
-                    )
+                    Surface(
+                        color = orderStatusColor.copy(alpha = 0.1f),
+                        shape = RoundedCornerShape(4.dp),
+                        border = BorderStroke(1.dp, orderStatusColor)
+                    ) {
+                        Text(
+                            text = orderStatusDisplay,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = orderStatusColor,
+                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                        )
+                    }
                     Spacer(Modifier.height(4.dp))
-                    Text("Total Amount", style = MaterialTheme.typography.labelMedium, color = Color.Gray)
                     Text(formatHryvnia(totalWithShipping), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
                 }
             }
 
-            Divider(color = Color(0xFFF0F0F0))
-
+            // Expanded Content
             AnimatedVisibility(visible = isExpanded) {
-                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    OrderInfoRow(Icons.Filled.Call, "Delivery Method", deliveryLabel)
-                    OrderInfoRow(Icons.Filled.Info, "Payment Method", when(order.paymentMethod) {
-                        PaymentMethod.Card -> "Card"
-                        PaymentMethod.CashAfterDelivery -> "Cash after delivery"
-                        PaymentMethod.GooglePay -> "Google Pay"
-                    })
-                    OrderInfoRow(Icons.Filled.Check, "Payment Status", paymentStatusDisplay)
-                    OrderInfoRow(Icons.Filled.ShoppingCart, "Full Address", formattedAddress)
-
-                    Divider(modifier = Modifier.padding(vertical = 4.dp))
-
-                    Text("Order Items", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        order.orderItems.forEach { item ->
-                            OrderItemDisplay(item = item, formatHryvnia = ::formatHryvnia)
+                Column {
+                    Divider(color = Color(0xFFF0F0F0))
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        OrderInfoRow(Icons.Filled.Call, "Delivery", deliveryLabel)
+                        OrderInfoRow(Icons.Filled.Info, "Payment", when(order.paymentMethod) {
+                            PaymentMethod.Card -> "Card"
+                            PaymentMethod.CashAfterDelivery -> "Cash on Delivery"
+                            PaymentMethod.GooglePay -> "Google Pay"
+                        })
+                        OrderInfoRow(Icons.Filled.Check, "Status", paymentStatusDisplay)
+                        if (order.deliveryMethod != DeliveryMethod.Pickup) {
+                            OrderInfoRow(Icons.Filled.ShoppingCart, "Address", formattedAddress)
                         }
-                    }
 
-                    Column(modifier = Modifier.padding(top = 8.dp)) {
+                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+
+                        Text("Items", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            order.orderItems.forEach { item ->
+                                OrderItemDisplay(item = item, formatHryvnia = ::formatHryvnia)
+                            }
+                        }
+
+                        Spacer(Modifier.height(8.dp))
                         CostBreakdownRow("Subtotal", formatHryvnia(order.totalAmount), isTotal = false)
-                        CostBreakdownRow("Shipment Cost ($deliveryLabel)", formatHryvnia(deliveryPrice), isTotal = false)
+                        CostBreakdownRow("Delivery", formatHryvnia(deliveryPrice), isTotal = false)
                         Divider(modifier = Modifier.padding(vertical = 4.dp))
                         CostBreakdownRow("Total", formatHryvnia(totalWithShipping), isTotal = true)
-                    }
 
-                    if (canCancel) {
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = {
-                                if (!isCancelling) {
-                                    onCancelOrder(order.id)
+                        if (canCancel) {
+                            Spacer(Modifier.height(8.dp))
+                            Button(
+                                onClick = { if (!isCancelling) onCancelOrder(order.id) },
+                                enabled = !isCancelling,
+                                modifier = Modifier.fillMaxWidth().height(48.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                            ) {
+                                if (isCancelling) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
+                                } else {
+                                    Icon(Icons.Default.Clear, contentDescription = null, modifier = Modifier.size(20.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Cancel Order", fontWeight = FontWeight.SemiBold)
                                 }
-                            },
-                            enabled = !isCancelling,
-                            modifier = Modifier.fillMaxWidth().height(48.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = MaterialTheme.colorScheme.error,
-                                disabledContainerColor = MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
-                            )
-                        ) {
-                            if (isCancelling) {
-                                CircularProgressIndicator(modifier = Modifier.size(24.dp), color = Color.White)
-                            } else {
-                                Icon(Icons.Default.Clear, contentDescription = "Cancel", modifier = Modifier.size(20.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Cancel Order", fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -954,38 +947,36 @@ fun OrderItemDisplay(item: OrderItem, formatHryvnia: (Double) -> String) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF0F0F0), RoundedCornerShape(8.dp))
+            .background(Color(0xFFF5F5F5), RoundedCornerShape(8.dp))
             .padding(12.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(item.productName, fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(item.productName, fontWeight = FontWeight.Medium, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                "Price: ${formatHryvnia(item.price)}",
+                "${formatHryvnia(item.price)} x ${item.quantity}",
                 fontSize = 12.sp,
-                color = Color.Gray,
-                modifier = Modifier.padding(top = 4.dp)
+                color = Color.Gray
             )
         }
-        Column(horizontalAlignment = Alignment.End) {
-            Text("Qty: ${item.quantity}", fontSize = 12.sp, color = Color.Gray)
-            Text(
-                formatHryvnia(item.price * item.quantity),
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp
-            )
-        }
+        Text(
+            formatHryvnia(item.price * item.quantity),
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 14.sp
+        )
     }
 }
 
 @Composable
 fun OrderInfoRow(icon: ImageVector, title: String, value: String) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Spacer(Modifier.width(8.dp))
-        Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        Text(value, fontSize = 14.sp, color = Color.DarkGray)
+        Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.width(12.dp))
+        Column {
+            Text(title, fontSize = 12.sp, color = Color.Gray)
+            Text(value, fontSize = 14.sp, color = Color.Black)
+        }
     }
 }
 

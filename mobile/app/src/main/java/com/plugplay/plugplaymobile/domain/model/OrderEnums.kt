@@ -8,8 +8,8 @@ enum class DeliveryMethod(val id: Int) {
 }
 
 enum class PaymentMethod(val id: Int) {
-    Card(0),
-    CashAfterDelivery(1),
+    Card(1),
+    CashAfterDelivery(0),
     GooglePay(2)
 }
 

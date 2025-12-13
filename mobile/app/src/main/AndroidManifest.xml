@@ -15,6 +15,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.PlugPlay"
         tools:targetApi="31">
+        <activity
+            android:name="ua.privatbank.liqpay.base.LiqpayPayActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            tools:replace="android:theme" />
 
         <activity
             android:name=".MainActivity"

@@ -54,6 +54,8 @@ android {
 }
 
 dependencies {
+    implementation("ua.privatbank:liqpay_x:1.0")
+
     implementation("com.google.android.gms:play-services-auth:20.7.0")
     implementation("androidx.compose.ui:ui:1.4.3")
     implementation("androidx.compose.material:material:1.4.3")
@@ -96,4 +98,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
+}
+configurations.all {
+    exclude(group = "com.intellij", module = "annotations")
 }

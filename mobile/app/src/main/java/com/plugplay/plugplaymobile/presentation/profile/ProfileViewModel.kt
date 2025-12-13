@@ -42,8 +42,7 @@ class ProfileViewModel @Inject constructor(
 
     fun onAuthStatusChanged(isLoggedIn: Boolean) {
         if (isLoggedIn) {
-            // Загружаем профиль, только если его нет
-            if (_state.value.profile == null && !_state.value.isLoading) {
+            if (_state.value.profile == null) {
                 loadProfile()
             }
             loadOrders()
@@ -67,7 +66,6 @@ class ProfileViewModel @Inject constructor(
 
     fun loadOrders() {
         if (_state.value.isOrdersLoading) return
-
         _state.update { it.copy(isOrdersLoading = true) }
         viewModelScope.launch {
             getUserOrdersUseCase()
@@ -95,7 +93,7 @@ class ProfileViewModel @Inject constructor(
         }
     }
 
-    // [ОНОВЛЕНО] Тепер приймаємо оновлений профіль від UseCase і відразу оновлюємо State
+    // --- ЛОГИКА ОБНОВЛЕНИЯ ---
     fun updateProfile(
         firstName: String,
         lastName: String,
@@ -103,20 +101,27 @@ class ProfileViewModel @Inject constructor(
         email: String,
         currentPassword: String? = null,
         newPassword: String? = null,
-        addresses: List<UserAddress> = emptyList()
+        addresses: List<UserAddress>? = null
     ) {
         _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
+
+        // Сохраняем старые адреса, если новые не переданы
+        val currentAddresses = _state.value.profile?.addresses ?: emptyList()
+        val finalAddresses = addresses ?: currentAddresses
+
         viewModelScope.launch {
-            updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword, addresses)
-                .onSuccess { updatedProfile -> // [ВАЖЛИВО] Отримуємо оновлений об'єкт
+            updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword, finalAddresses)
+                .onSuccess { updatedProfile ->
+                    // [FIX] МГНОВЕННОЕ ОБНОВЛЕНИЕ
+                    // Мы не перезагружаем профиль из сети. Мы берем то, что вернул сервер
+                    // в ответе на UPDATE, и сразу подставляем в UI.
                     _state.update {
                         it.copy(
                             isUpdating = false,
                             updateSuccess = true,
-                            profile = updatedProfile // [ВАЖЛИВО] Миттєво оновлюємо UI
+                            profile = updatedProfile // <-- Вот здесь происходит магия "без перезагрузки"
                         )
                     }
-                    // loadProfile() тут більше не потрібен, оскільки ми вже маємо свіжі дані
                 }
                 .onFailure { throwable ->
                     _state.update {
@@ -141,20 +146,12 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun addAddress(city: String, street: String, house: String, apartment: String?) {
-        val currentProfile = state.value.profile ?: run {
-            _state.update { it.copy(error = "User profile not loaded. Cannot add address.") }
-            return
-        }
-
-        if (city.isBlank() || street.isBlank() || house.isBlank()) {
-            _state.update { it.copy(error = "City, street, and house number are required.") }
-            return
-        }
+        val currentProfile = state.value.profile ?: return
+        if (city.isBlank() || street.isBlank() || house.isBlank()) return
 
         val newAddress = UserAddress(
             id = null, city = city, street = street, house = house, apartments = apartment?.ifBlank { null }
         )
-
         val addressesToSend = currentProfile.addresses + listOf(newAddress)
         updateAddresses(addressesToSend)
     }
@@ -165,12 +162,7 @@ class ProfileViewModel @Inject constructor(
 
         val updatedAddresses = currentProfile.addresses.map { address ->
             if (address.id == addressId) {
-                address.copy(
-                    city = city,
-                    street = street,
-                    house = house,
-                    apartments = apartment?.ifBlank { null }
-                )
+                address.copy(city = city, street = street, house = house, apartments = apartment?.ifBlank { null })
             } else {
                 address
             }
@@ -179,16 +171,7 @@ class ProfileViewModel @Inject constructor(
     }
 
     fun deleteAddress(addressId: Int) {
-        val currentProfile = state.value.profile ?: run {
-            _state.update { it.copy(error = "User profile not loaded. Cannot delete address.") }
-            return
-        }
-
-        if (currentProfile.addresses.none { it.id == addressId }) {
-            _state.update { it.copy(error = "Address with ID $addressId not found.") }
-            return
-        }
-
+        val currentProfile = state.value.profile ?: return
         val addressesToSend = currentProfile.addresses.filter { it.id != addressId }
         updateAddresses(addressesToSend)
     }
