@@ -1,0 +1,192 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ua.privatbank",
+    "module": "dynamic-components",
+    "version": "1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.3.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "dynamic-components-1.0.aar",
+          "url": "dynamic-components-1.0.aar",
+          "size": 905187,
+          "sha512": "e219877df6a473fb0654b99bedd9c78cd7194abd7d71d9cd58a6f20b7e791bc483445039fc5baa3925fb29e448d5ae391aae344619eb06b988696b1768b32225",
+          "sha256": "0daa47a3ec8744179ea26f797c3f3e8269c1c17ffd6767668244ed2857537f56",
+          "sha1": "ebeddec3383868662489b0321ffee3ba0a5cbb4c",
+          "md5": "7f1e7c8dcfeeab2552c68ea534e8ecb4"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-android-extensions-runtime",
+          "version": {
+            "requires": "1.7.21"
+          }
+        },
+        {
+          "group": "androidx.appcompat",
+          "module": "appcompat",
+          "version": {
+            "requires": "1.6.1"
+          }
+        },
+        {
+          "group": "com.google.android.material",
+          "module": "material",
+          "version": {
+            "requires": "1.9.0"
+          }
+        },
+        {
+          "group": "com.google.code.gson",
+          "module": "gson",
+          "version": {
+            "requires": "2.8.5"
+          }
+        },
+        {
+          "group": "com.google.android.flexbox",
+          "module": "flexbox",
+          "version": {
+            "requires": "3.0.0"
+          }
+        },
+        {
+          "group": "com.google.android.gms",
+          "module": "play-services-location",
+          "version": {
+            "requires": "21.0.1"
+          }
+        },
+        {
+          "group": "com.google.android.gms",
+          "module": "play-services-maps",
+          "version": {
+            "requires": "17.0.0"
+          }
+        },
+        {
+          "group": "androidx.cardview",
+          "module": "cardview",
+          "version": {
+            "requires": "1.0.0"
+          }
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "permission-controller",
+          "version": {
+            "requires": "1.0"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.7.21"
+          }
+        },
+        {
+          "group": "androidx.constraintlayout",
+          "module": "constraintlayout",
+          "version": {
+            "requires": "2.1.4"
+          }
+        },
+        {
+          "group": "com.google.zxing",
+          "module": "core",
+          "version": {
+            "requires": "3.3.0"
+          }
+        },
+        {
+          "group": "com.github.bumptech.glide",
+          "module": "glide",
+          "version": {
+            "requires": "4.9.0"
+          },
+          "excludes": [
+            {
+              "group": "com.android.support",
+              "module": "*"
+            }
+          ]
+        },
+        {
+          "group": "androidx.viewpager2",
+          "module": "viewpager2",
+          "version": {
+            "requires": "1.0.0"
+          }
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "core",
+          "version": {
+            "requires": "1.0"
+          }
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "adapterlibrary",
+          "version": {
+            "requires": "1.0"
+          }
+        },
+        {
+          "group": "androidx.swiperefreshlayout",
+          "module": "swiperefreshlayout",
+          "version": {
+            "requires": "1.1.0"
+          }
+        },
+        {
+          "group": "androidx.core",
+          "module": "core-ktx",
+          "version": {
+            "requires": "1.9.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "dynamic-components-1.0.aar",
+          "url": "dynamic-components-1.0.aar",
+          "size": 905187,
+          "sha512": "e219877df6a473fb0654b99bedd9c78cd7194abd7d71d9cd58a6f20b7e791bc483445039fc5baa3925fb29e448d5ae391aae344619eb06b988696b1768b32225",
+          "sha256": "0daa47a3ec8744179ea26f797c3f3e8269c1c17ffd6767668244ed2857537f56",
+          "sha1": "ebeddec3383868662489b0321ffee3ba0a5cbb4c",
+          "md5": "7f1e7c8dcfeeab2552c68ea534e8ecb4"
+        }
+      ]
+    }
+  ]
+}

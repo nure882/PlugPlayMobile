@@ -1,0 +1,179 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ua.privatbank",
+    "module": "confirmservice",
+    "version": "1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.3.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.7.21"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "confirmservice-1.0.aar",
+          "url": "confirmservice-1.0.aar",
+          "size": 256145,
+          "sha512": "fa56e4e1453b7d4c5c5af0b56169a793d578c49009fc0b258a722c91f8f91610c33f4f1246eca4531b12a9862c7e233d8d9ab9add38b2d4432e7cf831dcac048",
+          "sha256": "6957dd9a3afcef641d334b445e052e1287e3c4403a49c6d84c2bfcb322d7d3e6",
+          "sha1": "5ef00b9ba10b832b6ebeb55bf249c145b8dd752f",
+          "md5": "f18661b4c59d8aca246c1aefb65e5680"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk8",
+          "version": {
+            "requires": "1.7.21"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-android-extensions-runtime",
+          "version": {
+            "requires": "1.7.21"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "confirmcore",
+          "version": {
+            "requires": "1.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "pbthemes",
+          "version": {
+            "requires": "1.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "core",
+          "version": {
+            "requires": "1.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "dynamic-components",
+          "version": {
+            "requires": "1.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        },
+        {
+          "group": "androidx.appcompat",
+          "module": "appcompat",
+          "version": {
+            "requires": "1.6.1"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        },
+        {
+          "group": "androidx.cardview",
+          "module": "cardview",
+          "version": {
+            "requires": "1.0.0"
+          },
+          "excludes": [
+            {
+              "group": "*",
+              "module": "p24core"
+            }
+          ]
+        }
+      ],
+      "files": [
+        {
+          "name": "confirmservice-1.0.aar",
+          "url": "confirmservice-1.0.aar",
+          "size": 256145,
+          "sha512": "fa56e4e1453b7d4c5c5af0b56169a793d578c49009fc0b258a722c91f8f91610c33f4f1246eca4531b12a9862c7e233d8d9ab9add38b2d4432e7cf831dcac048",
+          "sha256": "6957dd9a3afcef641d334b445e052e1287e3c4403a49c6d84c2bfcb322d7d3e6",
+          "sha1": "5ef00b9ba10b832b6ebeb55bf249c145b8dd752f",
+          "md5": "f18661b4c59d8aca246c1aefb65e5680"
+        }
+      ]
+    }
+  ]
+}

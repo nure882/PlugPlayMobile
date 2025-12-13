@@ -1,0 +1,88 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ua.privatbank",
+    "module": "permission-controller",
+    "version": "1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.3.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "permission-controller-1.0.aar",
+          "url": "permission-controller-1.0.aar",
+          "size": 62377,
+          "sha512": "4da64eac5364804b58dc24661b0767070e7a23869415afcaab4803346668fef112cb64390fa945c4cd0e6065e4d4deabcbe03bfd7b647b928eb4122ba82ab511",
+          "sha256": "268344576a91c8f3468f6f69bb285227ee0b929b693ef2459a21b2b9acb44e48",
+          "sha1": "d09569c93d9ea05c4ffc93fa960dea1f9de9c18c",
+          "md5": "ce3667c195aca905d2565ea9f62280bf"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-android-extensions-runtime",
+          "version": {
+            "requires": "1.7.21"
+          }
+        },
+        {
+          "group": "ua.privatbank",
+          "module": "pbthemes",
+          "version": {
+            "requires": "1.0"
+          }
+        },
+        {
+          "group": "androidx.appcompat",
+          "module": "appcompat",
+          "version": {
+            "requires": "1.6.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.7.21"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "permission-controller-1.0.aar",
+          "url": "permission-controller-1.0.aar",
+          "size": 62377,
+          "sha512": "4da64eac5364804b58dc24661b0767070e7a23869415afcaab4803346668fef112cb64390fa945c4cd0e6065e4d4deabcbe03bfd7b647b928eb4122ba82ab511",
+          "sha256": "268344576a91c8f3468f6f69bb285227ee0b929b693ef2459a21b2b9acb44e48",
+          "sha1": "d09569c93d9ea05c4ffc93fa960dea1f9de9c18c",
+          "md5": "ce3667c195aca905d2565ea9f62280bf"
+        }
+      ]
+    }
+  ]
+}

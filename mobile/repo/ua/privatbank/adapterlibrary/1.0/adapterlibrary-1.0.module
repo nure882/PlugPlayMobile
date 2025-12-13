@@ -1,0 +1,81 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ua.privatbank",
+    "module": "adapterlibrary",
+    "version": "1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.3.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "adapterlibrary-1.0.aar",
+          "url": "adapterlibrary-1.0.aar",
+          "size": 2623,
+          "sha512": "2b9c7e4f42ab57bc3a0d806f93e10214225e23c3562ea9fd8c4e6a5c91f413a0c47e72396e5bc2b8dac830f33c7902a72f8587ec244e86507c5ea01256b3fa2b",
+          "sha256": "831c046a77e433a9c67970563f1111ef3c8147d45a95cc3c85406eb9026aa8f5",
+          "sha1": "a493576b888ef9bddeff1cad979a77d14f408e94",
+          "md5": "7e0ff13442002dbcd57b7af413bf71e1"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "androidx.recyclerview",
+          "module": "recyclerview",
+          "version": {
+            "requires": "1.3.0"
+          }
+        },
+        {
+          "group": "io.reactivex.rxjava2",
+          "module": "rxjava",
+          "version": {
+            "requires": "2.2.12"
+          }
+        },
+        {
+          "group": "io.reactivex.rxjava2",
+          "module": "rxandroid",
+          "version": {
+            "requires": "2.1.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "adapterlibrary-1.0.aar",
+          "url": "adapterlibrary-1.0.aar",
+          "size": 2623,
+          "sha512": "2b9c7e4f42ab57bc3a0d806f93e10214225e23c3562ea9fd8c4e6a5c91f413a0c47e72396e5bc2b8dac830f33c7902a72f8587ec244e86507c5ea01256b3fa2b",
+          "sha256": "831c046a77e433a9c67970563f1111ef3c8147d45a95cc3c85406eb9026aa8f5",
+          "sha1": "a493576b888ef9bddeff1cad979a77d14f408e94",
+          "md5": "7e0ff13442002dbcd57b7af413bf71e1"
+        }
+      ]
+    }
+  ]
+}

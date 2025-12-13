@@ -1,0 +1,88 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ua.privatbank",
+    "module": "pbthemes",
+    "version": "1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.3.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "files": [
+        {
+          "name": "pbthemes-1.0.aar",
+          "url": "pbthemes-1.0.aar",
+          "size": 49758,
+          "sha512": "8e7d7337b8df38665dc11aec268b84e19db64eac327ef2dad0385fec2e90776cbc2f88358883ab476e46f54b0910f30492e702aac5277a0de3672140e06c13f0",
+          "sha256": "26e7d73d55c02159dde31dfccba938d38542dfa09abf856785377516175ea816",
+          "sha1": "b38d981c47f7d8de29628ddc93efda5a5897bd2a",
+          "md5": "0aacadae87890e7c84073b66db4c464f"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-android-extensions-runtime",
+          "version": {
+            "requires": "1.7.21"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib-jdk7",
+          "version": {
+            "requires": "1.7.21"
+          }
+        },
+        {
+          "group": "androidx.appcompat",
+          "module": "appcompat",
+          "version": {
+            "requires": "1.6.1"
+          }
+        },
+        {
+          "group": "com.google.android.material",
+          "module": "material",
+          "version": {
+            "requires": "1.9.0"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "pbthemes-1.0.aar",
+          "url": "pbthemes-1.0.aar",
+          "size": 49758,
+          "sha512": "8e7d7337b8df38665dc11aec268b84e19db64eac327ef2dad0385fec2e90776cbc2f88358883ab476e46f54b0910f30492e702aac5277a0de3672140e06c13f0",
+          "sha256": "26e7d73d55c02159dde31dfccba938d38542dfa09abf856785377516175ea816",
+          "sha1": "b38d981c47f7d8de29628ddc93efda5a5897bd2a",
+          "md5": "0aacadae87890e7c84073b66db4c464f"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "group": "ua.privatbank",
+    "module": "rxfingerprint",
+    "version": "1.0",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "7.3.3"
+    }
+  },
+  "variants": [
+    {
+      "name": "releaseVariantReleaseApiPublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api"
+      },
+      "dependencies": [
+        {
+          "group": "io.reactivex.rxjava2",
+          "module": "rxjava",
+          "version": {
+            "requires": "2.1.7"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "rxfingerprint-1.0.aar",
+          "url": "rxfingerprint-1.0.aar",
+          "size": 1112,
+          "sha512": "7ddeb17c1c3eb5fb585a0baa5b7a580636eae9858b8d3a702eefa45eb7cf28112e579a7f9dd99c5e24fc7b806b1d4b8372552a0254eeeec652adc1dc083c4427",
+          "sha256": "82b351465b33e50a1020f3ea02275b0cf7cf12240b8b4244b8411b05124f0710",
+          "sha1": "564c68e0a683b13d2d659eda61b295e2c9f6727d",
+          "md5": "83f57c992709f9ed5e2e141356570786"
+        }
+      ]
+    },
+    {
+      "name": "releaseVariantReleaseRuntimePublication",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime"
+      },
+      "dependencies": [
+        {
+          "group": "io.reactivex.rxjava2",
+          "module": "rxjava",
+          "version": {
+            "requires": "2.1.7"
+          }
+        }
+      ],
+      "files": [
+        {
+          "name": "rxfingerprint-1.0.aar",
+          "url": "rxfingerprint-1.0.aar",
+          "size": 1112,
+          "sha512": "7ddeb17c1c3eb5fb585a0baa5b7a580636eae9858b8d3a702eefa45eb7cf28112e579a7f9dd99c5e24fc7b806b1d4b8372552a0254eeeec652adc1dc083c4427",
+          "sha256": "82b351465b33e50a1020f3ea02275b0cf7cf12240b8b4244b8411b05124f0710",
+          "sha1": "564c68e0a683b13d2d659eda61b295e2c9f6727d",
+          "md5": "83f57c992709f9ed5e2e141356570786"
+        }
+      ]
+    }
+  ]
+}
