@@ -14,22 +14,25 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.PlugPlay"
-        tools:targetApi="31">
-        <activity
-            android:name="ua.privatbank.liqpay.base.LiqpayPayActivity"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            tools:replace="android:theme" />
+        tools:targetApi="31"
+        tools:replace="android:label">
+
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.PlugPlay">
+            android:theme="@style/Theme.PlugPlay"
+            tools:replace="android:label">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name="ua.privatbank.liqpay.base.LiqpayPayActivity"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+            tools:replace="android:theme" />
     </application>
 
 </manifest>
