@@ -72,7 +72,7 @@ interface ShopApiService {
     @POST("api/Products/attribute/{categoryId}")
     suspend fun getAttributeGroups(
         @Path("categoryId") categoryId: Int,
-        @Body productIds: List<Int>
+        @Body request: AttributeRequestDto // <--- ИСПРАВЛЕНО: Теперь отправляем DTO-объект
     ): Response<List<AttributeGroupDto>>
 
     @GET("api/WishList")

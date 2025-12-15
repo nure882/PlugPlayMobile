@@ -1,5 +1,7 @@
 package com.plugplay.plugplaymobile.data.repository
 
+import android.util.Log // <--- ДОБАВЛЕНО
+import com.plugplay.plugplaymobile.data.model.AttributeRequestDto
 import com.plugplay.plugplaymobile.data.model.toDomain
 import com.plugplay.plugplaymobile.data.model.toDomainItem
 import com.plugplay.plugplaymobile.data.model.toDomainList
@@ -10,7 +12,10 @@ import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Collections.emptyList
 import javax.inject.Inject
+
+private const val TAG = "ProductRepo" // <--- ДОБАВЛЕНО
 
 class ProductRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService
@@ -40,8 +45,11 @@ class ProductRepositoryImpl @Inject constructor(
                 )
 
                 if (response.isSuccessful && response.body() != null) {
-                    response.body()!!.products.toDomainList()
+                    val productsResponse = response.body()!!
+                    Log.d(TAG, "getProducts DTO received: ${productsResponse.products}") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ DTO
+                    productsResponse.products.toDomainList()
                 } else {
+                    Log.e(TAG, "getProducts API Failed: ${response.code()} ${response.message()}") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ ОШИБКИ
                     throw Exception("Failed to filter products: ${response.message()}")
                 }
             }
@@ -52,6 +60,7 @@ class ProductRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val productsDto = apiService.searchProducts(query = query)
+                Log.d(TAG, "searchProducts DTO received: $productsDto") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ DTO
                 productsDto.toDomainList()
             }
         }
@@ -62,8 +71,11 @@ class ProductRepositoryImpl @Inject constructor(
             val itemIdInt = itemId.toIntOrNull() ?: throw IllegalArgumentException("Invalid ID")
             val response = apiService.getProductById(itemIdInt)
             if (response.isSuccessful && response.body() != null) {
-                response.body()!!.toDomainItem()
+                val itemDto = response.body()!!
+                Log.d(TAG, "getProductById DTO received: $itemDto") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ DTO
+                itemDto.toDomainItem()
             } else {
+                Log.e(TAG, "getProductById API Failed: ${response.code()} ${response.message()}") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ ОШИБКИ
                 throw Exception("Failed to fetch item")
             }
         }
@@ -77,14 +89,27 @@ class ProductRepositoryImpl @Inject constructor(
     override suspend fun getAttributesForFilter(categoryId: Int, productIds: List<Int>): Result<List<AttributeGroup>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                // Отправляем просто список ID [1, 2, 3]
-                val response = apiService.getAttributeGroups(categoryId, productIds)
+                // Создаем DTO-объект, содержащий список ID товаров
+                val requestDto = AttributeRequestDto(
+                    productIds = productIds,
+                    selectedAttrsIds = emptyList() // Включаем, чтобы соответствовать C# DTO
+                )
+
+                // Отправляем DTO
+                val response = apiService.getAttributeGroups(
+                    categoryId = categoryId,
+                    request = requestDto // <--- ИСПРАВЛЕНО
+                )
 
                 if (response.isSuccessful && response.body() != null) {
                     val dtoList = response.body()!!
+                    Log.d(TAG, "getAttributesForFilter DTO received: $dtoList")
                     dtoList.mapNotNull { it.toDomain() }
                 } else {
-                    emptyList()
+                    // [FIX] Тепер кидаємо виняток у разі невдачі, щоб Result був .failure
+                    val errorMsg = "Failed to fetch product attributes: ${response.message()} Code: ${response.code()}"
+                    Log.e(TAG, errorMsg)
+                    throw Exception(errorMsg)
                 }
             }
         }
