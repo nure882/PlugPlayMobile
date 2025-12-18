@@ -62,6 +62,10 @@ fun ProfileScreen(
 
     val profile = profileState.profile
     val orders = profileState.orders
+    var localProfile by remember(profile) { mutableStateOf(profile) }
+    LaunchedEffect(profile) {
+        localProfile = profile
+    }
 
     val isEditingCredentials = remember { mutableStateOf(false) }
     val openSection = remember { mutableStateOf("") }
@@ -152,17 +156,30 @@ fun ProfileScreen(
                             }
                         }
                     ) {
+                        // Внутри LazyColumn -> ExpandableSection
                         if (isEditingCredentials.value) {
                             EditCredentialsForm(
-                                profile = profile,
+                                profile = localProfile ?: profile!!, // Берем данные из локальной копии
                                 onSave = { fn, ln, ph, em ->
-                                    profileViewModel.updateProfile(fn, ln, ph, em); isEditingCredentials.value = false
+                                    // 1. Мгновенно обновляем локальное состояние
+                                    localProfile = localProfile?.copy(
+                                        firstName = fn,
+                                        lastName = ln,
+                                        phoneNumber = ph,
+                                        email = em
+                                    )
+                                    // 2. Закрываем форму редактирования сразу
+                                    isEditingCredentials.value = false
+
+                                    // 3. Отправляем реальный запрос в ViewModel
+                                    profileViewModel.updateProfile(fn, ln, ph, em)
                                 },
                                 onCancel = { isEditingCredentials.value = false },
                                 isUpdating = profileState.isUpdating
                             )
                         } else {
-                            DisplayCredentials(profile = profile)
+                            // Здесь тоже используем localProfile, чтобы данные изменились мгновенно
+                            DisplayCredentials(profile = localProfile ?: profile!!)
                         }
                     }
                 }
@@ -178,16 +195,22 @@ fun ProfileScreen(
                         }
                     ) {
                         AddressList(
-                            addresses = profile.addresses,
+                            addresses = localProfile?.addresses ?: emptyList(),
                             onDeleteAddress = profileViewModel::deleteAddress,
                             onEditAddress = profileViewModel::editAddress,
+                            onUpdateLocalList = { newList ->
+                                // Мгновенно подменяем адреса в локальном профиле
+                                localProfile = localProfile?.copy(addresses = newList)
+                            }
                         )
 
                         AddAddressForm(
                             viewModel = profileViewModel,
-                            onAddressAdded = {
-                                openSection.value = ""
-                                profileViewModel.onAuthStatusChanged(true)
+                            onAddressAdded = { newAddress ->
+                                // Мгновенно добавляем новый адрес в локальный список
+                                localProfile = localProfile?.let { lp ->
+                                    lp.copy(addresses = lp.addresses + newAddress)
+                                }
                             }
                         )
                     }
@@ -306,12 +329,19 @@ fun EditCredentialsForm(
     val phone = remember { mutableStateOf(profile.phoneNumber) }
     val email = remember { mutableStateOf(profile.email) }
 
+    // Регулярное выражение для формата +380YYXXXXXXX
+    val phoneRegex = remember { Regex("^\\+380\\d{9}$") }
+
+    val isPhoneValid = remember {
+        derivedStateOf { phoneRegex.matches(phone.value) }
+    }
+
     val isSaveEnabled = remember {
         derivedStateOf {
             !isUpdating &&
                     firstName.value.isNotBlank() &&
                     lastName.value.isNotBlank() &&
-                    phone.value.isNotBlank() &&
+                    isPhoneValid.value && // Проверка валидности телефона
                     email.value.isNotBlank() &&
                     (firstName.value != profile.firstName ||
                             lastName.value != profile.lastName ||
@@ -334,10 +364,24 @@ fun EditCredentialsForm(
             )
         }
 
+        // Поле ввода телефона с валидацией
         OutlinedTextField(
-            value = phone.value, onValueChange = { phone.value = it },
-            label = { Text("Phone Number") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+            value = phone.value,
+            onValueChange = { newValue ->
+                // Разрешаем вводить только цифры и +, ограничиваем длину до 13 символов
+                if (newValue.all { it.isDigit() || it == '+' } && newValue.length <= 13) {
+                    phone.value = newValue
+                }
+            },
+            label = { Text("Phone Number") },
+            singleLine = true,
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            enabled = !isUpdating,
+            isError = phone.value.isNotEmpty() && !isPhoneValid.value,
+            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+            )
         )
 
         OutlinedTextField(
@@ -375,7 +419,7 @@ fun EditCredentialsForm(
 @Composable
 fun AddAddressForm(
     viewModel: ProfileViewModel = hiltViewModel(),
-    onAddressAdded: () -> Unit
+    onAddressAdded: (com.plugplay.plugplaymobile.domain.model.UserAddress) -> Unit
 ) {
     val city = remember { mutableStateOf("") }
     val street = remember { mutableStateOf("") }
@@ -383,21 +427,7 @@ fun AddAddressForm(
     val apartment = remember { mutableStateOf("") }
 
     val profileState by viewModel.state.collectAsState()
-    val lastUpdateSuccess by rememberUpdatedState(profileState.updateSuccess)
-
-    LaunchedEffect(lastUpdateSuccess) {
-        if (lastUpdateSuccess && profileState.error == null) {
-            city.value = ""
-            street.value = ""
-            house.value = ""
-            apartment.value = ""
-
-            viewModel.resetUpdateState()
-
-            // Callback для згортання секції
-            onAddressAdded()
-        }
-    }
+    val isUpdating = profileState.isUpdating
 
     val isAddButtonEnabled = remember {
         derivedStateOf {
@@ -405,61 +435,43 @@ fun AddAddressForm(
         }
     }
 
-    val isUpdating = profileState.isUpdating
+    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+        Text("Add New Address", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(bottom = 16.dp))
 
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        Text(
-            "Add New Address",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = city.value, onValueChange = { city.value = it },
-                label = { Text("City") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
-            OutlinedTextField(
-                value = street.value, onValueChange = { street.value = it },
-                label = { Text("Street") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(value = city.value, onValueChange = { city.value = it }, label = { Text("City") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), enabled = !isUpdating)
+            OutlinedTextField(value = street.value, onValueChange = { street.value = it }, label = { Text("Street") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), enabled = !isUpdating)
         }
 
         Spacer(Modifier.height(16.dp))
 
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            OutlinedTextField(
-                value = house.value, onValueChange = { house.value = it },
-                label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
-            OutlinedTextField(
-                value = apartment.value, onValueChange = { apartment.value = it },
-                label = { Text("Apartment (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
-            )
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+            OutlinedTextField(value = house.value, onValueChange = { house.value = it }, label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), enabled = !isUpdating)
+            OutlinedTextField(value = apartment.value, onValueChange = { apartment.value = it }, label = { Text("Apartment (optional)") }, singleLine = true, modifier = Modifier.weight(1f), shape = RoundedCornerShape(12.dp), enabled = !isUpdating)
         }
 
         Spacer(Modifier.height(24.dp))
 
         Button(
             onClick = {
-                viewModel.addAddress(
-                    city = city.value, street = street.value, house = house.value, apartment = apartment.value.ifBlank { null }
+                val tempAddress = com.plugplay.plugplaymobile.domain.model.UserAddress(
+                    id = -1, // ВАЖНО: Ставим -1 вместо null, чтобы форма редактирования не открылась сразу
+                    city = city.value,
+                    street = street.value,
+                    house = house.value,
+                    apartments = apartment.value.ifBlank { null }
                 )
+
+                onAddressAdded(tempAddress)
+
+                viewModel.addAddress(
+                    city = city.value,
+                    street = street.value,
+                    house = house.value,
+                    apartment = apartment.value.ifBlank { null }
+                )
+
+                city.value = ""; street.value = ""; house.value = ""; apartment.value = ""
             },
             enabled = isAddButtonEnabled.value && !isUpdating,
             modifier = Modifier.fillMaxWidth(),
@@ -467,9 +479,7 @@ fun AddAddressForm(
             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
         ) {
             if (isUpdating) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp
-                )
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
             } else {
                 Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
@@ -484,24 +494,55 @@ fun AddressList(
     addresses: List<UserAddress>,
     onDeleteAddress: (Int) -> Unit,
     onEditAddress: (addressId: Int?, city: String, street: String, house: String, apartment: String?) -> Unit,
+    onUpdateLocalList: (List<UserAddress>) -> Unit,
     profileViewModel: ProfileViewModel = hiltViewModel()
 ) {
     val state by profileViewModel.state.collectAsState()
     val isUpdating = state.isUpdating
     val addressToEdit = remember { mutableStateOf<UserAddress?>(null) }
 
-    // --- ЛОГІКА ДЛЯ АДРЕС: Закриваємо редагування адреси після успішного збереження ---
-    LaunchedEffect(state.updateSuccess) {
-        if (state.updateSuccess && addressToEdit.value != null) {
-            addressToEdit.value = null
-            profileViewModel.resetUpdateState()
-        }
-    }
-    // ---------------------------------------------------------------------------------
+    // --- НОВИЙ СТАН: ID адреси для видалення ---
+    val showDeleteConfirmation = remember { mutableStateOf<Int?>(null) }
 
-    Column(modifier = Modifier
-        .fillMaxWidth()
-        .padding(top = 8.dp),
+    // --- ДІАЛОГ ПІДТВЕРДЖЕННЯ ---
+    if (showDeleteConfirmation.value != null) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmation.value = null },
+            title = { Text("Delete Address") },
+            text = { Text("Are you sure you want to delete this address? This action cannot be undone.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteConfirmation.value?.let { id ->
+                            // 1. ОПТИМІСТИЧНЕ ОНОВЛЕННЯ: видаляємо зі списку миттєво
+                            val updatedList = addresses.filter { it.id != id }
+                            onUpdateLocalList(updatedList)
+
+                            // 2. Відправляємо реальний запит на сервер
+                            onDeleteAddress(id)
+                        }
+                        // 3. Закриваємо діалог
+                        showDeleteConfirmation.value = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmation.value = null }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         if (addresses.isEmpty()) {
@@ -517,8 +558,14 @@ fun AddressList(
                     EditAddressForm(
                         address = address,
                         onSave = { city, street, house, apartment ->
+                            val updatedList = addresses.map {
+                                if (it.id == address.id) {
+                                    it.copy(city = city, street = street, house = house, apartments = apartment)
+                                } else it
+                            }
+                            onUpdateLocalList(updatedList)
+                            addressToEdit.value = null
                             onEditAddress(address.id, city, street, house, apartment)
-                            // Форма закриється автоматично через LaunchedEffect
                         },
                         onCancel = { addressToEdit.value = null },
                         isUpdating = isUpdating
@@ -526,7 +573,8 @@ fun AddressList(
                 } else {
                     SavedAddressCard(
                         address = address,
-                        onDeleteClick = onDeleteAddress,
+                        // ЗАМІНА: Замість прямого видалення — відкриваємо діалог
+                        onDeleteClick = { id -> showDeleteConfirmation.value = id },
                         onEditClick = { addressToEdit.value = address },
                         isUpdating = isUpdating
                     )
@@ -562,44 +610,42 @@ fun EditAddressForm(
             OutlinedTextField(
                 value = city.value, onValueChange = { city.value = it },
                 label = { Text("City") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                shape = RoundedCornerShape(12.dp)
             )
             OutlinedTextField(
                 value = street.value, onValueChange = { street.value = it },
                 label = { Text("Street") }, singleLine = true, modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                shape = RoundedCornerShape(12.dp)
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedTextField(
                     value = house.value, onValueChange = { house.value = it },
                     label = { Text("House") }, singleLine = true, modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                    shape = RoundedCornerShape(12.dp)
                 )
                 OutlinedTextField(
                     value = apartment.value, onValueChange = { apartment.value = it },
                     label = { Text("Apt (optional)") }, singleLine = true, modifier = Modifier.weight(1f),
-                    shape = RoundedCornerShape(12.dp), enabled = !isUpdating
+                    shape = RoundedCornerShape(12.dp)
                 )
             }
 
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(
                     onClick = onCancel,
-                    modifier = Modifier.weight(1f).height(40.dp),
-                    enabled = !isUpdating
+                    modifier = Modifier.weight(1f).height(40.dp)
                 ) {
                     Text("Cancel")
                 }
                 Button(
-                    onClick = { onSave(city.value, street.value, house.value, apartment.value) },
-                    enabled = !isUpdating && city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank(),
+                    onClick = {
+                        // Вызываем onSave: форма закроется мгновенно в родителе
+                        onSave(city.value, street.value, house.value, apartment.value)
+                    },
+                    enabled = city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank(),
                     modifier = Modifier.weight(1f).height(40.dp)
                 ) {
-                    if (isUpdating) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), color = Color.White)
-                    } else {
-                        Text("Save")
-                    }
+                    Text("Save")
                 }
             }
         }

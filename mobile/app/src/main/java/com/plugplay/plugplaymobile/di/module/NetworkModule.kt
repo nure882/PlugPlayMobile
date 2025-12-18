@@ -17,8 +17,8 @@ import javax.inject.Singleton
 object NetworkModule {
 
     // [ОНОВЛЕНО] Нова адреса сервера
-    private const val BASE_URL = "http://109.162.85.132:5298"
-//    private const val BASE_URL = "https://plugplay.dev1.dev"
+       private const val BASE_URL = "http://109.162.85.132:5298"
+  //  private const val BASE_URL = "https://plugplay.dev1.dev"
     @Provides
     @Singleton
     fun provideOkHttpClient(authInterceptor: AuthInterceptor): OkHttpClient {
