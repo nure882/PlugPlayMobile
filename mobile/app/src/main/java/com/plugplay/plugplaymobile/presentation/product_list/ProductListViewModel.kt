@@ -201,11 +201,8 @@ class ProductListViewModel @Inject constructor(
     }
 
     fun setCategoryFilter(id: Int) {
-        // Если id == 0, ставим null, иначе id
         val newId = if (id == 0) null else id
         _currentCategoryId.value = newId
-
-        // СРАЗУ вызываем загрузку, не дожидаясь сторонних триггеров
         loadProducts()
     }
 
@@ -220,7 +217,6 @@ class ProductListViewModel @Inject constructor(
         loadProducts()
     }
 
-    // Также в clearSearch()
     fun clearSearch() {
         _searchQuery.value = ""
         loadProducts()
@@ -236,6 +232,18 @@ class ProductListViewModel @Inject constructor(
         _sortOption.value = sort
         _selectedAttributes.value = attrs
         _isFilterModalVisible.value = false
+        loadProducts()
+    }
+
+    // ИСПРАВЛЕННАЯ ФУНКЦИЯ СБРОСА
+    fun resetFilters() {
+        _searchQuery.value = ""
+        _currentCategoryId.value = null
+        _minPrice.value = null
+        _maxPrice.value = null
+        _sortOption.value = "price-asc"
+        _selectedAttributes.value = emptyMap()
+
         loadProducts()
     }
 }

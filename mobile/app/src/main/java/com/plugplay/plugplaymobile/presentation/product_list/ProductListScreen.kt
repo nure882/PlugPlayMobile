@@ -89,7 +89,6 @@ fun ProductListScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
-    // Триггер для принудительного обновления UI при сбросе фильтров
     var refreshTrigger by remember { mutableLongStateOf(0L) }
 
     LaunchedEffect(Unit) {
@@ -193,9 +192,9 @@ fun ProductListScreen(
                                 label = { Text("All Products", fontWeight = FontWeight.SemiBold) },
                                 selected = currentCategoryId == null,
                                 onClick = {
-                                    viewModel.clearSearch() // Сначала очищаем поиск
-                                    viewModel.setCategoryFilter(0) // Сбрасываем категорию
-                                    refreshTrigger = System.currentTimeMillis() // Генерируем новый ключ для UI
+                                    viewModel.clearSearch()
+                                    viewModel.setCategoryFilter(0)
+                                    refreshTrigger = System.currentTimeMillis()
                                     scope.launch { drawerState.close() }
                                 },
                                 modifier = Modifier.padding(vertical = 4.dp),
@@ -664,6 +663,7 @@ fun FilterModal(
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
+                // Заголовок модального окна
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -671,13 +671,14 @@ fun FilterModal(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Filters & Sort", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text("Filters", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     IconButton(onClick = onClose) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
                 HorizontalDivider()
 
+                // Основная область со скроллом
                 Column(
                     modifier = Modifier
                         .weight(1f)
@@ -742,24 +743,56 @@ fun FilterModal(
                     }
                 }
 
+                // Секция кнопок внизу
                 Column(
                     modifier = Modifier.padding(16.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
+                    // КРАСНАЯ КНОПКА СБРОСА ПОСЕРЕДИНЕ
+                    Button(
+                        onClick = {
+                            // Очистка локальных полей
+                            minPriceText = ""
+                            maxPriceText = ""
+                            selectedSort = "price-asc"
+                            selectedAttrs = emptyMap()
+                            // Вызов сброса во ViewModel и закрытие
+                            viewModel.resetFilters()
+                            onClose()
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color.Red,
+                            contentColor = Color.White
+                        )
+                    ) {
+                        Text("Reset All Filters", fontWeight = FontWeight.Bold)
+                    }
+
+                    // Кнопка применения
                     Button(
                         onClick = {
                             val min = minPriceText.toDoubleOrNull()
                             val max = maxPriceText.toDoubleOrNull()
                             onApply(min, max, selectedSort, selectedAttrs)
                         },
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Show Results", fontWeight = FontWeight.Bold)
                     }
+
+                    // Кнопка отмены
                     OutlinedButton(
                         onClick = onClose,
-                        modifier = Modifier.fillMaxWidth().height(50.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(50.dp),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Text("Cancel")
@@ -861,7 +894,6 @@ fun AutoResizingText(
         maxLines = maxLines,
         onTextLayout = { result ->
             if (result.didOverflowWidth) {
-                // Извлекаем числовое значение .value для расчетов
                 if (resizedTextStyle.fontSize.value > 10f) {
                     resizedTextStyle = resizedTextStyle.copy(
                         fontSize = (resizedTextStyle.fontSize.value - 0.5f).sp
