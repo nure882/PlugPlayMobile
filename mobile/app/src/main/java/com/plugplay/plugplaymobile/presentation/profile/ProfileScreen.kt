@@ -504,7 +504,7 @@ fun AddressList(
     if (showDeleteConfirmation.value != null) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation.value = null },
-            title = { Text("Delete Address") },
+            title = { Text("Confirm action") },
             text = { Text("Are you sure you want to delete this address? This action cannot be undone.") },
             confirmButton = {
                 TextButton(
@@ -641,7 +641,7 @@ fun EditAddressForm(
                     enabled = city.value.isNotBlank() && street.value.isNotBlank() && house.value.isNotBlank(),
                     modifier = Modifier.weight(1f).height(40.dp)
                 ) {
-                    Text("Save")
+                    Text("Save changes")
                 }
             }
         }

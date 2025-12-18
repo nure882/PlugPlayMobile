@@ -17,7 +17,7 @@ import javax.inject.Singleton
 object NetworkModule {
 
 
-       private const val BASE_URL = "http://109.162.85.132:5298"
+      private const val BASE_URL = "http://109.162.85.132:5298"
   //  private const val BASE_URL = "https://plugplay.dev1.dev"
     @Provides
     @Singleton

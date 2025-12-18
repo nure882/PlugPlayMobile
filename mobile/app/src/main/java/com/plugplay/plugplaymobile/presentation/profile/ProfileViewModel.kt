@@ -59,7 +59,7 @@ class ProfileViewModel @Inject constructor(
                     _state.update { it.copy(profile = profile, isLoading = false) }
                 }
                 .onFailure { throwable ->
-                    _state.update { it.copy(isLoading = false, error = throwable.message ?: "Помилка завантаження профілю.") }
+                    _state.update { it.copy(isLoading = false, error = throwable.message ?: "Error loading profile") }
                 }
         }
     }
@@ -74,7 +74,7 @@ class ProfileViewModel @Inject constructor(
                     _state.update { it.copy(orders = sortedOrders, isOrdersLoading = false) }
                 }
                 .onFailure { throwable ->
-                    _state.update { it.copy(isOrdersLoading = false, error = throwable.message ?: "Помилка завантаження замовлень.") }
+                    _state.update { it.copy(isOrdersLoading = false, error = throwable.message ?: "Error loading orders") }
                 }
         }
     }
@@ -88,12 +88,11 @@ class ProfileViewModel @Inject constructor(
                     loadOrders()
                 }
                 .onFailure { throwable ->
-                    _state.update { it.copy(isUpdating = false, error = throwable.message ?: "Помилка скасування замовлення.") }
+                    _state.update { it.copy(isUpdating = false, error = throwable.message ?: "Error cancelling order") }
                 }
         }
     }
 
-    // --- ЛОГИКА ОБНОВЛЕНИЯ ---
     fun updateProfile(
         firstName: String,
         lastName: String,
@@ -105,21 +104,17 @@ class ProfileViewModel @Inject constructor(
     ) {
         _state.update { it.copy(isUpdating = true, error = null, updateSuccess = false) }
 
-        // Сохраняем старые адреса, если новые не переданы
-        val currentAddresses = _state.value.profile?.addresses ?: emptyList()
-        val finalAddresses = addresses ?: currentAddresses
-
         viewModelScope.launch {
+            // Гарантируем получение самого свежего списка адресов из стейта
+            val finalAddresses = addresses ?: (_state.value.profile?.addresses ?: emptyList())
+
             updateProfileUseCase(firstName, lastName, phoneNumber, email, currentPassword, newPassword, finalAddresses)
                 .onSuccess { updatedProfile ->
-                    // [FIX] МГНОВЕННОЕ ОБНОВЛЕНИЕ
-                    // Мы не перезагружаем профиль из сети. Мы берем то, что вернул сервер
-                    // в ответе на UPDATE, и сразу подставляем в UI.
                     _state.update {
                         it.copy(
                             isUpdating = false,
                             updateSuccess = true,
-                            profile = updatedProfile // <-- Вот здесь происходит магия "без перезагрузки"
+                            profile = updatedProfile
                         )
                     }
                 }
@@ -127,37 +122,54 @@ class ProfileViewModel @Inject constructor(
                     _state.update {
                         it.copy(
                             isUpdating = false,
-                            error = throwable.message ?: "Помилка оновлення профілю."
+                            error = throwable.message ?: "Error updating profile"
                         )
                     }
                 }
         }
     }
 
-    fun updateAddresses(newAddresses: List<UserAddress>) {
-        val currentProfile = state.value.profile ?: return
-        updateProfile(
-            firstName = currentProfile.firstName,
-            lastName = currentProfile.lastName,
-            phoneNumber = currentProfile.phoneNumber,
-            email = currentProfile.email,
-            addresses = newAddresses
-        )
+    // --- ПОЛНОСТЬЮ ИСПРАВЛЕННАЯ ЛОГИКА АДРЕСОВ ---
+
+    fun deleteAddress(addressId: Int) {
+        val currentProfile = _state.value.profile ?: return
+        val updatedAddresses = currentProfile.addresses.filter { it.id != addressId }
+
+        // Мгновенно обновляем UI
+        _state.update { state ->
+            state.copy(profile = state.profile?.copy(addresses = updatedAddresses))
+        }
+
+        updateAddressesInternal(updatedAddresses)
     }
 
     fun addAddress(city: String, street: String, house: String, apartment: String?) {
-        val currentProfile = state.value.profile ?: return
+        val currentProfile = _state.value.profile ?: return
         if (city.isBlank() || street.isBlank() || house.isBlank()) return
 
+        // [FIX] Генерируем временный уникальный ID, чтобы UI не открывал форму редактирования
+        val tempId = -(System.currentTimeMillis() % 1000000).toInt()
+
         val newAddress = UserAddress(
-            id = null, city = city, street = street, house = house, apartments = apartment?.ifBlank { null }
+            id = tempId,
+            city = city,
+            street = street,
+            house = house,
+            apartments = apartment?.ifBlank { null }
         )
-        val addressesToSend = currentProfile.addresses + listOf(newAddress)
-        updateAddresses(addressesToSend)
+
+        val updatedAddresses = currentProfile.addresses + newAddress
+
+        // Мгновенно обновляем UI
+        _state.update { state ->
+            state.copy(profile = state.profile?.copy(addresses = updatedAddresses))
+        }
+
+        updateAddressesInternal(updatedAddresses)
     }
 
     fun editAddress(addressId: Int?, city: String, street: String, house: String, apartment: String?) {
-        val currentProfile = state.value.profile ?: return
+        val currentProfile = _state.value.profile ?: return
         if (addressId == null) return
 
         val updatedAddresses = currentProfile.addresses.map { address ->
@@ -167,13 +179,24 @@ class ProfileViewModel @Inject constructor(
                 address
             }
         }
-        updateAddresses(updatedAddresses)
+
+        // Мгновенно обновляем UI
+        _state.update { state ->
+            state.copy(profile = state.profile?.copy(addresses = updatedAddresses))
+        }
+
+        updateAddressesInternal(updatedAddresses)
     }
 
-    fun deleteAddress(addressId: Int) {
-        val currentProfile = state.value.profile ?: return
-        val addressesToSend = currentProfile.addresses.filter { it.id != addressId }
-        updateAddresses(addressesToSend)
+    private fun updateAddressesInternal(newAddresses: List<UserAddress>) {
+        val currentProfile = _state.value.profile ?: return
+        updateProfile(
+            firstName = currentProfile.firstName,
+            lastName = currentProfile.lastName,
+            phoneNumber = currentProfile.phoneNumber,
+            email = currentProfile.email,
+            addresses = newAddresses
+        )
     }
 
     fun resetUpdateState() {
