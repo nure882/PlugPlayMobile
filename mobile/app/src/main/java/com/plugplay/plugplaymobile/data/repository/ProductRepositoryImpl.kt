@@ -7,6 +7,7 @@ import com.plugplay.plugplaymobile.data.model.toDomainItem
 import com.plugplay.plugplaymobile.data.model.toDomainList
 import com.plugplay.plugplaymobile.data.remote.ShopApiService
 import com.plugplay.plugplaymobile.domain.model.AttributeGroup
+import com.plugplay.plugplaymobile.domain.model.Category
 import com.plugplay.plugplaymobile.domain.model.Item
 import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
@@ -62,6 +63,25 @@ class ProductRepositoryImpl @Inject constructor(
                 val productsDto = apiService.searchProducts(query = query)
                 Log.d(TAG, "searchProducts DTO received: $productsDto")
                 productsDto.toDomainList()
+            }
+        }
+    }
+
+    override suspend fun getCategories(): Result<List<Category>> {
+        return withContext(Dispatchers.IO) {
+            runCatching {
+                val response = apiService.getCategories()
+                if (response.isSuccessful && response.body() != null) {
+                    response.body()!!.map { dto ->
+                        Category(
+                            id = dto.id,
+                            name = dto.name ?: "Unknown",
+                            parentId = dto.parent?.id
+                        )
+                    }
+                } else {
+                    throw Exception("Failed to fetch categories: ${response.message()}")
+                }
             }
         }
     }

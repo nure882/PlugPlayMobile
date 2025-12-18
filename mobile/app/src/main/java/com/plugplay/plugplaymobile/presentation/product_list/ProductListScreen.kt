@@ -1,15 +1,15 @@
 package com.plugplay.plugplaymobile.presentation.product_list
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -25,13 +25,13 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.FavoriteBorder
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Search
@@ -47,9 +47,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -58,19 +56,7 @@ import com.plugplay.plugplaymobile.domain.model.AttributeGroup
 import com.plugplay.plugplaymobile.domain.model.Product
 import com.plugplay.plugplaymobile.presentation.cart.CartViewModel
 import com.plugplay.plugplaymobile.presentation.cart.ShoppingCartDialog
-import java.util.Locale
-
-// --- ДАНІ-ЗАГЛУШКИ ДЛЯ ДИЗАЙНУ ---
-data class CategoryItem(val name: String, val icon: Int, val categoryId: Int)
-
-val categoryItems = listOf(
-    CategoryItem("Smartphones", R.drawable.smartphone_logo, 23),
-    CategoryItem("Headphones", R.drawable.headphones_logo, 35),
-    CategoryItem("Laptops", R.drawable.laptop_logo, 2),
-    CategoryItem("Cameras", R.drawable.camera_logo, 52),
-)
-
-// --- ОСНОВНИЙ ЕКРАН ---
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -87,6 +73,8 @@ fun ProductListScreen(
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
+    val categoryTree by viewModel.categoryTree.collectAsState()
+
     var isCartOpen by remember { mutableStateOf(false) }
     val isFilterModalVisible by viewModel.isFilterModalVisible.collectAsState()
 
@@ -94,10 +82,11 @@ fun ProductListScreen(
     var isSearchActive by remember { mutableStateOf(false) }
     var searchText by remember { mutableStateOf("") }
 
-    // [NEW] State for dialog to confirm removal
     var productToRemove by remember { mutableStateOf<Product?>(null) }
 
-    // [FIX] Reload wishlist every time the screen appears
+    val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(Unit) {
         viewModel.loadWishlist()
     }
@@ -112,6 +101,19 @@ fun ProductListScreen(
     val currentCategoryId by viewModel.currentCategoryId.collectAsState()
     val animationKey = remember(currentCategoryId, currentSearchQuery) {
         currentCategoryId?.toString() ?: currentSearchQuery
+    }
+
+    // [НОВОЕ] Вычисляем имя текущей категории для заголовка
+    val currentCategoryName = remember(currentCategoryId, categoryTree) {
+        fun findName(nodes: List<CategoryNode>, id: Int): String? {
+            for (node in nodes) {
+                if (node.id == id) return node.name
+                val childName = findName(node.children, id)
+                if (childName != null) return childName
+            }
+            return null
+        }
+        currentCategoryId?.let { findName(categoryTree, it) }
     }
 
     ShoppingCartDialog(
@@ -131,7 +133,6 @@ fun ProductListScreen(
         }
     )
 
-    // [NEW] Confirmation Dialog
     if (productToRemove != null) {
         AlertDialog(
             onDismissRequest = { productToRemove = null },
@@ -159,142 +160,292 @@ fun ProductListScreen(
         )
     }
 
-    Scaffold(
-        topBar = {
-            if (isSearchActive) {
-                TopAppBar(
-                    title = {
-                        TextField(
-                            value = searchText,
-                            onValueChange = { searchText = it },
-                            placeholder = { Text("Search products...") },
-                            singleLine = true,
-                            colors = TextFieldDefaults.colors(
-                                focusedContainerColor = Color.Transparent,
-                                unfocusedContainerColor = Color.Transparent,
-                                focusedIndicatorColor = Color.Transparent,
-                                unfocusedIndicatorColor = Color.Transparent
-                            ),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = { viewModel.search(searchText.trim()) }
-                            ),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = {
-                            isSearchActive = false
-                            searchText = ""
-                            viewModel.clearSearch()
-                        }) {
-                            Icon(Icons.Filled.ArrowBack, contentDescription = "Close search")
-                        }
-                    },
-                    actions = {
-                        if (searchText.isNotEmpty()) {
-                            IconButton(onClick = { searchText = "" }) {
-                                Icon(Icons.Default.Close, contentDescription = "Clear text")
-                            }
-                        }
-                        IconButton(onClick = { viewModel.search(searchText.trim()) }) {
-                            Icon(Icons.Default.Search, contentDescription = "Search")
-                        }
-                    }
-                )
-            } else {
-                TopAppBar(
-                    title = {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                painter = painterResource(id = R.drawable.logo_plug),
-                                contentDescription = "Logo",
-                                tint = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.size(32.dp)
+    ModalNavigationDrawer(
+        drawerState = drawerState,
+        drawerContent = {
+            ModalDrawerSheet(
+                drawerContainerColor = Color.White
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "Categories",
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(bottom = 16.dp, start = 12.dp)
+                    )
+                    HorizontalDivider()
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize()
+                    ) {
+                        item {
+                            NavigationDrawerItem(
+                                label = {
+                                    Text(
+                                        "All Products",
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                },
+                                selected = currentCategoryId == null,
+                                onClick = {
+                                    viewModel.setCategoryFilter(0) // Сброс
+                                    scope.launch { drawerState.close() }
+                                },
+                                modifier = Modifier.padding(vertical = 4.dp),
+                                colors = NavigationDrawerItemDefaults.colors(
+                                    selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                                    selectedTextColor = MaterialTheme.colorScheme.primary,
+                                    unselectedContainerColor = Color.Transparent,
+                                    unselectedTextColor = MaterialTheme.colorScheme.onSurface
+                                ),
+                                shape = RoundedCornerShape(12.dp)
                             )
-                            Spacer(Modifier.width(8.dp))
-                            Text("Plug & Play", fontWeight = FontWeight.Bold, color = Color.Black)
                         }
-                    },
-                    actions = {
-                        IconButton(onClick = { isSearchActive = true }) {
-                            Icon(Icons.Outlined.Search, contentDescription = "Search")
-                        }
-                        IconButton(onClick = onNavigateToProfile) {
-                            Icon(Icons.Outlined.Person, contentDescription = "Profile")
-                        }
-                        IconButton(onClick = { isCartOpen = true }) {
-                            BadgedBox(
-                                badge = {
-                                    if (cartItemsCount > 0) {
-                                        Badge(
-                                            modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
-                                            containerColor = MaterialTheme.colorScheme.error
-                                        ) { Text(cartItemsCount.toString()) }
-                                    }
+                        items(categoryTree) { node ->
+                            CategoryTreeItem(
+                                node = node,
+                                selectedId = currentCategoryId,
+                                onCategoryClick = { id ->
+                                    viewModel.setCategoryFilter(id)
+                                    scope.launch { drawerState.close() }
                                 }
-                            ) {
-                                Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart")
-                            }
+                            )
                         }
                     }
-                )
+                }
             }
         }
-    ) { padding ->
-        AnimatedContent(
-            targetState = animationKey,
-            transitionSpec = {
-                (fadeIn(animationSpec = tween(300))
-                    .togetherWith(fadeOut(animationSpec = tween(300))))
-            },
-            label = "ContentFade"
-        ) { _ ->
-            Box(Modifier.fillMaxSize().padding(padding)) {
-                when (state) {
-                    is ProductListState.Loading -> {
-                        CircularProgressIndicator(Modifier.align(Alignment.Center))
-                    }
-                    is ProductListState.Error -> {
-                        Box(Modifier.fillMaxSize().wrapContentSize(Alignment.Center)) {
-                            Text(
-                                text = "Error: ${(state as ProductListState.Error).message}",
-                                color = MaterialTheme.colorScheme.error
+    ) {
+        Scaffold(
+            topBar = {
+                if (isSearchActive) {
+                    TopAppBar(
+                        title = {
+                            TextField(
+                                value = searchText,
+                                onValueChange = { searchText = it },
+                                placeholder = { Text("Search products...") },
+                                singleLine = true,
+                                colors = TextFieldDefaults.colors(
+                                    focusedContainerColor = Color.Transparent,
+                                    unfocusedContainerColor = Color.Transparent,
+                                    focusedIndicatorColor = Color.Transparent,
+                                    unfocusedIndicatorColor = Color.Transparent
+                                ),
+                                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                                keyboardActions = KeyboardActions(
+                                    onSearch = { viewModel.search(searchText.trim()) }
+                                ),
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = {
+                                isSearchActive = false
+                                searchText = ""
+                                viewModel.clearSearch()
+                            }) {
+                                Icon(Icons.Filled.ArrowBack, contentDescription = "Close search")
+                            }
+                        },
+                        actions = {
+                            if (searchText.isNotEmpty()) {
+                                IconButton(onClick = { searchText = "" }) {
+                                    Icon(Icons.Default.Close, contentDescription = "Clear text")
+                                }
+                            }
+                            IconButton(onClick = { viewModel.search(searchText.trim()) }) {
+                                Icon(Icons.Default.Search, contentDescription = "Search")
+                            }
+                        }
+                    )
+                } else {
+                    TopAppBar(
+                        navigationIcon = {
+                            IconButton(onClick = { scope.launch { drawerState.open() } }) {
+                                Icon(Icons.Default.Menu, contentDescription = "Menu")
+                            }
+                        },
+                        title = {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.logo_plug),
+                                    contentDescription = "Logo",
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text("Plug & Play", fontWeight = FontWeight.Bold, color = Color.Black)
+                            }
+                        },
+                        actions = {
+                            IconButton(onClick = { isSearchActive = true }) {
+                                Icon(Icons.Outlined.Search, contentDescription = "Search")
+                            }
+                            IconButton(onClick = onNavigateToProfile) {
+                                Icon(Icons.Outlined.Person, contentDescription = "Profile")
+                            }
+                            IconButton(onClick = { isCartOpen = true }) {
+                                BadgedBox(
+                                    badge = {
+                                        if (cartItemsCount > 0) {
+                                            Badge(
+                                                modifier = Modifier.offset(x = (-6).dp, y = 4.dp),
+                                                containerColor = MaterialTheme.colorScheme.error
+                                            ) { Text(cartItemsCount.toString()) }
+                                        }
+                                    }
+                                ) {
+                                    Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart")
+                                }
+                            }
+                        }
+                    )
+                }
+            }
+        ) { padding ->
+            AnimatedContent(
+                targetState = animationKey,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(300))
+                        .togetherWith(fadeOut(animationSpec = tween(300))))
+                },
+                label = "ContentFade"
+            ) { _ ->
+                Box(
+                    Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                ) {
+                    when (state) {
+                        is ProductListState.Loading -> {
+                            CircularProgressIndicator(Modifier.align(Alignment.Center))
+                        }
+
+                        is ProductListState.Error -> {
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .wrapContentSize(Alignment.Center)
+                            ) {
+                                Text(
+                                    text = "Error: ${(state as ProductListState.Error).message}",
+                                    color = MaterialTheme.colorScheme.error
+                                )
+                            }
+                        }
+
+                        is ProductListState.Success -> {
+                            val products = (state as ProductListState.Success).products
+                            ProductGrid(
+                                products = products,
+                                currentCategoryName = currentCategoryName, // [НОВОЕ] Передаем имя
+                                onClearCategory = {
+                                    if (currentCategoryId != null) {
+                                        viewModel.setCategoryFilter(currentCategoryId!!)
+                                    }
+                                },
+                                modifier = Modifier,
+                                onItemClick = onNavigateToItemDetail,
+                                viewModel = viewModel,
+                                onFilterClick = viewModel::toggleFilterModal,
+                                onToggleWishlist = { product ->
+                                    if (wishlistIds.contains(product.id)) {
+                                        productToRemove = product
+                                    } else {
+                                        viewModel.toggleWishlist(product.id)
+                                    }
+                                },
+                                wishlistIds = wishlistIds,
+                                isLoggedIn = isLoggedIn
                             )
                         }
+
+                        ProductListState.Idle -> { }
                     }
-                    is ProductListState.Success -> {
-                        val products = (state as ProductListState.Success).products
-                        ProductGrid(
-                            products = products,
-                            modifier = Modifier,
-                            onItemClick = onNavigateToItemDetail,
-                            viewModel = viewModel,
-                            onFilterClick = viewModel::toggleFilterModal,
-                            onToggleWishlist = { product ->
-                                // [CHANGED] Logic to check if we need a dialog
-                                if (wishlistIds.contains(product.id)) {
-                                    productToRemove = product
-                                } else {
-                                    viewModel.toggleWishlist(product.id)
-                                }
-                            },
-                            wishlistIds = wishlistIds,
-                            isLoggedIn = isLoggedIn
-                        )
-                    }
-                    ProductListState.Idle -> { }
                 }
             }
         }
     }
 }
 
-// --- НОВІ КОМПОНЕНТИ ДИЗАЙНУ ---
+@Composable
+fun CategoryTreeItem(
+    node: CategoryNode,
+    selectedId: Int?,
+    onCategoryClick: (Int) -> Unit,
+    level: Int = 0
+) {
+    var isExpanded by remember { mutableStateOf(false) }
+    val hasChildren = node.children.isNotEmpty()
+    val isSelected = node.id == selectedId
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+
+    Column(modifier = Modifier.animateContentSize()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 2.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(
+                    if (isSelected) primaryColor.copy(alpha = 0.1f)
+                    else Color.Transparent
+                )
+                .clickable {
+                    if (hasChildren && !isSelected) {
+                        isExpanded = !isExpanded
+                    } else {
+                        onCategoryClick(node.id)
+                    }
+                }
+                .padding(vertical = 12.dp, horizontal = 16.dp + (level * 16).dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = node.name,
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                color = if (isSelected) primaryColor else MaterialTheme.colorScheme.onSurface
+            )
+            if (hasChildren) {
+                IconButton(
+                    onClick = { isExpanded = !isExpanded },
+                    modifier = Modifier.size(24.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                        tint = if (isSelected) primaryColor else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+        }
+
+        if (isExpanded) {
+            node.children.forEach { child ->
+                CategoryTreeItem(
+                    node = child,
+                    selectedId = selectedId,
+                    onCategoryClick = onCategoryClick,
+                    level = level + 1
+                )
+            }
+        }
+    }
+}
 
 @Composable
 fun ProductGrid(
     products: List<Product>,
+    currentCategoryName: String?, // [НОВОЕ]
+    onClearCategory: () -> Unit, // [НОВОЕ]
     modifier: Modifier,
     onItemClick: (itemId: String) -> Unit,
     viewModel: ProductListViewModel,
@@ -304,29 +455,26 @@ fun ProductGrid(
     isLoggedIn: Boolean
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 160.dp),
+        columns = GridCells.Adaptive(minSize = 180.dp),
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
+        // [НОВОЕ] Логика заголовка
         item(span = { GridItemSpan(maxLineSpan) }) {
-            SectionHeader(title = "It would interest you")
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
-            CategoryLazyRow(
-                modifier = Modifier.padding(vertical = 8.dp),
-                viewModel = viewModel
-            )
-        }
-        item(span = { GridItemSpan(maxLineSpan) }) {
+            val title = currentCategoryName ?: "All Products"
+            val onBack = if (currentCategoryName != null) onClearCategory else null
+
             SectionHeader(
-                title = "For you",
+                title = title,
+                onBackClick = onBack, // Передаем обработчик
                 showFilter = true,
                 onFilterClick = onFilterClick
             )
         }
+
         if (products.isEmpty()) {
             item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(
@@ -443,6 +591,7 @@ fun ProductItem(
 @Composable
 fun SectionHeader(
     title: String,
+    onBackClick: (() -> Unit)? = null, // [НОВОЕ] Опциональный обработчик назад
     showFilter: Boolean = false,
     modifier: Modifier = Modifier,
     onFilterClick: () -> Unit = {}
@@ -454,79 +603,31 @@ fun SectionHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold
-        )
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            // [НОВОЕ] Если есть onBackClick, показываем стрелку
+            if (onBackClick != null) {
+                IconButton(onClick = onBackClick) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Или Icons.Default.ArrowBack
+                        contentDescription = "Back to all",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Spacer(Modifier.width(4.dp))
+            }
+
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
         if (showFilter) {
             TextButton(onClick = onFilterClick) {
                 Text("Filters")
             }
         }
-    }
-}
-
-@Composable
-fun CategoryLazyRow(modifier: Modifier = Modifier, viewModel: ProductListViewModel = hiltViewModel()) {
-    val selectedCategory by viewModel.currentCategoryId.collectAsState()
-
-    LazyRow(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-        contentPadding = PaddingValues(horizontal = 4.dp)
-    ) {
-        items(categoryItems) { item ->
-            CategoryIconItem(
-                item = item,
-                isSelected = item.categoryId == selectedCategory,
-                onClick = { viewModel.setCategoryFilter(item.categoryId) }
-            )
-        }
-    }
-}
-
-@Composable
-fun CategoryIconItem(item: CategoryItem, isSelected: Boolean, onClick: () -> Unit) {
-    val primaryColor = MaterialTheme.colorScheme.primary
-
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier
-            .width(80.dp)
-            .clickable(onClick = onClick)
-    ) {
-        Box(
-            modifier = Modifier
-                .size(64.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(
-                    if (isSelected) primaryColor.copy(alpha = 0.1f)
-                    else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                )
-                .border(
-                    width = 2.dp,
-                    color = if (isSelected) primaryColor else Color.Transparent,
-                    shape = RoundedCornerShape(16.dp)
-                )
-                .padding(12.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Icon(
-                painter = painterResource(id = item.icon),
-                contentDescription = item.name,
-                modifier = Modifier.fillMaxSize(),
-                tint = primaryColor
-            )
-        }
-        Spacer(Modifier.height(8.dp))
-        Text(
-            text = item.name,
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.SemiBold,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
     }
 }
 

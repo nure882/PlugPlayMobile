@@ -87,5 +87,7 @@ interface ShopApiService {
     @GET("api/WishList/{prodId}")
     suspend fun isProductInWishList(@Path("prodId") prodId: Int): Response<Boolean>
 
+    @GET("api/admin/Product/category/all")
+    suspend fun getCategories(): Response<List<CategoryDto>>
 
 }
