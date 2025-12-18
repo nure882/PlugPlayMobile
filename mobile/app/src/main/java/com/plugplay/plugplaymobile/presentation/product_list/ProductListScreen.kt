@@ -23,7 +23,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -41,13 +40,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
@@ -103,7 +105,6 @@ fun ProductListScreen(
         currentCategoryId?.toString() ?: currentSearchQuery
     }
 
-    // [НОВОЕ] Вычисляем имя текущей категории для заголовка
     val currentCategoryName = remember(currentCategoryId, categoryTree) {
         fun findName(nodes: List<CategoryNode>, id: Int): String? {
             for (node in nodes) {
@@ -193,7 +194,7 @@ fun ProductListScreen(
                                 },
                                 selected = currentCategoryId == null,
                                 onClick = {
-                                    viewModel.setCategoryFilter(0) // Сброс
+                                    viewModel.setCategoryFilter(0)
                                     scope.launch { drawerState.close() }
                                 },
                                 modifier = Modifier.padding(vertical = 4.dp),
@@ -250,7 +251,7 @@ fun ProductListScreen(
                                 searchText = ""
                                 viewModel.clearSearch()
                             }) {
-                                Icon(Icons.Filled.ArrowBack, contentDescription = "Close search")
+                                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close search")
                             }
                         },
                         actions = {
@@ -344,11 +345,9 @@ fun ProductListScreen(
                             val products = (state as ProductListState.Success).products
                             ProductGrid(
                                 products = products,
-                                currentCategoryName = currentCategoryName, // [НОВОЕ] Передаем имя
+                                currentCategoryName = currentCategoryName,
                                 onClearCategory = {
-                                    if (currentCategoryId != null) {
-                                        viewModel.setCategoryFilter(currentCategoryId!!)
-                                    }
+                                    viewModel.setCategoryFilter(0)
                                 },
                                 modifier = Modifier,
                                 onItemClick = onNavigateToItemDetail,
@@ -444,8 +443,8 @@ fun CategoryTreeItem(
 @Composable
 fun ProductGrid(
     products: List<Product>,
-    currentCategoryName: String?, // [НОВОЕ]
-    onClearCategory: () -> Unit, // [НОВОЕ]
+    currentCategoryName: String?,
+    onClearCategory: () -> Unit,
     modifier: Modifier,
     onItemClick: (itemId: String) -> Unit,
     viewModel: ProductListViewModel,
@@ -462,14 +461,13 @@ fun ProductGrid(
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        // [НОВОЕ] Логика заголовка
         item(span = { GridItemSpan(maxLineSpan) }) {
             val title = currentCategoryName ?: "All Products"
             val onBack = if (currentCategoryName != null) onClearCategory else null
 
             SectionHeader(
                 title = title,
-                onBackClick = onBack, // Передаем обработчик
+                onBackClick = onBack,
                 showFilter = true,
                 onFilterClick = onFilterClick
             )
@@ -560,7 +558,7 @@ fun ProductItem(
                     ) {
                         Icon(
                             imageVector = if (isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
-                            contentDescription = "В обране",
+                            contentDescription = "To wishlist",
                             tint = if (isFavorite) Color.Red else Color.Gray,
                             modifier = Modifier.size(20.dp)
                         )
@@ -602,9 +600,6 @@ fun SectionHeader(
             .padding(vertical = 8.dp, horizontal = 4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // ЛЕВАЯ ЧАСТЬ (Стрелка + Заголовок)
-        // Добавляем .weight(1f), чтобы этот блок занимал всё доступное место,
-        // но оставлял место для кнопки справа.
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.weight(1f)
@@ -620,19 +615,18 @@ fun SectionHeader(
                 Spacer(Modifier.width(4.dp))
             }
 
-            Text(
+            AutoResizingText(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                maxLines = 1, // Ограничиваем одной строкой
-                overflow = TextOverflow.Ellipsis // Добавляем троеточие в конце, если не влезает
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black
+                ),
+                maxLines = 1
             )
         }
 
-        // ПРАВАЯ ЧАСТЬ (Кнопка фильтров)
-        // Она не имеет веса, поэтому Android отрисует её полностью
         if (showFilter) {
-            Spacer(Modifier.width(8.dp)) // Отступ от заголовка
+            Spacer(Modifier.width(8.dp))
             TextButton(onClick = onFilterClick) {
                 Text("Filters")
             }
@@ -844,4 +838,39 @@ fun AttributeFilterGroup(
         }
         HorizontalDivider(color = Color(0xFFF0F0F0))
     }
+}
+
+@Composable
+fun AutoResizingText(
+    text: String,
+    style: TextStyle,
+    modifier: Modifier = Modifier,
+    maxLines: Int = 1
+) {
+    var resizedTextStyle by remember(text) { mutableStateOf(style) }
+    var shouldDraw by remember(text) { mutableStateOf(false) }
+
+    Text(
+        text = text,
+        modifier = modifier.drawWithContent {
+            if (shouldDraw) drawContent()
+        },
+        softWrap = false,
+        style = resizedTextStyle,
+        maxLines = maxLines,
+        onTextLayout = { result ->
+            if (result.didOverflowWidth) {
+                // Исправлено: извлекаем числовое значение .value из fontSize
+                if (resizedTextStyle.fontSize.value > 10f) {
+                    resizedTextStyle = resizedTextStyle.copy(
+                        fontSize = (resizedTextStyle.fontSize.value - 0.5f).sp
+                    )
+                } else {
+                    shouldDraw = true
+                }
+            } else {
+                shouldDraw = true
+            }
+        }
+    )
 }
