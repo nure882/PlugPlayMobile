@@ -36,7 +36,8 @@ class OrderRepositoryImpl @Inject constructor(
         address: UserAddress,
         customerName: String,
         customerEmail: String,
-        customerPhone: String
+        customerPhone: String,
+        description: String,
     ): Result<PlaceOrderResult> = withContext(Dispatchers.IO) { // [FIX] Тип Result
         runCatching {
             if (userId == null) {
@@ -57,7 +58,8 @@ class OrderRepositoryImpl @Inject constructor(
                 deliveryAddressId = addressId,
                 deliveryMethod = deliveryMethod.id,
                 paymentMethod = paymentMethod.id,
-                orderItems = orderItemsDto
+                orderItems = orderItemsDto,
+                description = description,
             )
 
             val response = apiService.placeOrder(request)

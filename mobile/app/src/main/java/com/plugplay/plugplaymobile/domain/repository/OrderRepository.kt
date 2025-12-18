@@ -17,7 +17,8 @@ interface OrderRepository {
         address: UserAddress,
         customerName: String,
         customerEmail: String,
-        customerPhone: String
+        customerPhone: String,
+        description: String,
     ): Result<PlaceOrderResult> // [FIX] Було Result<Int>
 
     suspend fun getUserOrders(userId: Int): Result<List<Order>>

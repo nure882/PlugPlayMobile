@@ -22,6 +22,7 @@ data class OrderItemDto(
     @SerializedName("productImageUrl") val productImageUrl: String?,
     @SerializedName("quantity") val quantity: Int,
     @SerializedName("price") val price: Double?,
+    @SerializedName("description") val description: String,
 )
 
 data class PlaceOrderRequest(
@@ -29,7 +30,8 @@ data class PlaceOrderRequest(
     @SerializedName("deliveryAddressId") val deliveryAddressId: Int,
     @SerializedName("orderItems") val orderItems: List<OrderItemRequestDto>,
     @SerializedName("paymentMethod") val paymentMethod: Int,
-    @SerializedName("deliveryMethod") val deliveryMethod: Int
+    @SerializedName("deliveryMethod") val deliveryMethod: Int,
+    @SerializedName("description") val description: String,
 )
 
 data class OrderItemRequestDto(
