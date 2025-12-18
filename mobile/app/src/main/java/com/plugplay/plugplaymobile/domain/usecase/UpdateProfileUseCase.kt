@@ -1,7 +1,7 @@
 package com.plugplay.plugplaymobile.domain.usecase
 
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.model.UserAddress // <--- НОВИЙ ІМПОРТ
+import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.domain.repository.AuthRepository
 import javax.inject.Inject
 

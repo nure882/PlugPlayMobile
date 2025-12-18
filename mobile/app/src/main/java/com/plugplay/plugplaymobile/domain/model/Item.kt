@@ -9,11 +9,11 @@ data class Item(
     val isAvailable: Boolean = true,
     val brand: String,
     val category: String,
-    val categoryId: Int? = null, // Added to fetch attributes
+    val categoryId: Int? = null,
 
     val averageRating: Double = 0.0,
     val reviewCount: Int = 0,
 
-    // [NEW] Added reviews list
+
     val reviews: List<Review> = emptyList()
 )

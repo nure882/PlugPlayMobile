@@ -11,7 +11,7 @@ class AuthInterceptor @Inject constructor(
     private val authLocalDataSource: AuthLocalDataSource
 ) : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
-        // Отримуємо токен синхронно (runBlocking допустимий тут, оскільки це мережевий потік)
+
         val token = runBlocking {
             authLocalDataSource.authToken.first()
         }

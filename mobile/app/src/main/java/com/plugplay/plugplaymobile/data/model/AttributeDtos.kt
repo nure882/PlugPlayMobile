@@ -4,7 +4,7 @@ import com.google.gson.annotations.SerializedName
 
 data class AttributeRequestDto(
     @SerializedName("productIds") val productIds: List<Int>,
-    // Добавляем второе поле, которое ожидает бэкенд, с пустым значением по умолчанию
+
     @SerializedName("selectedAttrsIds") val selectedAttrsIds: List<Int> = emptyList()
 )
 

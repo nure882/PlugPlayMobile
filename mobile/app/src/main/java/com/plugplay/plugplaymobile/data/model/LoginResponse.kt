@@ -3,12 +3,12 @@ package com.plugplay.plugplaymobile.data.model
 import com.google.gson.annotations.SerializedName
 import com.plugplay.plugplaymobile.domain.model.AuthData
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.model.UserAddress // Додаємо імпорт UserAddress
+import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.data.model.UserDto
 
-// [NEW DTO] Для адреси, що використовується в профілі
+
 data class UserAddressDto(
-    val id: Int? = null, // null для нових адрес
+    val id: Int? = null,
     val apartments: String?,
     val house: String?,
     val street: String?,
@@ -20,7 +20,7 @@ data class LoginResponse(
     val user: UserDto
 )
 
-// DTO для отримання профілю - ДОДАНО АДРЕСИ
+
 data class ProfileResponse(
     val id: Int,
     @SerializedName("firstName") val firstName: String,
@@ -30,7 +30,7 @@ data class ProfileResponse(
     @SerializedName("addresses") val addresses: List<UserAddressDto> = emptyList()
 )
 
-// Запит на оновлення профілю - ДОДАНО АДРЕСИ
+
 data class UpdateProfileRequest(
     val firstName: String,
     val lastName: String,
@@ -41,7 +41,7 @@ data class UpdateProfileRequest(
     val newPassword: String? = null,
 )
 
-// Маппер LoginResponse -> AuthData (Єдина коректна реалізація)
+
 fun LoginResponse.toAuthData(): AuthData {
     return AuthData(
         token = this.token,
@@ -49,7 +49,7 @@ fun LoginResponse.toAuthData(): AuthData {
     )
 }
 
-// Маппер ProfileResponse -> UserProfile - ОНОВЛЕНО
+
 fun ProfileResponse.toDomain(): UserProfile {
     return UserProfile(
         id = this.id.toString(),
@@ -57,11 +57,11 @@ fun ProfileResponse.toDomain(): UserProfile {
         lastName = this.lastName,
         email = this.email,
         phoneNumber = this.phoneNumber,
-        addresses = this.addresses.map { it.toDomain() } // Мапимо DTO адрес в доменну модель
+        addresses = this.addresses.map { it.toDomain() }
     )
 }
 
-// [NEW MAPPER] UserAddressDto -> UserAddress Domain Model
+
 fun UserAddressDto.toDomain(): UserAddress {
     return UserAddress(
         id = this.id,
@@ -72,7 +72,7 @@ fun UserAddressDto.toDomain(): UserAddress {
     )
 }
 
-// [NEW MAPPER] UserAddress Domain Model -> UserAddressDto
+
 fun UserAddress.toDto(): UserAddressDto {
     return UserAddressDto(
         id = this.id,

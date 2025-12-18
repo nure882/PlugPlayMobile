@@ -1,6 +1,6 @@
 package com.plugplay.plugplaymobile.data.repository
 
-import android.util.Log // <--- ДОБАВЛЕНО
+import android.util.Log
 import com.plugplay.plugplaymobile.data.model.AttributeRequestDto
 import com.plugplay.plugplaymobile.data.model.toDomain
 import com.plugplay.plugplaymobile.data.model.toDomainItem
@@ -15,7 +15,7 @@ import kotlinx.coroutines.withContext
 import java.util.Collections.emptyList
 import javax.inject.Inject
 
-private const val TAG = "ProductRepo" // <--- ДОБАВЛЕНО
+private const val TAG = "ProductRepo"
 
 class ProductRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService
@@ -30,10 +30,10 @@ class ProductRepositoryImpl @Inject constructor(
     ): Result<List<Product>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                // [ИСПРАВЛЕНО]
-                // Если категория не выбрана (null), используем Int.MAX_VALUE (2147483647),
-                // чтобы вызвать метод фильтрации для "Всех товаров", как на фронтенде.
-                // Иначе параметры сортировки и цены просто игнорировались.
+
+
+
+
                 val actualCategoryId = categoryId ?: 2147483647
 
                 val response = apiService.filterProducts(
@@ -46,10 +46,10 @@ class ProductRepositoryImpl @Inject constructor(
 
                 if (response.isSuccessful && response.body() != null) {
                     val productsResponse = response.body()!!
-                    Log.d(TAG, "getProducts DTO received: ${productsResponse.products}") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ DTO
+                    Log.d(TAG, "getProducts DTO received: ${productsResponse.products}")
                     productsResponse.products.toDomainList()
                 } else {
-                    Log.e(TAG, "getProducts API Failed: ${response.code()} ${response.message()}") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ ОШИБКИ
+                    Log.e(TAG, "getProducts API Failed: ${response.code()} ${response.message()}")
                     throw Exception("Failed to filter products: ${response.message()}")
                 }
             }
@@ -60,7 +60,7 @@ class ProductRepositoryImpl @Inject constructor(
         return withContext(Dispatchers.IO) {
             runCatching {
                 val productsDto = apiService.searchProducts(query = query)
-                Log.d(TAG, "searchProducts DTO received: $productsDto") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ DTO
+                Log.d(TAG, "searchProducts DTO received: $productsDto")
                 productsDto.toDomainList()
             }
         }
@@ -72,33 +72,33 @@ class ProductRepositoryImpl @Inject constructor(
             val response = apiService.getProductById(itemIdInt)
             if (response.isSuccessful && response.body() != null) {
                 val itemDto = response.body()!!
-                Log.d(TAG, "getProductById DTO received: $itemDto") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ DTO
+                Log.d(TAG, "getProductById DTO received: $itemDto")
                 itemDto.toDomainItem()
             } else {
-                Log.e(TAG, "getProductById API Failed: ${response.code()} ${response.message()}") // <--- ДОБАВЛЕНО ЛОГГИРОВАНИЕ ОШИБКИ
+                Log.e(TAG, "getProductById API Failed: ${response.code()} ${response.message()}")
                 throw Exception("Failed to fetch item")
             }
         }
     }
 
     override suspend fun getProductAttributes(categoryId: Int, productId: Int): Result<List<AttributeGroup>> {
-        // Используем общий метод
+
         return getAttributesForFilter(categoryId, listOf(productId))
     }
 
     override suspend fun getAttributesForFilter(categoryId: Int, productIds: List<Int>): Result<List<AttributeGroup>> {
         return withContext(Dispatchers.IO) {
             runCatching {
-                // Создаем DTO-объект, содержащий список ID товаров
+
                 val requestDto = AttributeRequestDto(
                     productIds = productIds,
-                    selectedAttrsIds = emptyList() // Включаем, чтобы соответствовать C# DTO
+                    selectedAttrsIds = emptyList()
                 )
 
-                // Отправляем DTO
+
                 val response = apiService.getAttributeGroups(
                     categoryId = categoryId,
-                    request = requestDto // <--- ИСПРАВЛЕНО
+                    request = requestDto
                 )
 
                 if (response.isSuccessful && response.body() != null) {
@@ -106,7 +106,7 @@ class ProductRepositoryImpl @Inject constructor(
                     Log.d(TAG, "getAttributesForFilter DTO received: $dtoList")
                     dtoList.mapNotNull { it.toDomain() }
                 } else {
-                    // [FIX] Тепер кидаємо виняток у разі невдачі, щоб Result був .failure
+
                     val errorMsg = "Failed to fetch product attributes: ${response.message()} Code: ${response.code()}"
                     Log.e(TAG, errorMsg)
                     throw Exception(errorMsg)

@@ -2,11 +2,7 @@ package com.plugplay.plugplaymobile.data.model
 
 import com.google.gson.annotations.SerializedName
 
-/**
- * DTO для детальної інформації про товар (згідно моделі Item.kt,
- * припускаючи, що API повертає схожі поля).
- * Вам може знадобитися змінити @SerializedName, якщо назви в JSON відрізняються.
- */
+
 data class ItemDto(
     @SerializedName("id") val id: String,
     @SerializedName("name") val name: String,

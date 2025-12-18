@@ -1,4 +1,4 @@
-// src/main/java/com/plugplay/plugplaymobile/util/LocaleHelper.kt
+
 package com.plugplay.plugplaymobile.util
 
 import android.content.Context
@@ -12,10 +12,10 @@ object LocaleHelper {
         Locale.setDefault(locale)
 
         val config = Configuration()
-        config.setToDefaults() // Скидаємо конфігурацію
+        config.setToDefaults()
         config.setLocale(locale)
 
-        // Оновлюємо конфігурацію контексту
+
         val newContext = context.createConfigurationContext(config)
         return ContextWrapper(newContext)
     }

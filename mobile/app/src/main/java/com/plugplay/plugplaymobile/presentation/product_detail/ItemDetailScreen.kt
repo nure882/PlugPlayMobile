@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Star
@@ -108,7 +109,7 @@ fun ItemDetailScreen(
                 title = { Text("Plug & Play", fontWeight = FontWeight.Bold) },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                     }
                 },
                 actions = {
@@ -305,7 +306,7 @@ fun ProductReviewsSection(reviews: List<Review>) {
             reviews.forEach { review ->
                 ReviewItem(review)
                 if (review != reviews.last()) {
-                    Divider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 12.dp))
+                    HorizontalDivider(color = Color(0xFFF0F0F0), modifier = Modifier.padding(vertical = 12.dp))
                 }
             }
         }
@@ -500,11 +501,11 @@ fun InfoSection() {
         Text("Delivery and warranty", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(16.dp))
         InfoRow(Icons.Outlined.LocalShipping, "Fast delivery", "Delivery to Kyiv on the next day")
-        Divider(Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
         InfoRow(Icons.Outlined.Shield, "1 year warranty", "Official manufacturer warranty")
-        Divider(Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
         InfoRow(Icons.Outlined.Replay, "Return within 14 days", "Ability to return the product")
-        Divider(Modifier.padding(vertical = 8.dp))
+        HorizontalDivider(Modifier.padding(vertical = 8.dp))
         InfoRow(Icons.Outlined.Archive, "Safe packaging", "Reliable protection during delivery")
     }
 }

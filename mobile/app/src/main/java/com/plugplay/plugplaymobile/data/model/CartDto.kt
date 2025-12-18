@@ -6,17 +6,17 @@ import com.google.gson.annotations.SerializedName
  * DTO для POST /api/Cart (додавання товару)
  */
 data class CreateCartItemDto(
-    val productId: Int, // OpenAPI: integer, int32
-    val userId: Int,    // OpenAPI: integer, int32
-    val quantity: Int   // OpenAPI: integer, int32
+    val productId: Int,
+    val userId: Int,
+    val quantity: Int
 )
 
 /**
  * DTO для PUT /api/Cart/quantity (оновлення кількості)
  */
 data class UpdateCartItemQuantityDto(
-    val cartItemId: Int, // OpenAPI: integer, int32
-    val newQuantity: Int // OpenAPI: integer, int32
+    val cartItemId: Int,
+    val newQuantity: Int
 )
 
 /**
@@ -25,7 +25,7 @@ data class UpdateCartItemQuantityDto(
  */
 data class CartItemDto(
     @SerializedName("id")
-    val id: Int, // ID запису в кошику (cartItemId)
+    val id: Int,
 
     @SerializedName("productId")
     val productId: Int,
@@ -36,7 +36,7 @@ data class CartItemDto(
     @SerializedName("total")
     val total: Double,
 
-    // Імітація вкладених деталей, необхідних для CartItem Domain Model
+
     @SerializedName("productName")
     val productName: String?,
 

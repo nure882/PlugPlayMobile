@@ -11,7 +11,7 @@ import javax.inject.Singleton
 @Singleton
 class WishlistLocalDataSource @Inject constructor() {
 
-    // Храним сами объекты продуктов, чтобы не делать лишних запросов по ID
+
     private val _wishlist = MutableStateFlow<List<Product>>(emptyList())
     val wishlist: StateFlow<List<Product>> = _wishlist.asStateFlow()
 

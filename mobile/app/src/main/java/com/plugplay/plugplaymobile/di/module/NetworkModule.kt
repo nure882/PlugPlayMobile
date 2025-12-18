@@ -16,7 +16,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // [ОНОВЛЕНО] Нова адреса сервера
+
        private const val BASE_URL = "http://109.162.85.132:5298"
   //  private const val BASE_URL = "https://plugplay.dev1.dev"
     @Provides
@@ -35,7 +35,7 @@ object NetworkModule {
     fun provideRetrofit(okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
             .baseUrl(BASE_URL)
-            .client(okHttpClient) // Підключаємо клієнт з авторизацією
+            .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
     }

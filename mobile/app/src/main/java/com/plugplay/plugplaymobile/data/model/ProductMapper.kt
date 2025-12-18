@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter
 import com.plugplay.plugplaymobile.data.model.ReviewDto
 import com.plugplay.plugplaymobile.domain.model.AttributeOption
 
-private const val PLACEHOLDER_URL = "https://example.com/placeholder.jpg"
+private const val PLACEHOLDER_URL = "https://www.example.com"
 
 fun ProductDto.toDomain(): Product {
     val firstImage = this.pictureUrls?.firstOrNull() ?: PLACEHOLDER_URL
@@ -30,10 +30,10 @@ fun ProductDto.toDomainItem(): Item {
         .filter { it.isNotBlank() }
         .ifEmpty { listOf(PLACEHOLDER_URL) }
 
-    // Map reviews
+
     val domainReviews = this.reviews?.map { dto ->
         val dateStr = try {
-            // Simple date parsing, can be improved with proper DateTimeFormatter for ISO strings
+
             dto.createdAt.take(10)
         } catch (e: Exception) {
             ""
@@ -61,30 +61,30 @@ fun ProductDto.toDomainItem(): Item {
         isAvailable = (this.stockQuantity ?: 0) > 0,
         brand = this.category?.name ?: "N/A",
         category = this.category?.name ?: "N/A",
-        categoryId = this.category?.id, // Capture category ID
+        categoryId = this.category?.id,
         averageRating = avgRating,
         reviewCount = domainReviews.size,
-        reviews = domainReviews.sortedByDescending { it.date } // Sort by date descending
+        reviews = domainReviews.sortedByDescending { it.date }
     )
 }
 
-// Attribute Mapper Logic
+
 fun AttributeGroupDto.toDomain(): AttributeGroup? {
     if (this.attributes.isNullOrEmpty()) return null
 
     val options = this.attributes.mapNotNull { attr ->
-        // 1. Формируем "сырое" значение для фильтра (как на фронте)
+
         val rawValueForFilter: String? = when {
             this.dataType == "bool" -> if (attr.numValue?.toInt() == 1) "true" else "false"
-            this.dataType?.contains("num", true) == true -> attr.numValue?.toString() // Просто число "16.0"
-            else -> attr.strValue // Просто строка
+            this.dataType?.contains("num", true) == true -> attr.numValue?.toString()
+            else -> attr.strValue
         }
 
-        // 2. Формируем красивое значение для отображения
+
         val displayValue: String? = when {
             this.dataType == "bool" -> if (attr.numValue?.toInt() == 1) "Yes" else "No"
             else -> {
-                // Берем значение + юнит (если есть)
+
                 val raw = if (this.dataType?.contains("num", true) == true) attr.numValue else attr.strValue
                 if (raw != null) "${raw}${if (!this.unit.isNullOrBlank()) " ${this.unit}" else ""}" else null
             }
@@ -93,7 +93,7 @@ fun AttributeGroupDto.toDomain(): AttributeGroup? {
         if (rawValueForFilter.isNullOrBlank() || displayValue.isNullOrBlank()) return@mapNotNull null
 
         AttributeOption(value = rawValueForFilter, display = displayValue)
-    }.distinctBy { it.value } // Убираем дубликаты по значению фильтра
+    }.distinctBy { it.value }
 
     if (options.isEmpty()) return null
 

@@ -11,6 +11,6 @@ data class ProductDto(
     @SerializedName("pictureUrls") val pictureUrls: List<String>?,
     @SerializedName("category") val category: CategoryDto?,
 
-    // [NEW] Added reviews field
+
     @SerializedName("reviews") val reviews: List<ReviewDto>?
 )

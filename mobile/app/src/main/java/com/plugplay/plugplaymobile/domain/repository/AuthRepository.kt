@@ -2,7 +2,7 @@ package com.plugplay.plugplaymobile.domain.repository
 
 import com.plugplay.plugplaymobile.domain.model.AuthData
 import com.plugplay.plugplaymobile.domain.model.UserProfile
-import com.plugplay.plugplaymobile.domain.model.UserAddress // <--- НОВИЙ ІМПОРТ
+import com.plugplay.plugplaymobile.domain.model.UserAddress
 import kotlinx.coroutines.flow.Flow
 
 interface AuthRepository {

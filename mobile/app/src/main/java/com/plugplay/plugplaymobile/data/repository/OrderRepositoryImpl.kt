@@ -11,7 +11,7 @@ import com.plugplay.plugplaymobile.domain.model.OrderItem
 import com.plugplay.plugplaymobile.domain.model.OrderStatus
 import com.plugplay.plugplaymobile.domain.model.PaymentMethod
 import com.plugplay.plugplaymobile.domain.model.PaymentStatus
-import com.plugplay.plugplaymobile.domain.model.PlaceOrderResult // Додано
+import com.plugplay.plugplaymobile.domain.model.PlaceOrderResult
 import com.plugplay.plugplaymobile.domain.model.UserAddress
 import com.plugplay.plugplaymobile.domain.repository.OrderRepository
 import com.plugplay.plugplaymobile.domain.repository.ProductRepository
@@ -38,7 +38,7 @@ class OrderRepositoryImpl @Inject constructor(
         customerEmail: String,
         customerPhone: String,
         description: String,
-    ): Result<PlaceOrderResult> = withContext(Dispatchers.IO) { // [FIX] Тип Result
+    ): Result<PlaceOrderResult> = withContext(Dispatchers.IO) {
         runCatching {
             if (userId == null) {
                 throw Exception("Guest checkout is not supported. Please log in.")
@@ -66,7 +66,7 @@ class OrderRepositoryImpl @Inject constructor(
 
             if (response.isSuccessful && response.body() != null) {
                 val body = response.body()!!
-                // [FIX] Повертаємо об'єкт з даними, а не просто ID
+
                 PlaceOrderResult(
                     orderId = body.orderId,
                     paymentData = body.paymentData

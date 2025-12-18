@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForwardIos
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowForwardIos
@@ -94,7 +96,7 @@ fun ProfileScreen(
                 title = { Text("Personal Information") },
                 navigationIcon = {
                     IconButton(onClick = onNavigateToCatalog) {
-                        Icon(Icons.Default.ArrowBack, contentDescription = "Назад")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Назад")
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = Color.Transparent)
@@ -256,7 +258,7 @@ fun ProfileScreen(
                         ) {
                             Text("My Wishlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                             Spacer(Modifier.weight(1f))
-                            Icon(Icons.Default.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
                         }
                     }
                 }
@@ -296,7 +298,7 @@ fun DisplayCredentials(profile: UserProfile) {
             color = Color.DarkGray
         )
 
-        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE0E0E0))
 
         Text("Last Name", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Text(
@@ -305,12 +307,12 @@ fun DisplayCredentials(profile: UserProfile) {
             color = Color.DarkGray
         )
 
-        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE0E0E0))
 
         Text("Phone", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Text(profile.phoneNumber.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
 
-        Divider(thickness = 1.dp, color = Color(0xFFE0E0E0))
+        HorizontalDivider(thickness = 1.dp, color = Color(0xFFE0E0E0))
 
         Text("Email", fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         Text(profile.email.ifBlank { "—" }, fontSize = 15.sp, color = Color.DarkGray)
@@ -758,7 +760,7 @@ fun ExpandableSection(
             }
             AnimatedVisibility(visible = isExpanded) {
                 Column {
-                    Divider(color = Color(0xFFF0F0F0))
+                    HorizontalDivider(color = Color(0xFFF0F0F0))
                     content()
                 }
             }
@@ -935,7 +937,7 @@ fun OrderHistoryCard(
                 }
             }
 
-            Divider(color = Color(0xFFF0F0F0))
+            HorizontalDivider(color = Color(0xFFF0F0F0))
 
             AnimatedVisibility(visible = isExpanded) {
                 Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -948,7 +950,7 @@ fun OrderHistoryCard(
                     OrderInfoRow(Icons.Filled.Check, "Payment Status", paymentStatusDisplay)
                     OrderInfoRow(Icons.Filled.ShoppingCart, "Full Address", formattedAddress)
 
-                    Divider(modifier = Modifier.padding(vertical = 4.dp))
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
                     Text("Order Items", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -960,7 +962,7 @@ fun OrderHistoryCard(
                     Column(modifier = Modifier.padding(top = 8.dp)) {
                         CostBreakdownRow("Subtotal", formatHryvnia(order.totalAmount), isTotal = false)
                         CostBreakdownRow("Shipment Cost ($deliveryLabel)", formatHryvnia(deliveryPrice), isTotal = false)
-                        Divider(modifier = Modifier.padding(vertical = 4.dp))
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                         CostBreakdownRow("Total", formatHryvnia(totalWithShipping), isTotal = true)
                     }
 

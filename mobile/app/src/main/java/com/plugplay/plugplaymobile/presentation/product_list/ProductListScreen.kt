@@ -188,7 +188,7 @@ fun ProductListScreen(
                             searchText = ""
                             viewModel.clearSearch()
                         }) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Close search")
+                            Icon(Icons.Filled.ArrowBack, contentDescription = "Close search")
                         }
                     },
                     actions = {
@@ -571,7 +571,7 @@ fun FilterModal(
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
-                Divider()
+                HorizontalDivider()
 
                 Column(
                     modifier = Modifier
@@ -588,7 +588,7 @@ fun FilterModal(
                         SortOptionRadio("Newest", "newest", selectedSort) { selectedSort = it }
                     }
 
-                    Divider()
+                    HorizontalDivider()
 
                     Column {
                         Text("Price Range", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
@@ -612,7 +612,7 @@ fun FilterModal(
                     }
 
                     if (availableAttributes.isNotEmpty()) {
-                        Divider()
+                        HorizontalDivider()
                         Text("Characteristics", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
 
                         availableAttributes.forEach { group ->
@@ -732,6 +732,6 @@ fun AttributeFilterGroup(
                 }
             }
         }
-        Divider(color = Color(0xFFF0F0F0))
+        HorizontalDivider(color = Color(0xFFF0F0F0))
     }
 }

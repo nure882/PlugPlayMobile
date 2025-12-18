@@ -7,7 +7,7 @@ import javax.inject.Inject
 class GetProductsUseCase @Inject constructor(
     private val repository: ProductRepository
 ) {
-    // [ИСПРАВЛЕНО] Добавлены параметры для фильтрации и сортировки
+
     suspend operator fun invoke(
         categoryId: Int? = null,
         minPrice: Double? = null,

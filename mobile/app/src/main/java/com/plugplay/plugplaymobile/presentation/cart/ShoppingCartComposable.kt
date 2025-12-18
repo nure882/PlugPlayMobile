@@ -64,7 +64,7 @@ fun ShoppingCartDialog(
                         Icon(Icons.Default.Close, contentDescription = "Закрити")
                     }
                 }
-                Divider()
+                HorizontalDivider()
 
                 // Content
                 Box(modifier = Modifier.weight(1f)) {

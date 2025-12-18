@@ -8,7 +8,7 @@ import com.google.gson.annotations.SerializedName
  */
 data class ProductListResponse(
 
-    // Kapt бачить "products", а Gson під час виконання знаходить "$values"
+
     @SerializedName("products", alternate = ["\$values"])
     val products: List<ProductDto>
 )

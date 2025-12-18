@@ -9,7 +9,7 @@ class LoginUseCase @Inject constructor(
 ) {
     suspend operator fun invoke(email: String, password: String): Result<AuthData> {
         return repository.login(email, password)
-            // 💡 Важная логика: если вход успешен, сохраняем токен
+
             .onSuccess { authData ->
                 // [ВИПРАВЛЕНО] Зберігаємо повні AuthData (токен + ID)
                 repository.saveAuthData(authData)

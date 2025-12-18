@@ -16,17 +16,17 @@ import javax.inject.Inject
 import javax.inject.Singleton
 import java.lang.Exception
 
-// Helper extension function to map DTO to Domain model
+
 fun CartItemDto.toDomain(): CartItem {
     val price = this.unitPrice ?: 0.0
     val imgUrl = this.productImage ?: "https://example.com/placeholder.jpg"
 
-    // [ВИПРАВЛЕННЯ] Більш надійна перевірка назви: якщо null або empty, використовуємо заглушку
+
     val name = this.productName.orEmpty().ifEmpty { "Без назви" }
 
     return CartItem(
         id = this.id.toLong(),
-        productId = this.productId.toString(), // Domain model uses String ID
+        productId = this.productId.toString(),
         name = name,
         imageUrl = imgUrl,
         unitPrice = price,
@@ -39,17 +39,17 @@ fun CartItemDto.toDomain(): CartItem {
 class CartRepositoryImpl @Inject constructor(
     private val apiService: ShopApiService,
     private val localDataSource: CartLocalDataSource,
-    private val productRepository: ProductRepository // Використовуємо для гідратації назв
+    private val productRepository: ProductRepository
 ) : CartRepository {
 
     override fun getCartItems(userId: Int?): Flow<List<CartItem>> {
-        // Завжди повертаємо Flow з локального сховища
+
         return localDataSource.guestCart
     }
 
     override suspend fun addToCart(userId: Int?, productId: String, quantity: Int): Result<Unit> = withContext(Dispatchers.IO) {
         if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
+
             runCatching {
                 val request = CreateCartItemDto(
                     productId = productId.toInt(),
@@ -60,14 +60,14 @@ class CartRepositoryImpl @Inject constructor(
                 if (!response.isSuccessful) {
                     throw Exception("Failed to add to cart via API: ${response.message()}")
                 }
-                // Оновлюємо локальний кеш даними з API, щоб UI оновився
+
                 refreshLocalCart(userId)
                 Unit
             }
         } else {
-            // [LOCAL] Логіка для гостя (має бути схожа на фронтенд)
+
             runCatching {
-                // Використовуємо ProductRepository для отримання назви/зображення
+
                 val product = productRepository.getProductById(productId).getOrThrow()
                 val cart = localDataSource.value.toMutableList()
                 val existingItem = cart.find { it.productId == productId }
@@ -101,10 +101,10 @@ class CartRepositoryImpl @Inject constructor(
         if (newQuantity < 1) return@withContext Result.success(Unit)
 
         if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
+
             runCatching {
                 val request = UpdateCartItemQuantityDto(
-                    cartItemId = cartItemId.toInt(), // Cart ID має бути Int
+                    cartItemId = cartItemId.toInt(),
                     newQuantity = newQuantity
                 )
                 val response = apiService.updateQuantity(request)
@@ -115,7 +115,7 @@ class CartRepositoryImpl @Inject constructor(
                 Unit
             }
         } else {
-            // [LOCAL] Логіка для гостя
+
             runCatching {
                 val cart = localDataSource.value.toMutableList()
                 val item = cart.find { it.id == cartItemId } ?: throw Exception("Cart item not found")
@@ -134,9 +134,9 @@ class CartRepositoryImpl @Inject constructor(
 
     override suspend fun deleteCartItem(userId: Int?, cartItemId: Long): Result<Unit> = withContext(Dispatchers.IO) {
         if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
+
             runCatching {
-                val response = apiService.deleteCartItem(cartItemId.toInt()) // Cart ID має бути Int
+                val response = apiService.deleteCartItem(cartItemId.toInt())
                 if (!response.isSuccessful) {
                     throw Exception("Failed to delete cart item via API: ${response.message()}")
                 }
@@ -144,7 +144,7 @@ class CartRepositoryImpl @Inject constructor(
                 Unit
             }
         } else {
-            // [LOCAL] Логіка для гостя
+
             runCatching {
                 val updatedCart = localDataSource.value.filter { it.id != cartItemId }
                 localDataSource.saveGuestCart(updatedCart)
@@ -155,13 +155,13 @@ class CartRepositoryImpl @Inject constructor(
 
     override suspend fun clearCart(userId: Int?): Result<Unit> = withContext(Dispatchers.IO) {
         if (userId != null) {
-            // [API] Логіка для зареєстрованого користувача
+
             runCatching {
                 val response = apiService.clearCart(userId)
                 if (!response.isSuccessful) {
                     throw Exception("Failed to clear cart via API: ${response.message()}")
                 }
-                localDataSource.clearGuestCart() // Очищуємо локальний кеш теж
+                localDataSource.clearGuestCart()
                 Unit
             }
         } else {

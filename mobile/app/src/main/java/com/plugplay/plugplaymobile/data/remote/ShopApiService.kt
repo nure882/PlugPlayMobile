@@ -72,7 +72,7 @@ interface ShopApiService {
     @POST("api/Products/attribute/{categoryId}")
     suspend fun getAttributeGroups(
         @Path("categoryId") categoryId: Int,
-        @Body request: AttributeRequestDto // <--- ИСПРАВЛЕНО: Теперь отправляем DTO-объект
+        @Body request: AttributeRequestDto
     ): Response<List<AttributeGroupDto>>
 
     @GET("api/WishList")
@@ -87,5 +87,5 @@ interface ShopApiService {
     @GET("api/WishList/{prodId}")
     suspend fun isProductInWishList(@Path("prodId") prodId: Int): Response<Boolean>
 
-    // [REMOVED] initPayment was deleted as requested
+
 }
