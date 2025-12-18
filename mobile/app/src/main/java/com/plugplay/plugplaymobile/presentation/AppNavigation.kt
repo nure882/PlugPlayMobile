@@ -1,9 +1,10 @@
 package com.plugplay.plugplaymobile.presentation
 
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
+import androidx.activity.compose.BackHandler
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -24,6 +25,7 @@ import com.plugplay.plugplaymobile.presentation.wishlist.WishlistScreen
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
+// ОБЪЕКТ ROUTES ДОЛЖЕН БЫТЬ ТУТ
 object Routes {
     const val PRODUCT_LIST = "product_list"
     const val PROFILE = "profile"
@@ -32,8 +34,6 @@ object Routes {
     const val ITEM_DETAIL = "detail_list/{itemId}"
     const val CHECKOUT = "checkout"
     const val WISHLIST = "wishlist"
-
-    // [FIX] Додаємо необов'язкові параметри data та signature
     const val ORDER_CONFIRMATION = "order_confirmation/{orderId}/{startPayment}?data={data}&signature={signature}"
 
     fun createOrderConfirmationRoute(
@@ -44,7 +44,6 @@ object Routes {
     ): String {
         val base = "order_confirmation/$orderId/$startPayment"
         return if (data != null && signature != null) {
-            // [FIX] Кодуємо параметри, оскільки це Base64 і може містити спецсимволи
             val encodedData = URLEncoder.encode(data, StandardCharsets.UTF_8.toString())
             val encodedSig = URLEncoder.encode(signature, StandardCharsets.UTF_8.toString())
             "$base?data=$encodedData&signature=$encodedSig"
@@ -56,6 +55,13 @@ object Routes {
 
 fun createItemDetailRoute(itemId: String) = "detail_list/$itemId"
 
+fun NavHostController.safeBack() {
+    if (this.previousBackStackEntry != null &&
+        this.currentBackStackEntry?.lifecycle?.currentState == Lifecycle.State.RESUMED) {
+        this.popBackStack()
+    }
+}
+
 @Composable
 fun AppNavigation(
     modifier: Modifier = Modifier,
@@ -66,27 +72,32 @@ fun AppNavigation(
         startDestination = Routes.PRODUCT_LIST,
         modifier = modifier
     ) {
-        // ... (Інші маршрути без змін) ...
         composable(Routes.PRODUCT_LIST) {
+            // ФИКС БЕЛОГО ЭКРАНА: Блокируем выход из приложения через Назад на главном экране
+            BackHandler(enabled = true) { /* Ничего не делаем или сворачиваем апп */ }
+
             ProductListScreen(
                 onNavigateToProfile = { navController.navigate(Routes.PROFILE) { launchSingleTop = true } },
                 onNavigateToItemDetail = { itemId -> navController.navigate(createItemDetailRoute(itemId)) },
                 onNavigateToCheckout = { navController.navigate(Routes.CHECKOUT) }
             )
         }
+
         composable(Routes.PROFILE) {
             ProfileScreen(
-                onNavigateToCatalog = { navController.popBackStack() },
+                onNavigateToCatalog = { navController.safeBack() },
                 onNavigateToLogin = { navController.navigate(Routes.LOGIN) },
                 onNavigateToWishlist = { navController.navigate(Routes.WISHLIST) }
             )
         }
+
         composable(Routes.WISHLIST) {
             WishlistScreen(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.safeBack() },
                 onNavigateToItemDetail = { itemId -> navController.navigate(createItemDetailRoute(itemId)) }
             )
         }
+
         composable(Routes.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
@@ -96,9 +107,10 @@ fun AppNavigation(
                     }
                 },
                 onNavigateToRegister = { navController.navigate(Routes.REGISTER) },
-                onNavigateBack = { navController.popBackStack() }
+                onNavigateBack = { navController.safeBack() }
             )
         }
+
         composable(Routes.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
@@ -115,6 +127,7 @@ fun AppNavigation(
                 }
             )
         }
+
         composable(
             route = Routes.ITEM_DETAIL,
             arguments = listOf(navArgument("itemId") { type = NavType.StringType })
@@ -127,52 +140,39 @@ fun AppNavigation(
                     onNavigateToCheckout = { navController.navigate(Routes.CHECKOUT) },
                     onNavigateToProfile = { navController.navigate(Routes.PROFILE) }
                 )
-            } else {
-                navController.popBackStack(Routes.PRODUCT_LIST, inclusive = false)
             }
         }
 
-        // --- CHECKOUT SCREEN ---
         composable(Routes.CHECKOUT) {
             val checkoutViewModel: CheckoutViewModel = hiltViewModel()
-
             CheckoutScreen(
                 viewModel = checkoutViewModel,
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = { navController.safeBack() },
                 onOrderConfirmed = {
-                    // [FIX] Отримуємо orderId та paymentData зі стану
                     val state = checkoutViewModel.state.value
-                    val orderId = state.orderId
-                    val isCardPayment = state.selectedPaymentMethod == PaymentMethod.Card
-                    val liqPayData = state.liqPayData
-
-                    if (orderId != null) {
-                        // [FIX] Передаємо дані LiqPay у маршрут, щоб не робити зайвий запит (і уникнути 404)
+                    if (state.orderId != null) {
                         val route = Routes.createOrderConfirmationRoute(
-                            orderId,
-                            isCardPayment,
-                            liqPayData?.data,
-                            liqPayData?.signature
+                            state.orderId,
+                            state.selectedPaymentMethod == PaymentMethod.Card,
+                            state.liqPayData?.data,
+                            state.liqPayData?.signature
                         )
-
                         navController.navigate(route) {
                             popUpTo(Routes.CHECKOUT) { inclusive = true }
                             launchSingleTop = true
                         }
                     } else {
-                        navController.popBackStack()
+                        navController.safeBack()
                     }
                 }
             )
         }
 
-        // --- ORDER CONFIRMATION SCREEN ---
         composable(
             route = Routes.ORDER_CONFIRMATION,
             arguments = listOf(
                 navArgument("orderId") { type = NavType.IntType },
                 navArgument("startPayment") { type = NavType.BoolType },
-                // [FIX] Приймаємо аргументи
                 navArgument("data") { type = NavType.StringType; nullable = true; defaultValue = null },
                 navArgument("signature") { type = NavType.StringType; nullable = true; defaultValue = null }
             )
@@ -186,22 +186,20 @@ fun AppNavigation(
 
             LaunchedEffect(orderId, data, signature) {
                 paymentViewModel.currentOrderId = orderId
-                // [FIX] Якщо дані передані, встановлюємо їх у ViewModel.
-                // Це запобігає виклику initPayment, який дає 404.
                 if (data != null && signature != null) {
                     paymentViewModel.paymentData = LiqPayInitResponse(data, signature)
                 }
             }
 
             LaunchedEffect(startPayment) {
-                if (startPayment) {
-                    paymentViewModel.payForOrder()
-                }
+                if (startPayment) paymentViewModel.payForOrder()
             }
 
             OrderConfirmationScreen(
                 onNavigateToCatalog = {
-                    navController.popBackStack(Routes.PRODUCT_LIST, inclusive = false)
+                    navController.navigate(Routes.PRODUCT_LIST) {
+                        popUpTo(0) { inclusive = true }
+                    }
                 },
                 paymentViewModel = paymentViewModel
             )
