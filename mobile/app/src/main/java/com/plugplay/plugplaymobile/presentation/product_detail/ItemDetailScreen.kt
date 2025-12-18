@@ -476,50 +476,82 @@ fun TitleAndPrice(item: Item) {
         format.format(item.price) + " ₴"
     }
 
-    Text(text = item.name, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+    // 1. [НОВОЕ] Категория (над названием)
+    Text(
+        text = item.category.uppercase(), // Или item.brand, если хотите бренд
+        style = MaterialTheme.typography.labelMedium,
+        color = Color.Gray,
+        fontWeight = FontWeight.SemiBold
+    )
+
+    Spacer(Modifier.height(4.dp))
+
+    // Название товара
+    Text(
+        text = item.name,
+        style = MaterialTheme.typography.headlineSmall,
+        fontWeight = FontWeight.Bold
+    )
+
     Spacer(Modifier.height(8.dp))
+
+    // 2. [НОВОЕ] Рейтинг 5 звезд
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Filled.Star, contentDescription = null, tint = Color(0xFFFFC107), modifier = Modifier.size(16.dp))
+        // Рисуем 5 звезд
+        repeat(5) { index ->
+            // Если индекс меньше рейтинга (округленного), рисуем полную, иначе пустую
+            val starIcon = if (index < item.averageRating.toInt()) Icons.Filled.Star else Icons.Outlined.StarBorder
+
+            Icon(
+                imageVector = starIcon,
+                contentDescription = null,
+                tint = Color(0xFFFFC107), // Золотой цвет
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        // Количество отзывов текстом
         Text(
-            text = " ${String.format("%.1f", item.averageRating)} (${item.reviewCount} reviews)",
-            style = MaterialTheme.typography.bodySmall,
+            text = "(${item.reviewCount} reviews)",
+            style = MaterialTheme.typography.bodyMedium,
             color = Color.Gray
         )
     }
+
     Spacer(Modifier.height(16.dp))
+
+    // Блок наличия (из предыдущего шага)
     Row(verticalAlignment = Alignment.CenterVertically) {
         val isAvailable = item.stockQuantity > 0
-        val availabilityColor = if (isAvailable) Color(0xFF4CAF50) else Color.Red // Зеленый или Красный
-        val availabilityText = if (isAvailable) "In Stock" else "Out of Stock"
+        val statusColor = if (isAvailable) Color(0xFF4CAF50) else Color.Red
+        val statusIcon = if (isAvailable) Icons.Default.CheckCircle else Icons.Outlined.Cancel
+        val statusText = if (isAvailable) "In stock: ${item.stockQuantity} pcs" else "Out of stock"
 
-        // Кружочек-индикатор
-        Box(
-            modifier = Modifier
-                .size(12.dp)
-                .background(color = availabilityColor, shape = CircleShape)
+        Icon(
+            imageVector = statusIcon,
+            contentDescription = null,
+            tint = statusColor,
+            modifier = Modifier.size(18.dp)
         )
-
-        Spacer(modifier = Modifier.width(8.dp))
-
-        // Текст статуса
+        Spacer(Modifier.width(4.dp))
         Text(
-            text = availabilityText,
-            color = availabilityColor,
-            style = MaterialTheme.typography.bodyMedium,
+            text = statusText,
+            color = statusColor,
             fontWeight = FontWeight.SemiBold
         )
-
-        // Если товар есть, показываем количество в скобках
-        if (isAvailable) {
-            Text(
-                text = " (${item.stockQuantity} items)",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
     }
+
     Spacer(Modifier.height(16.dp))
-    Text(text = formattedNumber, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+
+    // Цена
+    Text(
+        text = formattedNumber,
+        style = MaterialTheme.typography.headlineLarge,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary
+    )
 }
 
 @Composable
