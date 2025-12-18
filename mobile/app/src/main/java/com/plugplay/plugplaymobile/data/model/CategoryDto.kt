@@ -10,5 +10,8 @@ data class CategoryDto(
     val id: Int,
 
     @SerializedName("name")
-    val name: String?
+    val name: String?,
+
+    @SerializedName("parent")
+    val parent: CategoryDto? = null
 )

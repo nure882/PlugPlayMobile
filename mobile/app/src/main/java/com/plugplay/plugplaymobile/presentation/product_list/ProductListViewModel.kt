@@ -15,6 +15,12 @@ import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
+data class CategoryNode(
+    val id: Int,
+    val name: String,
+    val children: List<CategoryNode> = emptyList()
+)
+
 @HiltViewModel
 class ProductListViewModel @Inject constructor(
     private val getProductsUseCase: GetProductsUseCase,
@@ -40,6 +46,9 @@ class ProductListViewModel @Inject constructor(
     private val _selectedAttributes = MutableStateFlow<Map<Int, Set<String>>>(emptyMap())
     private val _availableAttributeGroups = MutableStateFlow<List<AttributeGroup>>(emptyList())
     private val _isFilterModalVisible = MutableStateFlow(false)
+
+    private val _categoryTree = MutableStateFlow<List<CategoryNode>>(emptyList())
+    val categoryTree: StateFlow<List<CategoryNode>> = _categoryTree.asStateFlow()
 
     val isFilterModalVisible: StateFlow<Boolean> = _isFilterModalVisible.asStateFlow()
 
@@ -89,9 +98,30 @@ class ProductListViewModel @Inject constructor(
     init {
         loadProducts()
         loadWishlist()
+        loadCategories()
     }
 
-    // [FIXED] Changed from private to public so the UI can refresh it
+    private fun loadCategories() {
+        viewModelScope.launch {
+            productRepository.getCategories()
+                .onSuccess { allCategories ->
+                    val groupedByParent = allCategories.groupBy { it.parentId }
+
+                    fun buildTree(parentId: Int?): List<CategoryNode> {
+                        return groupedByParent[parentId]?.map { cat ->
+                            CategoryNode(
+                                id = cat.id,
+                                name = cat.name,
+                                children = buildTree(cat.id)
+                            )
+                        } ?: emptyList()
+                    }
+
+                    _categoryTree.value = buildTree(null)
+                }
+        }
+    }
+
     fun loadWishlist() {
         viewModelScope.launch {
             if (authRepository.getUserId().first() != null) {
@@ -113,10 +143,10 @@ class ProductListViewModel @Inject constructor(
             val idInt = productId.toIntOrNull() ?: return@launch
 
             if (isFavorite) {
-                _wishlistIds.update { it - productId } // Optimistic update
+                _wishlistIds.update { it - productId }
                 toggleWishlistUseCase.remove(idInt)
             } else {
-                _wishlistIds.update { it + productId } // Optimistic update
+                _wishlistIds.update { it + productId }
                 toggleWishlistUseCase.add(idInt)
             }
         }
