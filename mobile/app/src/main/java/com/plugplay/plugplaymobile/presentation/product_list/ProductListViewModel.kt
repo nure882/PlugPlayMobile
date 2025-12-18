@@ -200,14 +200,12 @@ class ProductListViewModel @Inject constructor(
         }.ifBlank { null }
     }
 
-    fun setCategoryFilter(categoryId: Int) {
-        val newFilter = if (_currentCategoryId.value == categoryId) null else categoryId
-        _currentCategoryId.value = newFilter
-        _searchQuery.value = ""
-        _minPrice.value = null
-        _maxPrice.value = null
-        _selectedAttributes.value = emptyMap()
-        _availableAttributeGroups.value = emptyList()
+    fun setCategoryFilter(id: Int) {
+        // Если id == 0, ставим null, иначе id
+        val newId = if (id == 0) null else id
+        _currentCategoryId.value = newId
+
+        // СРАЗУ вызываем загрузку, не дожидаясь сторонних триггеров
         loadProducts()
     }
 
@@ -222,12 +220,10 @@ class ProductListViewModel @Inject constructor(
         loadProducts()
     }
 
+    // Также в clearSearch()
     fun clearSearch() {
-        if (_searchQuery.value.isNotEmpty()) {
-            _searchQuery.value = ""
-            _availableAttributeGroups.value = emptyList()
-            loadProducts()
-        }
+        _searchQuery.value = ""
+        loadProducts()
     }
 
     fun toggleFilterModal() {

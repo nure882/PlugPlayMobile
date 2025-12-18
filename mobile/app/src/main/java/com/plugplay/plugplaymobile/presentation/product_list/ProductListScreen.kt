@@ -89,6 +89,9 @@ fun ProductListScreen(
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
 
+    // Триггер для принудительного обновления UI при сбросе фильтров
+    var refreshTrigger by remember { mutableLongStateOf(0L) }
+
     LaunchedEffect(Unit) {
         viewModel.loadWishlist()
     }
@@ -101,8 +104,9 @@ fun ProductListScreen(
     }
 
     val currentCategoryId by viewModel.currentCategoryId.collectAsState()
-    val animationKey = remember(currentCategoryId, currentSearchQuery) {
-        currentCategoryId?.toString() ?: currentSearchQuery
+
+    val animationKey = remember(currentCategoryId, currentSearchQuery, refreshTrigger) {
+        "${currentCategoryId ?: "all"}_${currentSearchQuery}_$refreshTrigger"
     }
 
     val currentCategoryName = remember(currentCategoryId, categoryTree) {
@@ -186,15 +190,12 @@ fun ProductListScreen(
                     ) {
                         item {
                             NavigationDrawerItem(
-                                label = {
-                                    Text(
-                                        "All Products",
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                },
+                                label = { Text("All Products", fontWeight = FontWeight.SemiBold) },
                                 selected = currentCategoryId == null,
                                 onClick = {
-                                    viewModel.setCategoryFilter(0)
+                                    viewModel.clearSearch() // Сначала очищаем поиск
+                                    viewModel.setCategoryFilter(0) // Сбрасываем категорию
+                                    refreshTrigger = System.currentTimeMillis() // Генерируем новый ключ для UI
                                     scope.launch { drawerState.close() }
                                 },
                                 modifier = Modifier.padding(vertical = 4.dp),
@@ -860,7 +861,7 @@ fun AutoResizingText(
         maxLines = maxLines,
         onTextLayout = { result ->
             if (result.didOverflowWidth) {
-                // Исправлено: извлекаем числовое значение .value из fontSize
+                // Извлекаем числовое значение .value для расчетов
                 if (resizedTextStyle.fontSize.value > 10f) {
                     resizedTextStyle = resizedTextStyle.copy(
                         fontSize = (resizedTextStyle.fontSize.value - 0.5f).sp
