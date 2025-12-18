@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -52,13 +53,9 @@ fun ItemDetailScreen(
     val cartState by cartViewModel.state.collectAsState()
     val cartItemsCount = cartState.cartItems.sumOf { it.quantity }
     val item = state.item
-
-    // [NEW] Get login state
     val isLoggedIn by viewModel.isLoggedIn.collectAsState()
 
     var isCartOpen by remember { mutableStateOf(false) }
-
-    // [NEW] State for removal confirmation dialog
     var showRemoveDialog by remember { mutableStateOf(false) }
 
     val isInCart = remember(cartState.cartItems, item) {
@@ -75,14 +72,11 @@ fun ItemDetailScreen(
         }
     )
 
-    // [NEW] Confirmation Dialog
     if (showRemoveDialog && item != null) {
         AlertDialog(
             onDismissRequest = { showRemoveDialog = false },
             title = { Text(text = "Confirm action") },
-            text = {
-                Text(text = "Are you sure you want to remove ${item.name} from your wishlist?")
-            },
+            text = { Text(text = "Are you sure you want to remove ${item.name} from your wishlist?") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -93,13 +87,7 @@ fun ItemDetailScreen(
                     Text("Remove", color = MaterialTheme.colorScheme.error)
                 }
             },
-            dismissButton = {
-                TextButton(
-                    onClick = { showRemoveDialog = false }
-                ) {
-                    Text("Cancel")
-                }
-            }
+            dismissButton = { TextButton(onClick = { showRemoveDialog = false }) { Text("Cancel") } }
         )
     }
 
@@ -113,16 +101,9 @@ fun ItemDetailScreen(
                     }
                 },
                 actions = {
-                    // [FIX] Hide heart icon if not logged in
                     if (isLoggedIn) {
                         IconButton(onClick = {
-                            if (state.isFavorite) {
-                                // If already favorite, show dialog
-                                showRemoveDialog = true
-                            } else {
-                                // If not favorite, add immediately
-                                viewModel.toggleFavorite()
-                            }
+                            if (state.isFavorite) showRemoveDialog = true else viewModel.toggleFavorite()
                         }) {
                             Icon(
                                 imageVector = if (state.isFavorite) Icons.Filled.Favorite else Icons.Outlined.FavoriteBorder,
@@ -131,7 +112,6 @@ fun ItemDetailScreen(
                             )
                         }
                     }
-
                     IconButton(onClick = onNavigateToProfile) {
                         Icon(Icons.Outlined.Person, contentDescription = "Profile")
                     }
@@ -145,79 +125,105 @@ fun ItemDetailScreen(
                                     ) { Text(cartItemsCount.toString()) }
                                 }
                             }
-                        ) {
-                            Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart")
-                        }
+                        ) { Icon(Icons.Outlined.ShoppingCart, contentDescription = "Cart") }
                     }
                 }
             )
         }
     ) { innerPadding ->
-        LazyColumn(
+        BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .background(Color.White),
-            contentPadding = PaddingValues(bottom = 32.dp)
+                .background(Color.White)
         ) {
+            val isWideScreen = maxWidth > 800.dp
+
             when {
                 state.isLoading -> {
-                    item {
-                        Box(Modifier.fillParentMaxSize(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
                     }
                 }
                 state.error != null -> {
-                    item {
-                        Text(
-                            text = state.error.toString(),
-                            color = MaterialTheme.colorScheme.error,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
+                    Text(
+                        text = state.error.toString(),
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.padding(16.dp)
+                    )
                 }
                 item != null -> {
-                    // 1. Images
-                    item { ImagePager(item.imageUrls) }
-
-                    // 2. Title & Price
-                    item {
-                        Column(Modifier.padding(16.dp)) {
-                            TitleAndPrice(item)
-                            Spacer(Modifier.height(24.dp))
-                        }
-                    }
-
-                    // 3. Actions
-                    item {
-                        ActionButtons(
-                            item = item,
-                            isInCart = isInCart,
-                            onAddToCart = { cartViewModel.addToCart(item.id, 1) },
-                            onBuyClick = {
-                                cartViewModel.addToCart(item.id, 1)
-                                isCartOpen = true
+                    if (isWideScreen) {
+                        // ПК/Планшетный вид: Две колонки
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(24.dp),
+                            horizontalArrangement = Arrangement.spacedBy(32.dp)
+                        ) {
+                            // Левая колонка: Изображение
+                            Column(modifier = Modifier.weight(1.2f)) {
+                                ImagePager(item.imageUrls)
                             }
-                        )
-                    }
 
-                    // 4. Info Section (Delivery/Warranty)
-                    item { InfoSection() }
-
-                    // 5. Description
-                    item { DescriptionSection(item) }
-
-                    // 6. Attributes
-                    if (state.attributes.isNotEmpty()) {
-                        item {
-                            ProductAttributesSection(attributes = state.attributes)
+                            // Правая колонка: Инфо и действия (скроллится, если контента много)
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .verticalScroll(rememberScrollState())
+                            ) {
+                                TitleAndPrice(item)
+                                Spacer(Modifier.height(24.dp))
+                                ActionButtons(
+                                    item = item,
+                                    isInCart = isInCart,
+                                    onAddToCart = { cartViewModel.addToCart(item.id, 1) },
+                                    onBuyClick = {
+                                        cartViewModel.addToCart(item.id, 1)
+                                        isCartOpen = true
+                                    }
+                                )
+                                Spacer(Modifier.height(24.dp))
+                                InfoSection()
+                                Spacer(Modifier.height(24.dp))
+                                DescriptionSection(item)
+                                if (state.attributes.isNotEmpty()) {
+                                    ProductAttributesSection(attributes = state.attributes)
+                                }
+                                ProductReviewsSection(reviews = item.reviews)
+                            }
                         }
-                    }
-
-                    // 7. Reviews
-                    item {
-                        ProductReviewsSection(reviews = item.reviews)
+                    } else {
+                        // Мобильный вид: Обычный LazyColumn
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = 32.dp)
+                        ) {
+                            item { ImagePager(item.imageUrls) }
+                            item {
+                                Column(Modifier.padding(16.dp)) {
+                                    TitleAndPrice(item)
+                                    Spacer(Modifier.height(24.dp))
+                                }
+                            }
+                            item {
+                                ActionButtons(
+                                    item = item,
+                                    isInCart = isInCart,
+                                    onAddToCart = { cartViewModel.addToCart(item.id, 1) },
+                                    onBuyClick = {
+                                        cartViewModel.addToCart(item.id, 1)
+                                        isCartOpen = true
+                                    }
+                                )
+                            }
+                            item { InfoSection() }
+                            item { DescriptionSection(item) }
+                            if (state.attributes.isNotEmpty()) {
+                                item { ProductAttributesSection(attributes = state.attributes) }
+                            }
+                            item { ProductReviewsSection(reviews = item.reviews) }
+                        }
                     }
                 }
             }

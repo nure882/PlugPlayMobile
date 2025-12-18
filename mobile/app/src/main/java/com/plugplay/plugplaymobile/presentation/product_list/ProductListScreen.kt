@@ -300,27 +300,27 @@ fun ProductGrid(
     viewModel: ProductListViewModel,
     onFilterClick: () -> Unit,
     wishlistIds: Set<String>,
-    onToggleWishlist: (Product) -> Unit, // [CHANGED] Accepts Product object
+    onToggleWishlist: (Product) -> Unit,
     isLoggedIn: Boolean
 ) {
     LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
+        columns = GridCells.Adaptive(minSize = 160.dp),
         modifier = modifier
             .fillMaxSize()
             .padding(horizontal = 8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        item(span = { GridItemSpan(2) }) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             SectionHeader(title = "It would interest you")
         }
-        item(span = { GridItemSpan(2) }) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             CategoryLazyRow(
                 modifier = Modifier.padding(vertical = 8.dp),
                 viewModel = viewModel
             )
         }
-        item(span = { GridItemSpan(2) }) {
+        item(span = { GridItemSpan(maxLineSpan) }) {
             SectionHeader(
                 title = "For you",
                 showFilter = true,
@@ -328,7 +328,7 @@ fun ProductGrid(
             )
         }
         if (products.isEmpty()) {
-            item(span = { GridItemSpan(2) }) {
+            item(span = { GridItemSpan(maxLineSpan) }) {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -360,7 +360,7 @@ fun ProductGrid(
                 ProductItem(
                     product = product,
                     onClick = { onItemClick(product.id) },
-                    onFavoriteClick = { onToggleWishlist(product) }, // [CHANGED] Pass product
+                    onFavoriteClick = { onToggleWishlist(product) },
                     isFavorite = wishlistIds.contains(product.id),
                     showFavoriteButton = isLoggedIn
                 )

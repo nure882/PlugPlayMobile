@@ -27,13 +27,10 @@ fun WishlistScreen(
 ) {
     val state by viewModel.state.collectAsState()
 
-    // Перезагрузка списка желаемого при входе на экран
     LaunchedEffect(Unit) {
         viewModel.loadWishlist()
     }
 
-    // Состояние для хранения товара, который удаляем.
-    // Если null — диалог скрыт. Если объект есть — диалог показывается.
     var productToRemove by remember { mutableStateOf<Product?>(null) }
 
     Scaffold(
@@ -72,7 +69,8 @@ fun WishlistScreen(
                 }
             } else {
                 LazyVerticalGrid(
-                    columns = GridCells.Fixed(2),
+                    // Используем адаптивную сетку с минимальной шириной карточки 160.dp
+                    columns = GridCells.Adaptive(minSize = 160.dp),
                     contentPadding = PaddingValues(16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -83,7 +81,6 @@ fun WishlistScreen(
                             product = product,
                             isFavorite = true,
                             onClick = { onNavigateToItemDetail(product.id) },
-                            // Вместо удаления сохраняем товар в переменную для диалога
                             onFavoriteClick = { productToRemove = product },
                             showFavoriteButton = true
                         )
@@ -92,13 +89,11 @@ fun WishlistScreen(
             }
         }
 
-        // Диалог подтверждения
         if (productToRemove != null) {
             AlertDialog(
                 onDismissRequest = { productToRemove = null },
                 title = { Text(text = "Confirm action") },
                 text = {
-                    // Здесь подставляем имя товара. Убедитесь, что у Product есть поле name (или title)
                     Text(text = "Are you sure you want to remove ${productToRemove?.title} from your wishlist?")
                 },
                 confirmButton = {

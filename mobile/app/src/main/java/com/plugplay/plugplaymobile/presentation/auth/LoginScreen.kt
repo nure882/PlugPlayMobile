@@ -49,10 +49,6 @@ fun LoginScreen(
 
     val state by viewModel.state.collectAsState()
 
-    // --- НАЛАШТУВАННЯ GOOGLE SIGN IN ---
-
-    // 1. ВАЖЛИВО: Використовуйте WEB CLIENT ID (не Android Client ID!)
-    // Взяти в Google Cloud Console -> Credentials -> OAuth 2.0 Client IDs -> Web client
     val googleWebClientId = "750404855801-fmbmloipoblnp12mh9epu8a9c83jtv65.apps.googleusercontent.com"
 
     val gso = remember {
@@ -74,23 +70,13 @@ fun LoginScreen(
                 val idToken = account.idToken
 
                 if (idToken != null) {
-                    Log.d("GoogleLogin", "Token received: ${idToken.take(10)}...")
                     viewModel.signInWithGoogle(idToken)
-                } else {
-                    Log.e("GoogleLogin", "ID Token is NULL! Check Web Client ID.")
-                    Toast.makeText(context, "Google Sign-In Error: ID Token is null", Toast.LENGTH_LONG).show()
                 }
             } catch (e: ApiException) {
-                Log.e("GoogleLogin", "SignIn Result Failed code=${e.statusCode}", e)
-                // Код 10 = Developer Error (невірний Fingerprint або Package Name)
-                // Код 12500 = Невірний Client ID або відсутній SHA-1
                 Toast.makeText(context, "Google Error: ${e.statusCode}", Toast.LENGTH_LONG).show()
             }
-        } else {
-            Log.e("GoogleLogin", "Result Code is not OK: ${result.resultCode}")
         }
     }
-    // -------------------------------
 
     LaunchedEffect(state) {
         if (state is AuthResultState.Success) {
@@ -114,120 +100,127 @@ fun LoginScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        // Основной контейнер для центрирования на больших экранах
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .padding(paddingValues),
+            contentAlignment = Alignment.Center
         ) {
-
-            Text(
-                text = "Welcome back",
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(bottom = 32.dp)
-            )
-
-            Card(
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color.White),
-                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-                modifier = Modifier.fillMaxWidth()
+            Column(
+                modifier = Modifier
+                    .fillMaxHeight()
+                    // Ограничиваем ширину (на телефонах будет на весь экран, на планшетах - 450dp)
+                    .widthIn(max = 450.dp)
+                    .verticalScroll(rememberScrollState())
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
             ) {
-                Column(
-                    modifier = Modifier.padding(24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally
+
+                Text(
+                    text = "Welcome back",
+                    style = MaterialTheme.typography.headlineLarge,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(bottom = 32.dp)
+                )
+
+                Card(
+                    shape = RoundedCornerShape(20.dp),
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp), // Небольшая тень для эффекта "окошка"
+                    modifier = Modifier.fillMaxWidth()
                 ) {
+                    Column(
+                        modifier = Modifier.padding(24.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        OutlinedTextField(
+                            value = email.value,
+                            onValueChange = { email.value = it },
+                            label = { Text("Email") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp)
+                        )
 
-                    OutlinedTextField(
-                        value = email.value,
-                        onValueChange = { email.value = it },
-                        label = { Text("Email") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp)
-                    )
+                        Spacer(Modifier.height(16.dp))
 
-                    Spacer(Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = password.value,
+                            onValueChange = { password.value = it },
+                            label = { Text("Password") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(12.dp),
+                            visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
+                            trailingIcon = {
+                                val image = if (passwordVisible.value) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
+                                IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
+                                    Icon(imageVector = image, contentDescription = "Toggle visibility")
+                                }
+                            }
+                        )
 
-                    OutlinedTextField(
-                        value = password.value,
-                        onValueChange = { password.value = it },
-                        label = { Text("Password") },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
-                        visualTransformation = if (passwordVisible.value) VisualTransformation.None else PasswordVisualTransformation(),
-                        trailingIcon = {
-                            val image = if (passwordVisible.value) Icons.Filled.Visibility else Icons.Filled.VisibilityOff
-                            IconButton(onClick = { passwordVisible.value = !passwordVisible.value }) {
-                                Icon(imageVector = image, contentDescription = "Toggle visibility")
+                        Spacer(Modifier.height(24.dp))
+
+                        if (state is AuthResultState.Error) {
+                            Text(
+                                text = (state as AuthResultState.Error).message,
+                                color = MaterialTheme.colorScheme.error,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(bottom = 16.dp)
+                            )
+                        }
+
+                        Button(
+                            onClick = { viewModel.login(email.value, password.value) },
+                            enabled = state !is AuthResultState.Loading,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                        ) {
+                            if (state is AuthResultState.Loading) {
+                                CircularProgressIndicator(
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            } else {
+                                Text("Sign In", fontSize = 16.sp)
                             }
                         }
-                    )
 
-                    Spacer(Modifier.height(24.dp))
+                        Spacer(Modifier.height(24.dp))
 
-                    if (state is AuthResultState.Error) {
-                        Text(
-                            text = (state as AuthResultState.Error).message,
-                            color = MaterialTheme.colorScheme.error,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.padding(bottom = 16.dp)
-                        )
-                    }
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            HorizontalDivider(modifier = Modifier.weight(1f))
+                            Text(" OR ", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
+                            HorizontalDivider(modifier = Modifier.weight(1f))
+                        }
 
-                    Button(
-                        onClick = { viewModel.login(email.value, password.value) },
-                        enabled = state !is AuthResultState.Loading,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
-                    ) {
-                        if (state is AuthResultState.Loading) {
-                            CircularProgressIndicator(
-                                color = MaterialTheme.colorScheme.onPrimary,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        } else {
-                            Text("Sign In", fontSize = 16.sp)
+                        Spacer(Modifier.height(24.dp))
+
+                        OutlinedButton(
+                            onClick = {
+                                googleSignInLauncher.launch(googleSignInClient.signInIntent)
+                            },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(56.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            enabled = state !is AuthResultState.Loading
+                        ) {
+                            Text("Sign in with Google", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
                         }
                     }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    // --- РАЗДЕЛИТЕЛЬ И КНОПКА GOOGLE ---
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        HorizontalDivider(modifier = Modifier.weight(1f))
-                        Text(" OR ", color = Color.Gray, fontSize = 12.sp, modifier = Modifier.padding(horizontal = 8.dp))
-                        HorizontalDivider(modifier = Modifier.weight(1f))
-                    }
-
-                    Spacer(Modifier.height(24.dp))
-
-                    OutlinedButton(
-                        onClick = {
-                            googleSignInLauncher.launch(googleSignInClient.signInIntent)
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(56.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        enabled = state !is AuthResultState.Loading
-                    ) {
-                        Text("Sign in with Google", fontSize = 16.sp, color = MaterialTheme.colorScheme.primary)
-                    }
                 }
+
+                Spacer(Modifier.height(24.dp))
+
+                ClickableRegisterText(onNavigateToRegister)
             }
-
-            Spacer(Modifier.height(24.dp))
-
-            ClickableRegisterText(onNavigateToRegister)
         }
     }
 }

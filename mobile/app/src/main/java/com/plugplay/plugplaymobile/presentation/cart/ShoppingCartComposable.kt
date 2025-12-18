@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -28,6 +29,7 @@ import com.plugplay.plugplaymobile.domain.model.CartItem
 import coil.compose.AsyncImage
 import java.text.NumberFormat
 import java.util.Locale
+
 
 @Composable
 fun ShoppingCartDialog(
@@ -42,252 +44,326 @@ fun ShoppingCartDialog(
     val cartItems = state.cartItems
 
     Dialog(onDismissRequest = onClose) {
-        Card(
-            modifier = Modifier
-                .fillMaxHeight(0.9f)
-                .fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-        ) {
-            Column(modifier = Modifier.fillMaxSize()) {
-                // Header
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Cart", style = MaterialTheme.typography.headlineSmall)
-                    IconButton(onClick = onClose) {
-                        Icon(Icons.Default.Close, contentDescription = "Закрити")
-                    }
-                }
-                HorizontalDivider()
+        BoxWithConstraints {
+            val isWide = maxWidth > 600.dp
 
-                // Content
-                Box(modifier = Modifier.weight(1f)) {
-                    when {
-                        state.isLoading -> CircularProgressIndicator(Modifier.align(Alignment.Center))
-                        cartItems.isEmpty() -> EmptyCartPlaceholder(Modifier.align(Alignment.Center))
-                        else -> {
-                            LazyColumn(
-                                contentPadding = PaddingValues(16.dp),
+            Card(
+                modifier = Modifier
+                    .fillMaxHeight(if (isWide) 0.8f else 0.9f)
+                    .widthIn(min = 320.dp, max = 1100.dp)
+                    .fillMaxWidth(if (isWide) 0.9f else 1f),
+                shape = RoundedCornerShape(24.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 12.dp)
+            ) {
+                Column(modifier = Modifier.fillMaxSize()) {
+                    // Header
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            "Shopping Cart",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.ExtraBold
+                        )
+                        IconButton(onClick = onClose) {
+                            Icon(Icons.Default.Close, contentDescription = "Close")
+                        }
+                    }
+
+                    HorizontalDivider(color = Color(0xFFF0F0F0))
+
+                    if (isWide && cartItems.isNotEmpty()) {
+                        // --- ДЛЯ ШИРОКИХ ЭКРАНОВ: ДВЕ ПАНЕЛИ ---
+                        Row(modifier = Modifier.fillMaxSize()) {
+                            // Левая часть: Список товаров
+                            Box(modifier = Modifier.weight(1f)) {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(20.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    items(cartItems, key = { it.id }) { item ->
+                                        CartItemRow(
+                                            item = item,
+                                            isWide = true,
+                                            onQuantityChange = { viewModel.updateQuantity(item.id, it) },
+                                            onDelete = { viewModel.deleteItem(item.id) }
+                                        )
+                                    }
+                                }
+                            }
+
+                            // Правая часть: Итоговая панель (Side Summary)
+                            Column(
+                                modifier = Modifier
+                                    .width(320.dp)
+                                    .fillMaxHeight()
+                                    .background(Color(0xFFF8FAFB))
+                                    .padding(24.dp),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                items(cartItems, key = { it.id }) { item ->
-                                    CartItemRow(
-                                        item = item,
-                                        onQuantityChange = { newQty ->
-                                            viewModel.updateQuantity(item.id, newQty)
-                                        },
-                                        onDelete = { viewModel.deleteItem(item.id) }
-                                    )
+                                Text("Order Summary", fontWeight = FontWeight.Bold, fontSize = 18.sp)
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween
+                                ) {
+                                    Text("Items (${cartItems.sumOf { it.quantity }})", color = Color.Gray)
+                                    // Форматирование цены вынесено в утилиту или делается по месту
+                                    Text(formatPrice(state.subtotal), fontWeight = FontWeight.SemiBold)
+                                }
+
+                                Spacer(Modifier.weight(1f))
+
+                                Text("Total Amount", color = Color.Gray, fontSize = 14.sp)
+                                Text(
+                                    text = formatPrice(state.subtotal),
+                                    style = MaterialTheme.typography.headlineMedium,
+                                    fontWeight = FontWeight.Black,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+
+                                Button(
+                                    onClick = onNavigateToCheckout,
+                                    modifier = Modifier.fillMaxWidth().height(56.dp),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Text("Order now", fontWeight = FontWeight.Bold)
+                                }
+
+                                OutlinedButton(
+                                    onClick = viewModel::clearCart,
+                                    modifier = Modifier.fillMaxWidth(),
+                                    border = null,
+                                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.Red)
+                                ) {
+                                    Icon(Icons.Outlined.Delete, null, Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Clear Cart")
                                 }
                             }
                         }
-                    }
-                }
+                    } else {
+                        // --- МОБИЛЬНЫЙ ВИД ИЛИ ПУСТАЯ КОРЗИНА ---
+                        Box(modifier = Modifier.weight(1f)) {
+                            if (cartItems.isEmpty()) {
+                                EmptyCartPlaceholder(Modifier.align(Alignment.Center))
+                            } else {
+                                LazyColumn(
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                                ) {
+                                    items(cartItems, key = { it.id }) { item ->
+                                        CartItemRow(
+                                            item = item,
+                                            isWide = false,
+                                            onQuantityChange = { viewModel.updateQuantity(item.id, it) },
+                                            onDelete = { viewModel.deleteItem(item.id) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
 
-                // Footer (Total and Actions)
-                if (cartItems.isNotEmpty()) {
-                    CartFooter(
-                        subtotal = state.subtotal,
-                        onClearCart = viewModel::clearCart,
-                        onNavigateToCheckout = onNavigateToCheckout
-                    )
+                        if (cartItems.isNotEmpty()) {
+                            CartFooter(
+                                subtotal = state.subtotal,
+                                isWide = false,
+                                onClearCart = viewModel::clearCart,
+                                onNavigateToCheckout = onNavigateToCheckout
+                            )
+                        }
+                    }
                 }
             }
         }
     }
 }
 
+// Вспомогательная функция для форматирования цены (чтобы код был чище)
+private fun formatPrice(amount: Double): String {
+    val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+        minimumFractionDigits = 2
+        maximumFractionDigits = 2
+    }
+    return "${format.format(amount)} ₴"
+}
+
 @Composable
 fun CartItemRow(
     item: CartItem,
+    isWide: Boolean,
     onQuantityChange: (Int) -> Unit,
     onDelete: () -> Unit
 ) {
-    // [ОНОВЛЕНО] Використовуємо форматування для числа з "₴"
-    val formattedUnitPrice = remember(item.unitPrice) {
-        val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+    val format = remember {
+        NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
             minimumFractionDigits = 2
             maximumFractionDigits = 2
         }
-        "Price: ${format.format(item.unitPrice)} ₴" // <-- ДОДАНО " ₴"
     }
-
-    val formattedTotal = remember(item.total) {
-        val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
-            minimumFractionDigits = 2
-            maximumFractionDigits = 2
-        }
-        "Total: ${format.format(item.total)} ₴" // <-- ДОДАНО " ₴"
-    }
+    val formattedUnitPrice = "${format.format(item.unitPrice)} ₴"
+    val formattedTotal = "${format.format(item.total)} ₴"
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
             .padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        // 1. Image (Left)
         AsyncImage(
             model = item.imageUrl,
             contentDescription = item.name,
             modifier = Modifier
-                .size(80.dp)
+                .size(if (isWide) 100.dp else 80.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFFF0F0F0)),
             contentScale = ContentScale.Crop
         )
 
-        // 2. Content Column (Text Info + Quantity Controls + Delete)
-        Column(modifier = Modifier.weight(1f)) {
+        if (isWide) {
+            // Широкая перекомпоновка: все в одну линию
+            Text(
+                text = item.name,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.weight(1f),
+                maxLines = 2
+            )
 
-            // A. Top Row: Name and Delete Button
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                // Name (Left side of content row)
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = item.name,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        fontSize = 14.sp
-                    )
-                    Spacer(Modifier.height(4.dp))
-                    Text(
-                        text = formattedUnitPrice, // <-- ВИКОРИСТАННЯ НОВОГО ФОРМАТУ
-                        color = MaterialTheme.colorScheme.error,
-                        fontSize = 12.sp
-                    )
-                    Text(
-                        text = formattedTotal, // <-- ВИКОРИСТАННЯ НОВОГО ФОРМАТУ
-                        color = MaterialTheme.colorScheme.error,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.sp
-                    )
-                }
-
-                // Delete Button (Far right of content row)
-                IconButton(onClick = onDelete) {
-                    Icon(Icons.Default.Delete, contentDescription = "Видалити", tint = Color.Gray)
-                }
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                QuantitySelector(
+                    quantity = item.quantity,
+                    onQuantityChange = onQuantityChange,
+                    modifier = Modifier.width(120.dp)
+                )
+                Text(text = "Price: $formattedUnitPrice", fontSize = 12.sp, color = Color.Gray)
             }
 
-            Spacer(Modifier.height(12.dp)) // Збільшений відступ між інфо та контролами
+            Text(
+                text = formattedTotal,
+                color = MaterialTheme.colorScheme.error,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(100.dp),
+                textAlign = TextAlign.End
+            )
 
-            // B. Bottom Row: Quantity Controls
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .fillMaxWidth(0.6f) // Обмежуємо ширину, щоб не займати весь простір
-                    .border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
-            ) {
-                IconButton(
-                    onClick = { onQuantityChange(item.quantity - 1) },
-                    enabled = item.quantity > 1
-                ) {
-                    Icon(Icons.Default.Remove, contentDescription = "Зменшити", Modifier.size(20.dp))
+            IconButton(onClick = onDelete) {
+                Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray)
+            }
+        } else {
+            // Мобильная перекомпоновка (оставляем вертикальную структуру)
+            Column(modifier = Modifier.weight(1f)) {
+                Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                    Text(item.name, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f), fontSize = 14.sp)
+                    IconButton(onClick = onDelete, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color.Gray)
+                    }
                 }
-                Text(
-                    text = item.quantity.toString(),
-                    modifier = Modifier.weight(1f),
-                    textAlign = androidx.compose.ui.text.style.TextAlign.Center
-                )
-                IconButton(
-                    onClick = { onQuantityChange(item.quantity + 1) }
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "Збільшити", Modifier.size(20.dp))
-                }
+                Text(text = "Price: $formattedUnitPrice", color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
+                Text(text = "Total: $formattedTotal", color = MaterialTheme.colorScheme.error, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.height(8.dp))
+                QuantitySelector(quantity = item.quantity, onQuantityChange = onQuantityChange)
             }
         }
     }
 }
 
-// [ОНОВЛЕНО] Структура CartFooter
+@Composable
+fun QuantitySelector(
+    quantity: Int,
+    onQuantityChange: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = modifier.border(1.dp, Color.Gray.copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+    ) {
+        IconButton(onClick = { onQuantityChange(quantity - 1) }, enabled = quantity > 1) {
+            Icon(Icons.Default.Remove, contentDescription = "Decrease", Modifier.size(20.dp))
+        }
+        Text(text = quantity.toString(), modifier = Modifier.weight(1f), textAlign = TextAlign.Center)
+        IconButton(onClick = { onQuantityChange(quantity + 1) }) {
+            Icon(Icons.Default.Add, contentDescription = "Increase", Modifier.size(20.dp))
+        }
+    }
+}
+
 @Composable
 fun CartFooter(
     subtotal: Double,
+    isWide: Boolean,
     onClearCart: () -> Unit,
     onNavigateToCheckout: () -> Unit
 ) {
-    // [ОНОВЛЕНО] Використовуємо форматування для числа з "₴"
-    val formattedSubtotal = remember(subtotal) {
-        val format = NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
+    val format = remember {
+        NumberFormat.getNumberInstance(Locale("uk", "UA")).apply {
             minimumFractionDigits = 2
             maximumFractionDigits = 2
         }
-        format.format(subtotal) + " ₴" // <-- ДОДАНО " ₴"
     }
+    val formattedSubtotal = "${format.format(subtotal)} ₴"
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color(0xFFF4F7F8)) // Light gray background
+            .background(Color(0xFFF4F7F8))
             .padding(16.dp)
     ) {
-        // 1. Total Row
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
-                Text("Total", color = Color.Gray, fontSize = 14.sp)
-                Text(
-                    text = formattedSubtotal,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
+            Text("Total", color = Color.Gray, fontSize = 14.sp)
+            Text(
+                text = formattedSubtotal,
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
         }
 
         Spacer(Modifier.height(16.dp))
 
-        // 2. Buttons Column (Симетрично одна під одною)
-        Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            // A. Order Now Button
-            Button(
-                onClick = onNavigateToCheckout,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().height(56.dp)
-            ) {
-                Text("Order now", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        if (isWide) {
+            // На широком экране кнопки в ряд
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                OutlinedButton(
+                    onClick = onClearCart,
+                    modifier = Modifier.weight(1f).height(56.dp),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(Icons.Outlined.Delete, contentDescription = null)
+                    Spacer(Modifier.width(8.dp))
+                    Text("Clear cart")
+                }
+                Button(
+                    onClick = onNavigateToCheckout,
+                    modifier = Modifier.weight(2f).height(56.dp),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("Order now", fontWeight = FontWeight.Bold)
+                }
             }
-
-            // B. Clear Cart Button (ОНОВЛЕНО: Тепер це OutlinedButton з іконкою)
-            OutlinedButton(
-                onClick = onClearCart,
-                shape = RoundedCornerShape(12.dp),
-                modifier = Modifier.fillMaxWidth().height(56.dp),
-                colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.5f), // Світло-червоний фон
-                    contentColor = MaterialTheme.colorScheme.error // Червоний текст
-                ),
-                border = null // Прибираємо рамку
-            ) {
-                Icon(
-                    Icons.Outlined.Delete,
-                    contentDescription = "Clear cart icon",
-                    modifier = Modifier.size(24.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Clear cart", fontSize = 16.sp, fontWeight = FontWeight.SemiBold)
+        } else {
+            // На мобилках кнопки друг под другом
+            Button(onClick = onNavigateToCheckout, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text("Order now", fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onClearCart, modifier = Modifier.fillMaxWidth().height(56.dp)) {
+                Text("Clear cart")
             }
         }
     }
 }
-
 @Composable
 fun EmptyCartPlaceholder(modifier: Modifier = Modifier) {
     Column(

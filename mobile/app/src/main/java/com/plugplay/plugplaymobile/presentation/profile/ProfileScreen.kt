@@ -65,6 +65,7 @@ fun ProfileScreen(
     val profile = profileState.profile
     val orders = profileState.orders
     var localProfile by remember(profile) { mutableStateOf(profile) }
+
     LaunchedEffect(profile) {
         localProfile = profile
     }
@@ -72,18 +73,15 @@ fun ProfileScreen(
     val isEditingCredentials = remember { mutableStateOf(false) }
     val openSection = remember { mutableStateOf("") }
 
-    // --- ЛОГІКА: Закриваємо форму редагування після успішного збереження ---
     LaunchedEffect(profileState.updateSuccess) {
         if (profileState.updateSuccess) {
-            // Якщо була відкрита форма редагування профілю - закриваємо її
             if (isEditingCredentials.value) {
                 isEditingCredentials.value = false
                 profileViewModel.resetUpdateState()
-                profileViewModel.onAuthStatusChanged(true) // Оновлюємо дані
+                profileViewModel.onAuthStatusChanged(true)
             }
         }
     }
-    // ---------------------------------------------------------------------------
 
     LaunchedEffect(isLoggedIn) {
         profileViewModel.onAuthStatusChanged(isLoggedIn)
@@ -103,180 +101,176 @@ fun ProfileScreen(
             )
         },
     ) { padding ->
-        if (!isLoggedIn) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                NotLoggedInPlaceholder(onNavigateToLogin)
-            }
-        } else if (profileState.isLoading || profile == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .padding(horizontal = 16.dp),
-            ) {
-                item {
-                    Text(
-                        text = "Manage your personal details, delivery addresses, and account preferences",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.Gray,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
+        // Основной контейнер для адаптивности
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding),
+            contentAlignment = Alignment.TopCenter // Выравниваем по центру сверху
+        ) {
+            if (!isLoggedIn) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    NotLoggedInPlaceholder(onNavigateToLogin)
                 }
-
-                item {
-                    ExpandableSection(
-                        title = "My Details & Contacts",
-                        subtitle = "Account information, email, and phone number",
-                        isExpanded = openSection.value == "My Details",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "My Details") "" else "My Details"
-                        },
-                        actionButton = {
-                            // Кнопка Edit відображається тільки якщо ми НЕ в режимі редагування
-                            if (!isEditingCredentials.value) {
-                                TextButton(
-                                    onClick = { isEditingCredentials.value = true },
-                                    enabled = !profileState.isUpdating
-                                ) {
-                                    Text("Edit")
-                                }
-                            }
-                        }
-                    ) {
-                        // Внутри LazyColumn -> ExpandableSection
-                        if (isEditingCredentials.value) {
-                            EditCredentialsForm(
-                                profile = localProfile ?: profile!!, // Берем данные из локальной копии
-                                onSave = { fn, ln, ph, em ->
-                                    // 1. Мгновенно обновляем локальное состояние
-                                    localProfile = localProfile?.copy(
-                                        firstName = fn,
-                                        lastName = ln,
-                                        phoneNumber = ph,
-                                        email = em
-                                    )
-                                    // 2. Закрываем форму редактирования сразу
-                                    isEditingCredentials.value = false
-
-                                    // 3. Отправляем реальный запрос в ViewModel
-                                    profileViewModel.updateProfile(fn, ln, ph, em)
-                                },
-                                onCancel = { isEditingCredentials.value = false },
-                                isUpdating = profileState.isUpdating
-                            )
-                        } else {
-                            // Здесь тоже используем localProfile, чтобы данные изменились мгновенно
-                            DisplayCredentials(profile = localProfile ?: profile!!)
-                        }
-                    }
+            } else if (profileState.isLoading || profile == null) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
                 }
-
-                item {
-                    ExpandableSection(
-                        title = "Delivery Addresses",
-                        subtitle = "Saved delivery addresses",
-                        isExpanded = openSection.value == "Delivery Addresses",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
-                        }
-                    ) {
-                        AddressList(
-                            addresses = localProfile?.addresses ?: emptyList(),
-                            onDeleteAddress = profileViewModel::deleteAddress,
-                            onEditAddress = profileViewModel::editAddress,
-                            onUpdateLocalList = { newList ->
-                                // Мгновенно подменяем адреса в локальном профиле
-                                localProfile = localProfile?.copy(addresses = newList)
-                            }
-                        )
-
-                        AddAddressForm(
-                            viewModel = profileViewModel,
-                            onAddressAdded = { newAddress ->
-                                // Мгновенно добавляем новый адрес в локальный список
-                                localProfile = localProfile?.let { lp ->
-                                    lp.copy(addresses = lp.addresses + newAddress)
-                                }
-                            }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxHeight()
+                        // Ограничиваем ширину для больших экранов
+                        .widthIn(max = 600.dp)
+                        .padding(horizontal = 16.dp),
+                ) {
+                    item {
+                        Text(
+                            text = "Manage your personal details, delivery addresses, and account preferences",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.Gray,
+                            modifier = Modifier.padding(bottom = 16.dp, top = 8.dp)
                         )
                     }
-                }
 
-                item {
-                    ExpandableSection(
-                        title = "My orders",
-                        subtitle = "Your order history",
-                        isExpanded = openSection.value == "My Orders",
-                        onClick = {
-                            openSection.value =
-                                if (openSection.value == "My Orders") "" else "My Orders"
-                        }
-                    ) {
-                        if (profileState.isOrdersLoading) {
-                            Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
-                                CircularProgressIndicator()
+                    item {
+                        ExpandableSection(
+                            title = "My Details & Contacts",
+                            subtitle = "Account information, email, and phone number",
+                            isExpanded = openSection.value == "My Details",
+                            onClick = {
+                                openSection.value =
+                                    if (openSection.value == "My Details") "" else "My Details"
+                            },
+                            actionButton = {
+                                if (!isEditingCredentials.value) {
+                                    TextButton(
+                                        onClick = { isEditingCredentials.value = true },
+                                        enabled = !profileState.isUpdating
+                                    ) {
+                                        Text("Edit")
+                                    }
+                                }
                             }
-                        } else {
-                            OrderHistoryList(
-                                orders = orders,
-                                addresses = profile.addresses,
-                                onCancelOrder = profileViewModel::cancelOrder,
-                                isCancelling = profileState.isUpdating
-                            )
-                        }
-                    }
-                }
-
-                item {
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(vertical = 4.dp)
-                            .clickable(onClick = onNavigateToWishlist),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(containerColor = Color.White)
-                    ) {
-                        Row(
-                            modifier = Modifier.padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text("My Wishlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                            Spacer(Modifier.weight(1f))
-                            Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            if (isEditingCredentials.value) {
+                                EditCredentialsForm(
+                                    profile = localProfile ?: profile!!,
+                                    onSave = { fn, ln, ph, em ->
+                                        localProfile = localProfile?.copy(
+                                            firstName = fn,
+                                            lastName = ln,
+                                            phoneNumber = ph,
+                                            email = em
+                                        )
+                                        isEditingCredentials.value = false
+                                        profileViewModel.updateProfile(fn, ln, ph, em)
+                                    },
+                                    onCancel = { isEditingCredentials.value = false },
+                                    isUpdating = profileState.isUpdating
+                                )
+                            } else {
+                                DisplayCredentials(profile = localProfile ?: profile!!)
+                            }
                         }
                     }
-                }
 
-                item {
-                    Spacer(Modifier.height(32.dp))
-                    OutlinedButton(
-                        onClick = { authViewModel.logout() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(50.dp),
-                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Text("Logout", fontWeight = FontWeight.SemiBold)
+                    item {
+                        ExpandableSection(
+                            title = "Delivery Addresses",
+                            subtitle = "Saved delivery addresses",
+                            isExpanded = openSection.value == "Delivery Addresses",
+                            onClick = {
+                                openSection.value =
+                                    if (openSection.value == "Delivery Addresses") "" else "Delivery Addresses"
+                            }
+                        ) {
+                            AddressList(
+                                addresses = localProfile?.addresses ?: emptyList(),
+                                onDeleteAddress = profileViewModel::deleteAddress,
+                                onEditAddress = profileViewModel::editAddress,
+                                onUpdateLocalList = { newList ->
+                                    localProfile = localProfile?.copy(addresses = newList)
+                                }
+                            )
+
+                            AddAddressForm(
+                                viewModel = profileViewModel,
+                                onAddressAdded = { newAddress ->
+                                    localProfile = localProfile?.let { lp ->
+                                        lp.copy(addresses = lp.addresses + newAddress)
+                                    }
+                                }
+                            )
+                        }
                     }
-                    Spacer(Modifier.height(32.dp))
+
+                    item {
+                        ExpandableSection(
+                            title = "My orders",
+                            subtitle = "Your order history",
+                            isExpanded = openSection.value == "My Orders",
+                            onClick = {
+                                openSection.value =
+                                    if (openSection.value == "My Orders") "" else "My Orders"
+                            }
+                        ) {
+                            if (profileState.isOrdersLoading) {
+                                Box(modifier = Modifier.fillMaxWidth().height(100.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator()
+                                }
+                            } else {
+                                OrderHistoryList(
+                                    orders = orders,
+                                    addresses = profile.addresses,
+                                    onCancelOrder = profileViewModel::cancelOrder,
+                                    isCancelling = profileState.isUpdating
+                                )
+                            }
+                        }
+                    }
+
+                    item {
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clickable(onClick = onNavigateToWishlist),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color.White)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(16.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text("My Wishlist", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                                Spacer(Modifier.weight(1f))
+                                Icon(Icons.AutoMirrored.Filled.ArrowForwardIos, contentDescription = null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                            }
+                        }
+                    }
+
+                    item {
+                        Spacer(Modifier.height(32.dp))
+                        OutlinedButton(
+                            onClick = { authViewModel.logout() },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(50.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.error),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Text("Logout", fontWeight = FontWeight.SemiBold)
+                        }
+                        Spacer(Modifier.height(32.dp))
+                    }
                 }
             }
         }
