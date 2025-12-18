@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -487,9 +488,35 @@ fun TitleAndPrice(item: Item) {
     }
     Spacer(Modifier.height(16.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.Green, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(4.dp))
-        Text(text = if (item.isAvailable) "In stock" else "Not in stock", color = Color.Green, fontWeight = FontWeight.SemiBold)
+        val isAvailable = item.stockQuantity > 0
+        val availabilityColor = if (isAvailable) Color(0xFF4CAF50) else Color.Red // Зеленый или Красный
+        val availabilityText = if (isAvailable) "In Stock" else "Out of Stock"
+
+        // Кружочек-индикатор
+        Box(
+            modifier = Modifier
+                .size(12.dp)
+                .background(color = availabilityColor, shape = CircleShape)
+        )
+
+        Spacer(modifier = Modifier.width(8.dp))
+
+        // Текст статуса
+        Text(
+            text = availabilityText,
+            color = availabilityColor,
+            style = MaterialTheme.typography.bodyMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+
+        // Если товар есть, показываем количество в скобках
+        if (isAvailable) {
+            Text(
+                text = " (${item.stockQuantity} items)",
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
     Spacer(Modifier.height(16.dp))
     Text(text = formattedNumber, style = MaterialTheme.typography.headlineLarge, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)

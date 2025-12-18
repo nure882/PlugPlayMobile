@@ -49,7 +49,8 @@ class WishlistRepositoryImpl @Inject constructor(
                                     title = item.name,
                                     priceValue = String.format("%.2f ₴", item.price),
                                     image = item.imageUrls.firstOrNull() ?: "",
-                                    price = item.price
+                                    price = item.price,
+                                    stockQuantity = item.stockQuantity,
                                 )
                             }
                             .getOrNull()

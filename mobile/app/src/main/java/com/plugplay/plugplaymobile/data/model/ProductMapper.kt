@@ -18,7 +18,8 @@ fun ProductDto.toDomain(): Product {
         title = this.name ?: "No Name",
         priceValue = String.format("%.2f ₴", this.price ?: 0.0),
         image = firstImage,
-        price = this.price ?: 0.0
+        price = this.price ?: 0.0,
+        stockQuantity = this.stockQuantity ?: 0
     )
 }
 
@@ -64,7 +65,8 @@ fun ProductDto.toDomainItem(): Item {
         categoryId = this.category?.id,
         averageRating = avgRating,
         reviewCount = domainReviews.size,
-        reviews = domainReviews.sortedByDescending { it.date }
+        reviews = domainReviews.sortedByDescending { it.date },
+        stockQuantity = this.stockQuantity ?: 0,
     )
 }
 

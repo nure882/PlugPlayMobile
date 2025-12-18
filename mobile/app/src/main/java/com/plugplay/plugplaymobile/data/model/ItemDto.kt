@@ -11,5 +11,6 @@ data class ItemDto(
     @SerializedName("imageUrls") val imageUrls: List<String>,
     @SerializedName("isAvailable") val isAvailable: Boolean = true,
     @SerializedName("brand") val brand: String,
-    @SerializedName("category") val category: String
+    @SerializedName("category") val category: String,
+    @SerializedName("stockQuantity") val stockQuantity: Int,
 )

@@ -15,5 +15,6 @@ data class Item(
     val reviewCount: Int = 0,
 
 
-    val reviews: List<Review> = emptyList()
+    val reviews: List<Review> = emptyList(),
+    val stockQuantity: Int,
 )

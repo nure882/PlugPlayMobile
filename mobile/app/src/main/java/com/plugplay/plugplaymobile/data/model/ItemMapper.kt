@@ -14,6 +14,7 @@ fun ItemDto.toDomain(): Item {
         imageUrls = this.imageUrls,
         isAvailable = this.isAvailable,
         brand = this.brand,
-        category = this.category
+        category = this.category,
+        stockQuantity = this.stockQuantity,
     )
 }

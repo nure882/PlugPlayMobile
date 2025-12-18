@@ -5,5 +5,6 @@ data class Product(
     val title: String,
     val priceValue: String,
     val image: String,
-    val price: Double
+    val price: Double,
+    val stockQuantity: Int
 )
