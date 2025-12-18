@@ -95,6 +95,7 @@ class CheckoutViewModel @Inject constructor(
         val userId = _currentUserId.value
         val address = _state.value.selectedAddress
         val items = _state.value.cartItems
+        val orderDescription = items.joinToString(", ") { "${it.name} x${it.quantity}" }
         val paymentMethod = _state.value.selectedPaymentMethod
         val deliveryMethod = _state.value.selectedDeliveryMethod
 
@@ -115,7 +116,8 @@ class CheckoutViewModel @Inject constructor(
                 deliveryMethod = deliveryMethod,
                 customerName = "",
                 customerEmail = "",
-                customerPhone = ""
+                customerPhone = "",
+                description = orderDescription,
             ).onSuccess { result -> // [FIX] Тепер це PlaceOrderResult
                 // Очищення кошика вже викликається в UseCase, але для UI оновлення можна залишити
                 clearCartUseCase(userId)

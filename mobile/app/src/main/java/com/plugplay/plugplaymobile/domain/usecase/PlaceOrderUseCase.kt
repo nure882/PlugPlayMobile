@@ -21,10 +21,11 @@ class PlaceOrderUseCase @Inject constructor(
         address: UserAddress,
         customerName: String,
         customerEmail: String,
-        customerPhone: String
+        customerPhone: String,
+        description: String,
     ): Result<PlaceOrderResult> { // [FIX] Повертаємо PlaceOrderResult
         return repository.placeOrder(
-            userId, cartItems, totalPrice, deliveryMethod, paymentMethod, address, customerName, customerEmail, customerPhone
+            userId, cartItems, totalPrice, deliveryMethod, paymentMethod, address, customerName, customerEmail, customerPhone, description
         ).onSuccess {
             clearCartUseCase(userId)
         }
