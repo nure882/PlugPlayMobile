@@ -591,7 +591,7 @@ fun ProductItem(
 @Composable
 fun SectionHeader(
     title: String,
-    onBackClick: (() -> Unit)? = null, // [НОВОЕ] Опциональный обработчик назад
+    onBackClick: (() -> Unit)? = null,
     showFilter: Boolean = false,
     modifier: Modifier = Modifier,
     onFilterClick: () -> Unit = {}
@@ -600,16 +600,20 @@ fun SectionHeader(
         modifier = modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp, horizontal = 4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            // [НОВОЕ] Если есть onBackClick, показываем стрелку
+        // ЛЕВАЯ ЧАСТЬ (Стрелка + Заголовок)
+        // Добавляем .weight(1f), чтобы этот блок занимал всё доступное место,
+        // но оставлял место для кнопки справа.
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.weight(1f)
+        ) {
             if (onBackClick != null) {
                 IconButton(onClick = onBackClick) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack, // Или Icons.Default.ArrowBack
-                        contentDescription = "Back to all",
+                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                        contentDescription = "Back",
                         tint = MaterialTheme.colorScheme.primary
                     )
                 }
@@ -619,11 +623,16 @@ fun SectionHeader(
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                maxLines = 1, // Ограничиваем одной строкой
+                overflow = TextOverflow.Ellipsis // Добавляем троеточие в конце, если не влезает
             )
         }
 
+        // ПРАВАЯ ЧАСТЬ (Кнопка фильтров)
+        // Она не имеет веса, поэтому Android отрисует её полностью
         if (showFilter) {
+            Spacer(Modifier.width(8.dp)) // Отступ от заголовка
             TextButton(onClick = onFilterClick) {
                 Text("Filters")
             }
