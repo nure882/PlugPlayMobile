@@ -453,13 +453,13 @@ fun ImagePager(imageUrls: List<String>) {
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color.LightGray)
+                .background(Color.White)
         ) {
             AsyncImage(
                 model = mainImageUrl,
                 contentDescription = "Product Image",
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop,
+                contentScale = ContentScale.Fit,
                 error = painterResource(id = R.drawable.ic_launcher_foreground)
             )
         }
